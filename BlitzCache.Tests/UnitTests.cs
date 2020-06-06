@@ -18,12 +18,14 @@ namespace BlitzCache.Tests
         {
             serviceProvider = new ServiceCollection()
                 .AddBlitzCache()
+                //.AddBlitzCache(30000) you can also specify the default timespan of the cache in milliseconds
                 .BuildServiceProvider();
 
             cache = serviceProvider.GetService<BlitzCache>();
 
             //Alternatively you can create a new instance of the BlitzCache directly without dependency injection
             //cache = new BlitzCache();
+            //cache = new BlitzCache(30000);
         }
 
         [Test]

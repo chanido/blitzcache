@@ -1,12 +1,30 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFramework>netcoreapp3.1</TargetFramework>
+    <TargetFramework>netstandard2.1</TargetFramework>
+    <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
+    <PackageRequireLicenseAcceptance>true</PackageRequireLicenseAcceptance>
+    <PackageLicenseExpression></PackageLicenseExpression>
+    <Authors>Chan (aburrio@gmail.com)</Authors>
+    <Company>IntuiChan</Company>
+    <Description>BlitzCache is a thread safe cache that accepts synchronous and asyncronous calls being simplicity its main goal.</Description>
+    <Copyright>Copyright (C) IntuiChan 2020</Copyright>
+    <PackageProjectUrl>https://github.com/chanido/blitzcache</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/chanido/blitzcache</RepositoryUrl>
+    <PackageTags>Threading, Async, Lock, Semaphore, Synchronization, Threadsafe, Cache, Lambda, Caching</PackageTags>
+    <PackageLicenseFile>licence.txt</PackageLicenseFile>
   </PropertyGroup>
 
   <ItemGroup>
     <PackageReference Include="Microsoft.Extensions.Caching.Abstractions" Version="3.1.4" />
     <PackageReference Include="Microsoft.Extensions.Caching.Memory" Version="3.1.4" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="..\licence.txt">
+      <Pack>True</Pack>
+      <PackagePath></PackagePath>
+    </None>
   </ItemGroup>
 
 </Project>
