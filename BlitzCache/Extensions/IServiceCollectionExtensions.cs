@@ -22,14 +22,14 @@ namespace BlitzCache.Extensions
         // Returns:
         //     The Microsoft.Extensions.DependencyInjection.IServiceCollection so that additional
         //     calls can be chained.
-        public static IServiceCollection AddBlitzCache(this IServiceCollection services)
+        public static IServiceCollection AddBlitzCache(this IServiceCollection services, long defaultMilliseconds = 60000)
         {
             if (services == null)
             {
                 throw new ArgumentNullException("services");
             }
             OptionsServiceCollectionExtensions.AddOptions(services);
-            ServiceCollectionDescriptorExtensions.TryAdd(services, ServiceDescriptor.Singleton<BlitzCache, BlitzCache>());
+            ServiceCollectionDescriptorExtensions.TryAdd(services, ServiceDescriptor.Singleton(new BlitzCache(defaultMilliseconds)));
             return services;
         }
     }

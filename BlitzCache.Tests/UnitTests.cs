@@ -2,6 +2,7 @@ using BlitzCache.Extensions;
 using BlitzCache.Tests.Helpers;
 using Microsoft.Extensions.DependencyInjection;
 using NUnit.Framework;
+using System;
 using System.Threading.Tasks;
 
 namespace BlitzCache.Tests
@@ -16,28 +17,37 @@ namespace BlitzCache.Tests
         public void BeforeAll()
         {
             serviceProvider = new ServiceCollection()
-                //.AddMemoryCache()
                 .AddBlitzCache()
                 .BuildServiceProvider();
 
             cache = serviceProvider.GetService<BlitzCache>();
-        }
 
-        [SetUp]
-        public void Setup()
-        {
+            //Alternatively you can create a new instance of the BlitzCache directly without dependency injection
             //cache = new BlitzCache();
         }
-
 
         [Test]
         public async Task ParallelAccessToAsyncMethod()
         {
             var slowClass = new SlowClassAsync();
 
-            await AsyncRepeater.Go(numberOfTests, () => cache.GetThreadsafe("ParallelAccessToAsyncMethod", slowClass.ProcessQuickly, 10000));
+            await AsyncRepeater.Go(numberOfTests, () => cache.BlitzGet(slowClass.ProcessQuickly));
 
             Assert.AreEqual(1, slowClass.Counter);
+        }
+
+        [Test]
+        public async Task DifferentKeysWillCallTheAsyncMethodAgain()
+        {
+            var slowClass = new SlowClassAsync();
+
+            var key1 = Guid.NewGuid().ToString();
+            await AsyncRepeater.Go(numberOfTests, () => cache.BlitzGet(key1, slowClass.ProcessQuickly));
+
+            var key2 = Guid.NewGuid().ToString();
+            await AsyncRepeater.Go(numberOfTests, () => cache.BlitzGet(key2, slowClass.ProcessQuickly));
+
+            Assert.AreEqual(2, slowClass.Counter);
         }
 
         [Test]
@@ -45,15 +55,26 @@ namespace BlitzCache.Tests
         {
             var slowClass = new SlowClass();
 
-            cache.
-
             Parallel.For(0, numberOfTests, (i) =>
             {
-                cache.GetThreadsafe("ParallelAccessToSyncMethod", slowClass.ProcessQuickly, 10000);
+                cache.BlitzGet(slowClass.ProcessQuickly);
             });
 
 
             Assert.AreEqual(1, slowClass.Counter);
+        }
+
+        [Test]
+        public void DifferentKeysWillCallTheSyncMethodAgain()
+        {
+            var slowClass = new SlowClass();
+
+            var key1 = Guid.NewGuid().ToString();
+            Parallel.For(0, numberOfTests, (i) => { cache.BlitzGet(key1, slowClass.ProcessQuickly); });
+            var key2 = Guid.NewGuid().ToString();
+            Parallel.For(0, numberOfTests, (i) => { cache.BlitzGet(key2, slowClass.ProcessQuickly); });
+
+            Assert.AreEqual(2, slowClass.Counter);
         }
 
         [OneTimeTearDown]
