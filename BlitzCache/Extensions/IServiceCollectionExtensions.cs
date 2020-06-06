@@ -29,7 +29,7 @@ namespace BlitzCache.Extensions
                 throw new ArgumentNullException("services");
             }
             OptionsServiceCollectionExtensions.AddOptions(services);
-            ServiceCollectionDescriptorExtensions.TryAdd(services, ServiceDescriptor.Singleton<IMemoryCache, BlitzCache>());
+            ServiceCollectionDescriptorExtensions.TryAdd(services, ServiceDescriptor.Singleton<BlitzCache, BlitzCache>());
             return services;
         }
     }

@@ -5,7 +5,7 @@ using System.Threading.Tasks;
 
 namespace BlitzCache
 {
-    public class BlitzCache : IMemoryCache
+    public class BlitzCache// : IMemoryCache
     {
         private static readonly IMemoryCache memoryCache = new MemoryCache(new MemoryCacheOptions());
 
@@ -46,11 +46,11 @@ namespace BlitzCache
             return result;
         }
 
-        public bool TryGetValue(object key, out object value) => memoryCache.TryGetValue(key, out value);
+        //public bool TryGetValue(object key, out object value) => memoryCache.TryGetValue(key, out value);
 
-        public ICacheEntry CreateEntry(object key) => memoryCache.CreateEntry(key);
+        //public ICacheEntry CreateEntry(object key) => memoryCache.CreateEntry(key);
 
-        public void Remove(object key) => memoryCache.Remove(key);
+        //public void Remove(object key) => memoryCache.Remove(key);
 
         public void Dispose()
         {

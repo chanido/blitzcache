@@ -8,6 +8,7 @@ namespace BlitzCache.Tests
 {
     public class UnitTests
     {
+        private const int numberOfTests = 5000;
         private BlitzCache cache;
         private ServiceProvider serviceProvider;
 
@@ -25,7 +26,7 @@ namespace BlitzCache.Tests
         [SetUp]
         public void Setup()
         {
-            cache = new BlitzCache();
+            //cache = new BlitzCache();
         }
 
 
@@ -34,7 +35,23 @@ namespace BlitzCache.Tests
         {
             var slowClass = new SlowClassAsync();
 
-            await AsyncRepeater.Go(500, () => cache.GetThreadsafe("ParallelAccessToAsyncMethod", slowClass.ProcessQuickly, 10000));
+            await AsyncRepeater.Go(numberOfTests, () => cache.GetThreadsafe("ParallelAccessToAsyncMethod", slowClass.ProcessQuickly, 10000));
+
+            Assert.AreEqual(1, slowClass.Counter);
+        }
+
+        [Test]
+        public void ParallelAccessToSyncMethod()
+        {
+            var slowClass = new SlowClass();
+
+            cache.
+
+            Parallel.For(0, numberOfTests, (i) =>
+            {
+                cache.GetThreadsafe("ParallelAccessToSyncMethod", slowClass.ProcessQuickly, 10000);
+            });
+
 
             Assert.AreEqual(1, slowClass.Counter);
         }

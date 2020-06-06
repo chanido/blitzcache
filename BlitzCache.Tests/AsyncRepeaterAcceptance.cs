@@ -6,14 +6,15 @@ namespace BlitzCache.Tests
 {
     public class AsyncRepeaterAcceptance
     {
+        private const int nomberOfTests = 50;
         [Test]
         public async Task ShouldSendsTasksInParallel()
         {
             var slowClass = new SlowClassAsync();
 
-            await AsyncRepeater.Go(50, async () => await slowClass.ProcessSlowly());
+            await AsyncRepeater.Go(nomberOfTests, async () => await slowClass.ProcessSlowly());
 
-            Assert.IsTrue(slowClass.Counter > 1);
+            Assert.AreEqual(nomberOfTests, slowClass.Counter);
         }
     }
 }
