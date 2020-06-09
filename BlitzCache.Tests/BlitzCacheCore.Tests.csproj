@@ -14,7 +14,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\BlitzCache\BlitzCache.csproj" />
+    <ProjectReference Include="..\BlitzCache\BlitzCacheCore.csproj" />
   </ItemGroup>
 
 </Project>

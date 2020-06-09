@@ -1,6 +1,6 @@
 using System.Collections.Generic;
 
-namespace BlitzCache.LockDictionaries
+namespace BlitzCacheCore.LockDictionaries
 {
     public class LockDictionary
     {

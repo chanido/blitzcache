@@ -1,12 +1,12 @@
-﻿using BlitzCache.LockDictionaries;
+﻿using BlitzCacheCore.LockDictionaries;
 using Microsoft.Extensions.Caching.Memory;
 using System;
 using System.Runtime.CompilerServices;
 using System.Threading.Tasks;
 
-namespace BlitzCache
+namespace BlitzCacheCore
 {
-    public class BlitzCache
+    public class BlitzCache : IBlitzCache
     {
         private static readonly IMemoryCache memoryCache = new MemoryCache(new MemoryCacheOptions());
         private readonly long defaultMilliseconds;

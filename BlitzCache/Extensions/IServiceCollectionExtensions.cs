@@ -1,11 +1,8 @@
-﻿using Microsoft.Extensions.Caching.Memory;
-using Microsoft.Extensions.DependencyInjection;
+﻿using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using System;
-using System.Collections.Generic;
-using System.Text;
 
-namespace BlitzCache.Extensions
+namespace BlitzCacheCore.Extensions
 {
     public static class IServiceCollectionExtensions
     {
@@ -24,12 +21,11 @@ namespace BlitzCache.Extensions
         //     calls can be chained.
         public static IServiceCollection AddBlitzCache(this IServiceCollection services, long defaultMilliseconds = 60000)
         {
-            if (services == null)
-            {
-                throw new ArgumentNullException("services");
-            }
+            if (services == null) throw new ArgumentNullException(nameof(services));
+
             OptionsServiceCollectionExtensions.AddOptions(services);
-            ServiceCollectionDescriptorExtensions.TryAdd(services, ServiceDescriptor.Singleton(new BlitzCache(defaultMilliseconds)));
+            ServiceCollectionDescriptorExtensions.TryAdd(services, ServiceDescriptor.Singleton<IBlitzCache>(new BlitzCache(defaultMilliseconds)));
+
             return services;
         }
     }

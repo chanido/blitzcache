@@ -1,8 +1,8 @@
-﻿using BlitzCache.Tests.Helpers;
+﻿using BlitzCacheCore.Tests.Helpers;
 using NUnit.Framework;
 using System.Threading.Tasks;
 
-namespace BlitzCache.Tests
+namespace BlitzCacheCore.Tests
 {
     public class AsyncRepeaterAcceptance
     {

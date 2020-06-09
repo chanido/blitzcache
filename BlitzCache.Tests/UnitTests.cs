@@ -1,16 +1,16 @@
-using BlitzCache.Extensions;
-using BlitzCache.Tests.Helpers;
+using BlitzCacheCore.Extensions;
+using BlitzCacheCore.Tests.Helpers;
 using Microsoft.Extensions.DependencyInjection;
 using NUnit.Framework;
 using System;
 using System.Threading.Tasks;
 
-namespace BlitzCache.Tests
+namespace BlitzCacheCore.Tests
 {
     public class UnitTests
     {
         private const int numberOfTests = 5000;
-        private BlitzCache cache;
+        private IBlitzCache cache;
         private ServiceProvider serviceProvider;
 
         [OneTimeSetUp]
@@ -21,7 +21,7 @@ namespace BlitzCache.Tests
                 //.AddBlitzCache(30000) you can also specify the default timespan of the cache in milliseconds
                 .BuildServiceProvider();
 
-            cache = serviceProvider.GetService<BlitzCache>();
+            cache = serviceProvider.GetService<IBlitzCache>();
 
             //Alternatively you can create a new instance of the BlitzCache directly without dependency injection
             //cache = new BlitzCache();

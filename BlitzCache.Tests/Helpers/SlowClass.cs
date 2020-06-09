@@ -1,4 +1,4 @@
-﻿namespace BlitzCache.Tests.Helpers
+﻿namespace BlitzCacheCore.Tests.Helpers
 {
     public class SlowClass
     {

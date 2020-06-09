@@ -1,10 +1,9 @@
-﻿using BlitzCache.LockDictionaries;
+﻿using BlitzCacheCore.LockDictionaries;
 using NUnit.Framework;
 using System;
-using System.Reflection;
 using System.Threading.Tasks;
 
-namespace BlitzCache.Tests
+namespace BlitzCacheCore.Tests
 {
     public class LockDictionariesAcceptance
     {

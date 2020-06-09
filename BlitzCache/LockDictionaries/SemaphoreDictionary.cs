@@ -1,7 +1,7 @@
 using System.Collections.Generic;
 using System.Threading;
 
-namespace BlitzCache.LockDictionaries
+namespace BlitzCacheCore.LockDictionaries
 {
     public class SemaphoreDictionary
     {

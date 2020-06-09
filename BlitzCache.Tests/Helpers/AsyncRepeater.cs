@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using System.Threading.Tasks;
 
-namespace BlitzCache.Tests.Helpers
+namespace BlitzCacheCore.Tests.Helpers
 {
     public static class AsyncRepeater
     {

@@ -1,6 +1,6 @@
 ﻿using System.Threading.Tasks;
 
-namespace BlitzCache.Tests.Helpers
+namespace BlitzCacheCore.Tests.Helpers
 {
     public class SlowClassAsync
     {
