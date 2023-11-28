@@ -15,26 +15,55 @@ namespace BlitzCacheCore
             this.defaultMilliseconds = defaultMilliseconds;
         }
 
-        public T BlitzGet<T>(Func<T> function, long? milliseconds = null, [CallerMemberName] string callerMemberName = "", [CallerFilePath] string sourceFilePath = "") =>
+        public T BlitzGet<T>(Func<T> function, long? milliseconds = null, [CallerMemberName] string callerMemberName = "", [CallerFilePath] string sourceFilePath = "")
+        {
+            T f(Nuances nuances) => function();
+
+            return BlitzGet(f, milliseconds, callerMemberName, sourceFilePath);
+        }
+
+        public T BlitzGet<T>(Func<Nuances, T> function, long? milliseconds = null, [CallerMemberName] string callerMemberName = "", [CallerFilePath] string sourceFilePath = "") =>
             BlitzGet(callerMemberName + sourceFilePath, function, milliseconds);
 
         public T BlitzGet<T>(string cacheKey, Func<T> function, long? milliseconds = null)
+        {
+            T f(Nuances nuances) => function();
+
+            return BlitzGet(cacheKey, f, milliseconds);
+        }
+
+        public T BlitzGet<T>(string cacheKey, Func<Nuances, T> function, long? milliseconds = null)
         {
             if (memoryCache.TryGetValue(cacheKey, out T result)) return result;
             lock (LockDictionary.Get(cacheKey))
             {
                 if (memoryCache.TryGetValue(cacheKey, out result)) return result;
 
-                result = function.Invoke();
-                memoryCache.Set(cacheKey, result, DateTime.Now.AddMilliseconds(milliseconds ?? defaultMilliseconds));
+                var nuances = new Nuances();
+                result = function.Invoke(nuances);
+                memoryCache.Set(cacheKey, result, DateTime.Now.AddMilliseconds(nuances.CacheRetention ?? milliseconds ?? defaultMilliseconds));
             }
 
             return result;
         }
 
-        public Task<T> BlitzGet<T>(Func<Task<T>> function, long? milliseconds = null, [CallerMemberName] string callerMemberName = "", [CallerFilePath] string sourceFilePath = "") =>
+        public Task<T> BlitzGet<T>(Func<Task<T>> function, long? milliseconds = null, [CallerMemberName] string callerMemberName = "", [CallerFilePath] string sourceFilePath = "")
+        {
+            Task<T> f(Nuances nuances) => function();
+
+            return BlitzGet(f, milliseconds, callerMemberName, sourceFilePath);
+        }
+
+        public Task<T> BlitzGet<T>(Func<Nuances, Task<T>> function, long? milliseconds = null, [CallerMemberName] string callerMemberName = "", [CallerFilePath] string sourceFilePath = "") =>
             BlitzGet(callerMemberName + sourceFilePath, function, milliseconds);
-        public async Task<T> BlitzGet<T>(string cacheKey, Func<Task<T>> function, long? milliseconds = null)
+
+        public Task<T> BlitzGet<T>(string cacheKey, Func<Task<T>> function, long? milliseconds = null)
+        {
+            Task<T> f(Nuances nuances) => function();
+
+            return BlitzGet(cacheKey, f, milliseconds);
+        }
+        public async Task<T> BlitzGet<T>(string cacheKey, Func<Nuances, Task<T>> function, long? milliseconds = null)
         {
             if (memoryCache.TryGetValue(cacheKey, out T result)) return result;
 
@@ -45,8 +74,9 @@ namespace BlitzCacheCore
                 await semaphore.WaitAsync();
                 if (!memoryCache.TryGetValue(cacheKey, out result))
                 {
-                    result = await function.Invoke();
-                    memoryCache.Set(cacheKey, result, DateTime.Now.AddMilliseconds(milliseconds ?? defaultMilliseconds));
+                    var nuances = new Nuances();
+                    result = await function.Invoke(nuances);
+                    memoryCache.Set(cacheKey, result, DateTime.Now.AddMilliseconds(nuances.CacheRetention ?? milliseconds ?? defaultMilliseconds));
                 }
             }
             finally

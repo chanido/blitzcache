@@ -8,12 +8,12 @@
     <Authors>Chan (aburrio@gmail.com)</Authors>
     <Company>IntuiChan</Company>
     <Description>BlitzCache is a thread safe cache that accepts synchronous and asyncronous calls being simplicity its main goal.</Description>
-    <Copyright>Copyright (C) IntuiChan 2020</Copyright>
+    <Copyright>Copyright (C) IntuiChan 2023</Copyright>
     <PackageProjectUrl></PackageProjectUrl>
     <RepositoryUrl>https://github.com/chanido/blitzcache</RepositoryUrl>
     <PackageTags>Threading, Async, Lock, Semaphore, Synchronization, Threadsafe, Cache, Lambda, Caching</PackageTags>
-    <Version>1.0.1</Version>
-    <PackageReleaseNotes>- Added IBlitzCache and NullBlitzCache for testing in external projects</PackageReleaseNotes>
+    <Version>1.0.2</Version>
+    <PackageReleaseNotes>- Added support for variable caching time per key with the class Nuances</PackageReleaseNotes>
     <PackageId>BlitzCache</PackageId>
   </PropertyGroup>
 

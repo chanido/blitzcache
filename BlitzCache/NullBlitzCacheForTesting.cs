@@ -10,12 +10,20 @@ namespace BlitzCacheCore
 
         public T BlitzGet<T>(Func<T> function, long? milliseconds = null, [CallerMemberName] string callerMemberName = "", [CallerFilePath] string sourceFilePath = "") =>
             BlitzGet(callerMemberName + sourceFilePath, function, milliseconds);
+        public T BlitzGet<T>(Func<Nuances, T> function, long? milliseconds = null, [CallerMemberName] string callerMemberName = "", [CallerFilePath] string sourceFilePath = "") =>
+            BlitzGet(callerMemberName + sourceFilePath, function, milliseconds);
 
         public T BlitzGet<T>(string cacheKey, Func<T> function, long? milliseconds = null) => function.Invoke();
+        public T BlitzGet<T>(string cacheKey, Func<Nuances,T> function, long? milliseconds = null) => function.Invoke(new Nuances());
 
         public Task<T> BlitzGet<T>(Func<Task<T>> function, long? milliseconds = null, [CallerMemberName] string callerMemberName = "", [CallerFilePath] string sourceFilePath = "") =>
             BlitzGet(callerMemberName + sourceFilePath, function, milliseconds);
 
+        public Task<T> BlitzGet<T>(Func<Nuances, Task<T>> function, long? milliseconds = null, [CallerMemberName] string callerMemberName = "", [CallerFilePath] string sourceFilePath = "") =>
+            BlitzGet(callerMemberName + sourceFilePath, function, milliseconds);
+
+        public async Task<T> BlitzGet<T>(string cacheKey, Func<Nuances, Task<T>> function, long? milliseconds = null)
+            => await function.Invoke(new Nuances());
         public async Task<T> BlitzGet<T>(string cacheKey, Func<Task<T>> function, long? milliseconds = null)
             => await function.Invoke();
 
@@ -24,7 +32,6 @@ namespace BlitzCacheCore
 #pragma warning disable CS1998 // Async method lacks 'await' operators and will run synchronously
         public async void BlitzUpdate<T>(string cacheKey, Func<Task<T>> function, long milliseconds) { }
 #pragma warning restore CS1998 // Async method lacks 'await' operators and will run synchronously
-
 
         public void Remove(string cacheKey) { }
 
