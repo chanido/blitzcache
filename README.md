@@ -80,4 +80,23 @@ var slowClass = new SlowClassAsync();
 var result = await cache.BlitzGet(slowClass.ProcessQuickly);
 ```
 
+### With variable timespan per key depending on the execution
+```csharp
+var slowClass = new SlowClassAsync();
+cache.BlitzGet(GetKey(i), (n) => {
+  bool? result = null;
+  try { result = slowClass.FailIfZeroTrueIfEven(i); }
+  catch { }
+
+  switch (result)
+  {
+    case null: n.CacheRetention = 1000; break; //For nulls we know we have failed so we want to retry quick
+    case true: n.CacheRetention = 2000; break; //For true we want to wait 2 seconds
+    case false: n.CacheRetention = 3000; break;//For false we want to wait even longer
+  }
+
+  return result;
+});
+```
+
 ## Thanks for using it!
