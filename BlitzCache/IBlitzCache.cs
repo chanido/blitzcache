@@ -15,7 +15,7 @@ namespace BlitzCacheCore
         Task<T> BlitzGet<T>(string cacheKey, Func<Task<T>> function, long? milliseconds = null);
         Task<T> BlitzGet<T>(string cacheKey, Func<Nuances, Task<T>> function, long? milliseconds = null);
         void BlitzUpdate<T>(string cacheKey, Func<T> function, long milliseconds);
-        void BlitzUpdate<T>(string cacheKey, Func<Task<T>> function, long milliseconds);
+        Task BlitzUpdate<T>(string cacheKey, Func<Task<T>> function, long milliseconds);
         void Remove(string cacheKey);
         void Dispose();
     }

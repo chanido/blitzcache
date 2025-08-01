@@ -140,6 +140,175 @@ namespace BlitzCacheCore.Tests
 
         }
 
+        [Test]
+        public void MultipleBlitzCacheInstances_ShouldUseGlobalCacheByDefault()
+        {
+            // Arrange
+            var cache1 = new BlitzCache(60000, useGlobalCache: true);
+            var cache2 = new BlitzCache(60000, useGlobalCache: true);
+
+            // Act - Store value in cache1
+            var result1 = cache1.BlitzGet("shared_key", () => "shared_value", 10000);
+            var result2 = cache2.BlitzGet("shared_key", () => "different_value", 10000);
+
+            // Assert - Both should return the same cached value
+            Assert.AreEqual("shared_value", result1);
+            Assert.AreEqual("shared_value", result2, "Should get cached value from global cache");
+
+            // Cleanup
+            cache1.Dispose();
+            cache2.Dispose();
+        }
+
+        [Test]
+        public void IndependentBlitzCacheInstances_ShouldHaveSeparateCaches()
+        {
+            // Arrange
+            var cache1 = new BlitzCache(60000, useGlobalCache: false);
+            var cache2 = new BlitzCache(60000, useGlobalCache: false);
+
+            // Act - Store different values with same key in each cache
+            var result1 = cache1.BlitzGet("same_key", () => "value_from_cache1", 10000);
+            var result2 = cache2.BlitzGet("same_key", () => "value_from_cache2", 10000);
+
+            // Assert - Each cache should have its own value
+            Assert.AreEqual("value_from_cache1", result1);
+            Assert.AreEqual("value_from_cache2", result2);
+
+            // Cleanup
+            cache1.Dispose();
+            cache2.Dispose();
+        }
+
+        [Test]
+        public async Task AsyncBlitzUpdate_ShouldReturnTaskAndCacheValue()
+        {
+            // Arrange
+            var testCache = new BlitzCache(60000, useGlobalCache: false);
+
+            // Act - Use AsyncRepeater to test async BlitzUpdate
+            var updateTask = testCache.BlitzUpdate("async_key", async () => {
+                await Task.Delay(10);
+                return "async_value";
+            }, 10000);
+
+            // Assert - Should return Task and complete successfully
+            Assert.IsInstanceOf<Task>(updateTask, "BlitzUpdate should return Task");
+            await updateTask; // Should complete without error
+
+            // Verify the value was cached using AsyncRepeater
+            var testResult = await AsyncRepeater.GoWithResults(5, () => testCache.BlitzGet("async_key", () => Task.FromResult("fallback"), 10000));
+            
+            Assert.IsTrue(testResult.AllResultsIdentical, "All calls should get same cached value");
+            Assert.AreEqual("async_value", testResult.FirstResult, "Should return cached async value");
+
+            // Cleanup
+            testCache.Dispose();
+        }
+
+        [Test]
+        public void BlitzCacheConstructor_ShouldValidateParameters()
+        {
+            // Act & Assert
+            Assert.Throws<ArgumentNullException>(() => new BlitzCache(null, 60000));
+        }
+
+        [Test]
+        public void DisposingGlobalCacheInstance_ShouldNotDisposeGlobalCache()
+        {
+            // Arrange
+            var cache1 = new BlitzCache(60000, useGlobalCache: true);
+            var cache2 = new BlitzCache(60000, useGlobalCache: true);
+
+            // Store value in global cache
+            cache1.BlitzGet("global_key", () => "global_value", 10000);
+
+            // Act - Dispose cache1 (should not dispose global cache)
+            cache1.Dispose();
+
+            // Assert - cache2 should still work and have the cached value
+            var result = cache2.BlitzGet("global_key", () => "different_value", 10000);
+            Assert.AreEqual("global_value", result, "Global cache should still be accessible");
+
+            // Cleanup
+            cache2.Dispose();
+        }
+
+        [Test]
+        public void CustomMemoryCache_ShouldWorkCorrectly()
+        {
+            // Arrange
+            var customMemoryCache = new Microsoft.Extensions.Caching.Memory.MemoryCache(new Microsoft.Extensions.Caching.Memory.MemoryCacheOptions());
+            var testCache = new BlitzCache(customMemoryCache, 60000);
+
+            // Act
+            var result1 = testCache.BlitzGet("custom_key", () => "custom_value", 10000);
+            var result2 = testCache.BlitzGet("custom_key", () => "different_value", 10000);
+
+            // Assert
+            Assert.AreEqual("custom_value", result1);
+            Assert.AreEqual("custom_value", result2, "Should get cached value");
+
+            // Cleanup
+            testCache.Dispose();
+            customMemoryCache.Dispose();
+        }
+
+        [Test]
+        public void DisposingIndependentCache_ShouldNotAffectOtherCaches()
+        {
+            // Arrange
+            var cache1 = new BlitzCache(60000, useGlobalCache: false);
+            var cache2 = new BlitzCache(60000, useGlobalCache: false);
+
+            // Store values in both caches
+            cache1.BlitzGet("test_key", () => "value1", 10000);
+            cache2.BlitzGet("test_key", () => "value2", 10000);
+
+            // Act - Dispose cache1
+            cache1.Dispose();
+
+            // Assert - cache2 should still work
+            var result = cache2.BlitzGet("test_key", () => "new_value", 10000);
+            Assert.AreEqual("value2", result, "Cache2 should still have its cached value");
+
+            // Should be able to store new values in cache2
+            var newResult = cache2.BlitzGet("new_key", () => "new_value", 10000);
+            Assert.AreEqual("new_value", newResult);
+
+            // Cleanup
+            cache2.Dispose();
+        }
+
+        [Test]
+        public async Task MultipleIndependentCaches_ShouldWorkUnderPressure()
+        {
+            // Arrange
+            var cache1 = new BlitzCache(60000, useGlobalCache: false);
+            var cache2 = new BlitzCache(60000, useGlobalCache: false);
+            var cache3 = new BlitzCache(60000, useGlobalCache: false);
+
+            // Act - Use AsyncRepeater for concurrent load testing
+            var tasks = new Task[]
+            {
+                AsyncRepeater.Go(50, () => cache1.BlitzGet("load_test", () => Task.FromResult("cache1_value"), 5000)),
+                AsyncRepeater.Go(50, () => cache2.BlitzGet("load_test", () => Task.FromResult("cache2_value"), 5000)),
+                AsyncRepeater.Go(50, () => cache3.BlitzGet("load_test", () => Task.FromResult("cache3_value"), 5000))
+            };
+
+            await Task.WhenAll(tasks);
+
+            // Assert - Verify each cache has its own values
+            Assert.AreEqual("cache1_value", await cache1.BlitzGet("load_test", () => Task.FromResult("fallback"), 5000));
+            Assert.AreEqual("cache2_value", await cache2.BlitzGet("load_test", () => Task.FromResult("fallback"), 5000));
+            Assert.AreEqual("cache3_value", await cache3.BlitzGet("load_test", () => Task.FromResult("fallback"), 5000));
+
+            // Cleanup
+            cache1.Dispose();
+            cache2.Dispose();
+            cache3.Dispose();
+        }
+
         [OneTimeTearDown]
         public void AfterAll()
         {

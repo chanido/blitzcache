@@ -9,10 +9,5 @@ namespace BlitzCacheCore
         /// Retention for this key in milliseconds
         /// </summary>
         public long? CacheRetention { get; set; }
-
-        public static implicit operator Func<object, object>(Nuances v)
-        {
-            throw new NotImplementedException();
-        }
     }
 }

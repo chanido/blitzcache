@@ -29,9 +29,7 @@ namespace BlitzCacheCore
 
         public void BlitzUpdate<T>(string cacheKey, Func<T> function, long milliseconds) { }
 
-#pragma warning disable CS1998 // Async method lacks 'await' operators and will run synchronously
-        public async void BlitzUpdate<T>(string cacheKey, Func<Task<T>> function, long milliseconds) { }
-#pragma warning restore CS1998 // Async method lacks 'await' operators and will run synchronously
+        public Task BlitzUpdate<T>(string cacheKey, Func<Task<T>> function, long milliseconds) => Task.CompletedTask;
 
         public void Remove(string cacheKey) { }
 
