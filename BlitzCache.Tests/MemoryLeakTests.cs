@@ -14,81 +14,93 @@ namespace BlitzCacheCore.Tests
         public void Cleanup()
         {
             // Clean up singletons after each test
-            SmartSemaphoreDictionary.Dispose();
+            BlitzSemaphoreDictionary.Dispose();
         }
 
         [Test]
-        public void SemaphoreDictionary_Should_CleanupOldSemaphores()
+        public async Task SemaphoreDictionary_Should_CleanupUnusedSemaphores()
         {
             // Arrange
-            var initialCount = SmartSemaphoreDictionary.GetNumberOfLocks();
+            var initialCount = BlitzSemaphoreDictionary.GetNumberOfLocks();
 
-            // Act - Create many semaphores
-            for (int i = 0; i < 100; i++)
-            {
-                SmartSemaphoreDictionary.Get($"test_semaphore_{i}");
-            }
-
-            var countAfterCreation = SmartSemaphoreDictionary.GetNumberOfLocks();
-            Assert.That(countAfterCreation, Is.EqualTo(initialCount + 100), "All semaphores should be created");
-
-            // Wait for cleanup
-            SmartSemaphoreDictionary.TriggerCleanup();
-
-            // Assert - Some semaphores should be cleaned up
-            var countAfterCleanup = SmartSemaphoreDictionary.GetNumberOfLocks();
-            Assert.That(countAfterCleanup, Is.LessThanOrEqualTo(countAfterCreation), 
-                "Old semaphores should be cleaned up");
-        }
-
-        [Test]
-        public async Task SemaphoreDictionary_Should_NotCleanupRecentlyUsedSemaphores()
-        {
-            // Arrange
-            var testKey = "recently_used_semaphore";
-            var initialCount = SmartSemaphoreDictionary.GetNumberOfLocks();
-
-            // Act - Create and continuously use a semaphore
+            // Act - Create and immediately release semaphores (simulating normal usage)
             for (int i = 0; i < 10; i++)
             {
-                var semaphore = SmartSemaphoreDictionary.Get(testKey);
-                await semaphore.WaitAsync();
-                semaphore.Release();
-                await Task.Delay(100);
+                var semaphore = BlitzSemaphoreDictionary.GetSemaphore($"test_semaphore_{i}");
+                using (var lockHandle = await semaphore.AcquireAsync())
+                {
+                    // Semaphore is acquired and immediately released
+                }
             }
 
-            var countAfterUsage = SmartSemaphoreDictionary.GetNumberOfLocks();
+            var countAfterCreation = BlitzSemaphoreDictionary.GetNumberOfLocks();
+            Assert.That(countAfterCreation, Is.EqualTo(initialCount + 10), "All semaphores should be created");
 
             // Trigger cleanup
-            SmartSemaphoreDictionary.TriggerCleanup();
+            BlitzSemaphoreDictionary.TriggerCleanup();
 
-            // Assert - Recently used semaphore should still exist
-            var countAfterCleanup = SmartSemaphoreDictionary.GetNumberOfLocks();
-            var semaphoreStillExists = countAfterCleanup > initialCount;
+            // Assert - Unused semaphores should be cleaned up
+            var countAfterCleanup = BlitzSemaphoreDictionary.GetNumberOfLocks();
+            Assert.That(countAfterCleanup, Is.EqualTo(initialCount), 
+                "Unused semaphores should be cleaned up immediately");
+        }
+
+        [Test]
+        public async Task SemaphoreDictionary_Should_NotCleanupActivelyUsedSemaphores()
+        {
+            // Arrange
+            var testKey = "actively_used_semaphore";
+            var initialCount = BlitzSemaphoreDictionary.GetNumberOfLocks();
+
+            // Act - Acquire a semaphore and keep it acquired
+            var semaphore = BlitzSemaphoreDictionary.GetSemaphore(testKey);
+            var lockHandle = await semaphore.AcquireAsync();
+
+            var countAfterCreation = BlitzSemaphoreDictionary.GetNumberOfLocks();
+            Assert.That(countAfterCreation, Is.EqualTo(initialCount + 1), "Semaphore should be created");
+
+            // Trigger cleanup while semaphore is still in use
+            BlitzSemaphoreDictionary.TriggerCleanup();
+
+            // Assert - Active semaphore should not be cleaned up
+            var countAfterCleanup = BlitzSemaphoreDictionary.GetNumberOfLocks();
+            Assert.That(countAfterCleanup, Is.EqualTo(initialCount + 1), 
+                "Active semaphores should not be cleaned up");
+
+            // Cleanup - release the semaphore
+            lockHandle.Dispose();
             
-            Assert.That(semaphoreStillExists, Is.True, 
-                "Recently used semaphores should not be cleaned up");
+            // Now it should be eligible for cleanup
+            BlitzSemaphoreDictionary.TriggerCleanup();
+            var finalCount = BlitzSemaphoreDictionary.GetNumberOfLocks();
+            Assert.That(finalCount, Is.EqualTo(initialCount), 
+                "Released semaphores should be cleaned up");
         }
 
 
 
         [Test]
-        public void SemaphoreDictionary_Dispose_Should_CleanupAllResources()
+        public async Task SemaphoreDictionary_Dispose_Should_CleanupAllResources()
         {
-            // Arrange - Create some semaphores
-            for (int i = 0; i < 50; i++)
+            // Arrange - Create some semaphores using the proper API
+            for (int i = 0; i < 10; i++)
             {
-                SmartSemaphoreDictionary.Get($"dispose_test_{i}");
+                var semaphore = BlitzSemaphoreDictionary.GetSemaphore($"dispose_test_{i}");
+                // Acquire and immediately release to create the semaphore entry
+                using (await semaphore.AcquireAsync())
+                {
+                    // Semaphore created and tracked
+                }
             }
 
-            var countBeforeDispose = SmartSemaphoreDictionary.GetNumberOfLocks();
+            var countBeforeDispose = BlitzSemaphoreDictionary.GetNumberOfLocks();
             Assert.That(countBeforeDispose, Is.GreaterThan(0), "Should have semaphores before dispose");
 
             // Act
-            SmartSemaphoreDictionary.Dispose();
+            BlitzSemaphoreDictionary.Dispose();
 
             // Assert
-            var countAfterDispose = SmartSemaphoreDictionary.GetNumberOfLocks();
+            var countAfterDispose = BlitzSemaphoreDictionary.GetNumberOfLocks();
             Assert.That(countAfterDispose, Is.EqualTo(0), "All semaphores should be cleared after dispose");
         }
 
@@ -102,28 +114,23 @@ namespace BlitzCacheCore.Tests
             {
                 for (int j = 0; j < 10; j++)
                 {
-                    var semaphore = SmartSemaphoreDictionary.Get($"concurrent_semaphore_{Thread.CurrentThread.ManagedThreadId}_{j}");
-                    await semaphore.WaitAsync();
-                    try
+                    var semaphore = BlitzSemaphoreDictionary.GetSemaphore($"concurrent_semaphore_{Thread.CurrentThread.ManagedThreadId}_{j}");
+                    using (var lockHandle = await semaphore.AcquireAsync())
                     {
                         // Simulate some async work
                         await Task.Delay(1);
-                    }
-                    finally
-                    {
-                        semaphore.Release();
                     }
                 }
                 return "completed";
             });
 
             // Assert - Should not crash and should have created semaphores
-            var finalCount = SmartSemaphoreDictionary.GetNumberOfLocks();
+            var finalCount = BlitzSemaphoreDictionary.GetNumberOfLocks();
             Assert.That(finalCount, Is.GreaterThan(0), "Should have created semaphores during concurrent access");
             Assert.That(testResult.AllResultsIdentical, Is.True, "All concurrent operations should complete successfully");
             
             // Cleanup should work even after concurrent usage
-            Assert.DoesNotThrow(() => SmartSemaphoreDictionary.TriggerCleanup(), 
+            Assert.DoesNotThrow(() => BlitzSemaphoreDictionary.TriggerCleanup(), 
                 "Cleanup should not throw exceptions after concurrent usage");
         }
     }

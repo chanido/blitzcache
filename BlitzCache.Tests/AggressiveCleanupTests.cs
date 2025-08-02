@@ -23,7 +23,7 @@ namespace BlitzCacheCore.Tests
         public void TearDownCleanup()
         {
             cache?.Dispose();
-            SmartSemaphoreDictionary.Dispose();
+            BlitzSemaphoreDictionary.Dispose();
         }
 
         [Test]
@@ -33,7 +33,7 @@ namespace BlitzCacheCore.Tests
             Console.WriteLine("=================================================");
 
             // Arrange
-            var initialSemaphoreCount = SmartSemaphoreDictionary.GetNumberOfLocks();
+            var initialSemaphoreCount = BlitzSemaphoreDictionary.GetNumberOfLocks();
             Console.WriteLine($"📊 Initial: {initialSemaphoreCount} semaphores");
 
             // Act - Create cache entries (semaphores are created and released automatically)
@@ -50,11 +50,11 @@ namespace BlitzCacheCore.Tests
                 }, 10000);
             }
 
-            var semaphoreCountAfterCreation = SmartSemaphoreDictionary.GetNumberOfLocks();
+            var semaphoreCountAfterCreation = BlitzSemaphoreDictionary.GetNumberOfLocks();
             Console.WriteLine($"📊 After creation: {semaphoreCountAfterCreation} semaphores");
 
-            SmartSemaphoreDictionary.TriggerCleanup();
-            var semaphoreCountAfterCleanup = SmartSemaphoreDictionary.GetNumberOfLocks();
+            BlitzSemaphoreDictionary.TriggerCleanup();
+            var semaphoreCountAfterCleanup = BlitzSemaphoreDictionary.GetNumberOfLocks();
             Console.WriteLine($"📊 After cleanup: {semaphoreCountAfterCleanup} semaphores");
 
             Assert.That(semaphoreCountAfterCleanup, Is.GreaterThanOrEqualTo(0),
@@ -68,7 +68,7 @@ namespace BlitzCacheCore.Tests
             var result1 = cache.BlitzGet(testKey, () => "initial_value", 10000);
             Console.WriteLine($"📊 Initial result: {result1}");
 
-            SmartSemaphoreDictionary.TriggerCleanup();
+            BlitzSemaphoreDictionary.TriggerCleanup();
 
             // Act - Access the same key again (should still work, might recreate semaphore)
             var result2 = cache.BlitzGet(testKey, () => "new_value", 10000);

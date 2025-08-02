@@ -58,23 +58,16 @@ namespace BlitzCacheCore
         {
             if (memoryCache.TryGetValue(cacheKey, out T result)) return result;
 
-            using (var smartSemaphore = SmartSemaphoreDictionary.GetSmartSemaphore(cacheKey))
+            var semaphore = BlitzSemaphoreDictionary.GetSemaphore(cacheKey);
+            using (var lockHandle = semaphore.AcquireAsync().GetAwaiter().GetResult())
             {
-                smartSemaphore.WaitAsync().GetAwaiter().GetResult();
-                try
-                {
-                    if (memoryCache.TryGetValue(cacheKey, out result)) return result;
+                if (memoryCache.TryGetValue(cacheKey, out result)) return result;
 
-                    var nuances = new Nuances();
-                    result = function.Invoke(nuances);
+                var nuances = new Nuances();
+                result = function.Invoke(nuances);
 
-                    var expirationTime = DateTime.Now.AddMilliseconds(nuances.CacheRetention ?? milliseconds ?? defaultMilliseconds);
-                    memoryCache.Set(cacheKey, result, expirationTime);
-                }
-                finally
-                {
-                    smartSemaphore.Release();
-                }
+                var expirationTime = DateTime.Now.AddMilliseconds(nuances.CacheRetention ?? milliseconds ?? defaultMilliseconds);
+                memoryCache.Set(cacheKey, result, expirationTime);
             }
 
             return result;
@@ -100,10 +93,9 @@ namespace BlitzCacheCore
         {
             if (memoryCache.TryGetValue(cacheKey, out T result)) return result;
 
-            using (var smartSemaphore = SmartSemaphoreDictionary.GetSmartSemaphore(cacheKey))
+            var semaphore = BlitzSemaphoreDictionary.GetSemaphore(cacheKey);
+            using (var lockHandle = await semaphore.AcquireAsync())
             {
-                await smartSemaphore.WaitAsync();
-                
                 if (!memoryCache.TryGetValue(cacheKey, out result))
                 {
                     var nuances = new Nuances();
@@ -112,8 +104,6 @@ namespace BlitzCacheCore
                     var expirationTime = DateTime.Now.AddMilliseconds(nuances.CacheRetention ?? milliseconds ?? defaultMilliseconds);
                     memoryCache.Set(cacheKey, result, expirationTime);
                 }
-                
-                smartSemaphore.Release();
             }
 
             return result;
@@ -121,47 +111,30 @@ namespace BlitzCacheCore
 
         public void BlitzUpdate<T>(string cacheKey, Func<T> function, long milliseconds)
         {
-            using (var smartSemaphore = SmartSemaphoreDictionary.GetSmartSemaphore(cacheKey))
+            var semaphore = BlitzSemaphoreDictionary.GetSemaphore(cacheKey);
+            using (var lockHandle = semaphore.AcquireAsync().GetAwaiter().GetResult())
             {
-                smartSemaphore.WaitAsync().GetAwaiter().GetResult();
-                try
-                {
-                    var expirationTime = DateTime.Now.AddMilliseconds(milliseconds);
-                    memoryCache.Set(cacheKey, function(), expirationTime);
-                }
-                finally
-                {
-                    smartSemaphore.Release();
-                }
+                var expirationTime = DateTime.Now.AddMilliseconds(milliseconds);
+                memoryCache.Set(cacheKey, function(), expirationTime);
             }
         }
 
         public async Task BlitzUpdate<T>(string cacheKey, Func<Task<T>> function, long milliseconds)
         {
-            using (var smartSemaphore = SmartSemaphoreDictionary.GetSmartSemaphore(cacheKey))
+            var semaphore = BlitzSemaphoreDictionary.GetSemaphore(cacheKey);
+            using (var lockHandle = await semaphore.AcquireAsync())
             {
-                await smartSemaphore.WaitAsync();
-                
                 var expirationTime = DateTime.Now.AddMilliseconds(milliseconds);
                 memoryCache.Set(cacheKey, await function.Invoke(), expirationTime);
-                
-                smartSemaphore.Release();
             }
         }
 
         public void Remove(string cacheKey)
         {
-            using (var smartSemaphore = SmartSemaphoreDictionary.GetSmartSemaphore(cacheKey))
+            var semaphore = BlitzSemaphoreDictionary.GetSemaphore(cacheKey);
+            using (var lockHandle = semaphore.AcquireAsync().GetAwaiter().GetResult())
             {
-                smartSemaphore.WaitAsync().GetAwaiter().GetResult();
-                try
-                {
-                    memoryCache.Remove(cacheKey);
-                }
-                finally
-                {
-                    smartSemaphore.Release();
-                }
+                memoryCache.Remove(cacheKey);
             }
         }
 
