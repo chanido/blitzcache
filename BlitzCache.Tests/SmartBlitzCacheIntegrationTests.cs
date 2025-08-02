@@ -7,7 +7,7 @@ using System.Threading.Tasks;
 namespace BlitzCacheCore.Tests
 {
     /// <summary>
-    /// Tests that demonstrate BlitzCache using the new SmartLockDictionary and SmartSemaphoreDictionary
+    /// Tests that demonstrate BlitzCache using the new SmartSemaphoreDictionary
     /// with optimal usage-based cleanup.
     /// </summary>
     [TestFixture]
@@ -21,7 +21,6 @@ namespace BlitzCacheCore.Tests
             cache = new BlitzCache(useGlobalCache: false);
             
             // Clean up any existing state
-            SmartLockDictionary.Dispose();
             SmartSemaphoreDictionary.Dispose();
         }
 
@@ -29,39 +28,38 @@ namespace BlitzCacheCore.Tests
         public void Cleanup()
         {
             cache?.Dispose();
-            SmartLockDictionary.Dispose();
             SmartSemaphoreDictionary.Dispose();
         }
 
         [Test]
-        public void BlitzCache_Should_Use_SmartLockDictionary_For_Sync_Operations()
+        public void BlitzCache_Should_Use_SmartSemaphoreDictionary_For_Sync_Operations()
         {
-            Console.WriteLine("🧪 TESTING BLITZCACHE WITH SMARTLOCKDICTIONARY");
-            Console.WriteLine("===============================================");
+            Console.WriteLine("🧪 TESTING BLITZCACHE WITH SMARTSEMAPHOREDICTIONARY");
+            Console.WriteLine("===================================================");
 
-            var initialLocks = SmartLockDictionary.GetNumberOfLocks();
-            Console.WriteLine($"📊 Initial locks: {initialLocks}");
+            var initialSemaphores = SmartSemaphoreDictionary.GetNumberOfLocks();
+            Console.WriteLine($"📊 Initial semaphores: {initialSemaphores}");
 
             // Perform sync operations
             var result1 = cache.BlitzGet("sync_key", () => "sync_value", 10000);
-            var locksDuringOperation = SmartLockDictionary.GetNumberOfLocks();
+            var semaphoresDuringOperation = SmartSemaphoreDictionary.GetNumberOfLocks();
             
-            Console.WriteLine($"📊 Locks during operation: {locksDuringOperation}");
+            Console.WriteLine($"📊 Semaphores during operation: {semaphoresDuringOperation}");
             Assert.That(result1, Is.EqualTo("sync_value"));
-            Assert.That(locksDuringOperation, Is.GreaterThan(initialLocks), "Should create locks for sync operations");
+            Assert.That(semaphoresDuringOperation, Is.GreaterThan(initialSemaphores), "Should create semaphores for sync operations");
 
             // Trigger cleanup
             Console.WriteLine("🧹 Triggering cleanup...");
-            SmartLockDictionary.TriggerCleanup();
+            SmartSemaphoreDictionary.TriggerCleanup();
             
-            var locksAfterCleanup = SmartLockDictionary.GetNumberOfLocks();
-            Console.WriteLine($"📊 Locks after cleanup: {locksAfterCleanup}");
+            var semaphoresAfterCleanup = SmartSemaphoreDictionary.GetNumberOfLocks();
+            Console.WriteLine($"📊 Semaphores after cleanup: {semaphoresAfterCleanup}");
 
             // Cache should still work
             var result2 = cache.BlitzGet("sync_key", () => "new_value", 10000);
             Assert.That(result2, Is.EqualTo("sync_value"), "Should return cached value");
 
-            Console.WriteLine("✅ SmartLockDictionary integration working!");
+            Console.WriteLine("✅ SmartSemaphoreDictionary integration working!");
         }
 
         [Test]
@@ -104,24 +102,24 @@ namespace BlitzCacheCore.Tests
         }
 
         [Test]
-        public void BlitzUpdate_Should_Work_With_SmartLockDictionary()
+        public void BlitzUpdate_Should_Work_With_SmartSemaphoreDictionary()
         {
-            Console.WriteLine("🧪 TESTING BLITZUPDATE WITH SMARTLOCKDICTIONARY");
-            Console.WriteLine("===============================================");
+            Console.WriteLine("🧪 TESTING BLITZUPDATE WITH SMARTSEMAPHOREDICTIONARY");
+            Console.WriteLine("====================================================");
 
-            var initialLocks = SmartLockDictionary.GetNumberOfLocks();
+            var initialSemaphores = SmartSemaphoreDictionary.GetNumberOfLocks();
             
             // Update cache
             cache.BlitzUpdate("update_key", () => "updated_value", 10000);
             
-            var locksAfterUpdate = SmartLockDictionary.GetNumberOfLocks();
-            Console.WriteLine($"📊 Locks after update: {locksAfterUpdate}");
+            var semaphoresAfterUpdate = SmartSemaphoreDictionary.GetNumberOfLocks();
+            Console.WriteLine($"📊 Semaphores after update: {semaphoresAfterUpdate}");
 
             // Verify the update worked
             var result = cache.BlitzGet("update_key", () => "fallback", 10000);
             Assert.That(result, Is.EqualTo("updated_value"), "BlitzUpdate should cache the value");
 
-            Console.WriteLine("✅ BlitzUpdate with SmartLockDictionary working!");
+            Console.WriteLine("✅ BlitzUpdate with SmartSemaphoreDictionary working!");
         }
 
         [Test]
@@ -153,17 +151,17 @@ namespace BlitzCacheCore.Tests
         }
 
         [Test]
-        public void Cache_Expiration_Should_Trigger_Lock_Cleanup()
+        public void Cache_Expiration_Should_Trigger_Semaphore_Cleanup()
         {
-            Console.WriteLine("🧪 TESTING CACHE-SYNCHRONIZED LOCK CLEANUP");
-            Console.WriteLine("===========================================");
+            Console.WriteLine("🧪 TESTING CACHE-SYNCHRONIZED SEMAPHORE CLEANUP");
+            Console.WriteLine("================================================");
 
             // Create cache entry with very short expiration
             var result = cache.BlitzGet("short_expiry", () => "expires_soon", 50); // 50ms expiration
             Assert.That(result, Is.EqualTo("expires_soon"));
 
-            var locksAfterCreation = SmartLockDictionary.GetNumberOfLocks();
-            Console.WriteLine($"📊 Locks after creation: {locksAfterCreation}");
+            var semaphoresAfterCreation = SmartSemaphoreDictionary.GetNumberOfLocks();
+            Console.WriteLine($"📊 Semaphores after creation: {semaphoresAfterCreation}");
 
             // Wait for cache to expire
             Console.WriteLine("⏱️ Waiting for cache expiration...");
@@ -171,10 +169,10 @@ namespace BlitzCacheCore.Tests
 
             // Trigger cleanup
             Console.WriteLine("🧹 Triggering cleanup after cache expiration...");
-            SmartLockDictionary.TriggerCleanup();
+            SmartSemaphoreDictionary.TriggerCleanup();
 
-            var locksAfterCleanup = SmartLockDictionary.GetNumberOfLocks();
-            Console.WriteLine($"📊 Locks after cleanup: {locksAfterCleanup}");
+            var semaphoresAfterCleanup = SmartSemaphoreDictionary.GetNumberOfLocks();
+            Console.WriteLine($"📊 Semaphores after cleanup: {semaphoresAfterCleanup}");
 
             // Verify cache actually expired by trying to get new value
             var newResult = cache.BlitzGet("short_expiry", () => "new_value_after_expiry", 10000);
@@ -216,10 +214,9 @@ namespace BlitzCacheCore.Tests
             Console.WriteLine($"⏱️ Time for {iterations} mixed operations: {duration.TotalMilliseconds:F2}ms");
             Console.WriteLine($"📊 Average per operation: {duration.TotalMilliseconds / iterations:F4}ms");
 
-            var finalLocks = SmartLockDictionary.GetNumberOfLocks();
             var finalSemaphores = SmartSemaphoreDictionary.GetNumberOfLocks();
 
-            Console.WriteLine($"📊 Final locks: {finalLocks}, semaphores: {finalSemaphores}");
+            Console.WriteLine($"📊 Final semaphores: {finalSemaphores}");
 
             // Performance should be excellent
             Assert.That(duration.TotalMilliseconds, Is.LessThan(10000), "Should be performant");

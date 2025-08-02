@@ -21,7 +21,6 @@ namespace BlitzCacheCore.Tests
         public void Cleanup()
         {
             cache?.Dispose();
-            SmartLockDictionary.Dispose();
             SmartSemaphoreDictionary.Dispose();
         }
 
@@ -29,7 +28,6 @@ namespace BlitzCacheCore.Tests
         public async Task BlitzCache_Should_NotLeakMemory_WithManyDifferentKeys()
         {
             // Arrange
-            var initialLockCount = SmartLockDictionary.GetNumberOfLocks();
             var initialSemaphoreCount = SmartSemaphoreDictionary.GetNumberOfLocks();
 
             // Act - Use BlitzCache with many different keys
@@ -49,27 +47,21 @@ namespace BlitzCacheCore.Tests
                 }
             }
 
-            var lockCountAfterOperations = SmartLockDictionary.GetNumberOfLocks();
             var semaphoreCountAfterOperations = SmartSemaphoreDictionary.GetNumberOfLocks();
 
-            // Assert - Locks and semaphores should have been created
-            Assert.That(lockCountAfterOperations, Is.GreaterThan(initialLockCount), 
-                "Sync operations should create locks");
+            // Assert - Semaphores should have been created
             Assert.That(semaphoreCountAfterOperations, Is.GreaterThan(initialSemaphoreCount), 
                 "Async operations should create semaphores");
 
-            // Trigger cleanup using reflection (simulating time passage)
+            // Trigger cleanup (simulating time passage)
             TriggerCleanup();
 
             // Wait for potential cleanup to complete
             await Task.Delay(100);
 
-            var lockCountAfterCleanup = SmartLockDictionary.GetNumberOfLocks();
             var semaphoreCountAfterCleanup = SmartSemaphoreDictionary.GetNumberOfLocks();
 
             // Assert - Memory should be manageable (cleanup should work)
-            Assert.That(lockCountAfterCleanup, Is.LessThanOrEqualTo(lockCountAfterOperations), 
-                "Lock cleanup should work or maintain reasonable count");
             Assert.That(semaphoreCountAfterCleanup, Is.LessThanOrEqualTo(semaphoreCountAfterOperations), 
                 "Semaphore cleanup should work or maintain reasonable count");
         }
@@ -79,10 +71,9 @@ namespace BlitzCacheCore.Tests
         {
             // Arrange
             var activeKey = "actively_used_key";
-            var initialLockCount = SmartLockDictionary.GetNumberOfLocks();
             var initialSemaphoreCount = SmartSemaphoreDictionary.GetNumberOfLocks();
 
-            // Act - Use the same key multiple times (locks created and released each time)
+            // Act - Use the same key multiple times (semaphores created and released each time)
             for (int i = 0; i < 20; i++)
             {
                 if (i % 2 == 0)
@@ -101,21 +92,17 @@ namespace BlitzCacheCore.Tests
                 await Task.Delay(10);
             }
 
-            // Get lock/semaphore count before cleanup
-            var lockCountBeforeCleanup = SmartLockDictionary.GetNumberOfLocks();
+            // Get semaphore count before cleanup
             var semaphoreCountBeforeCleanup = SmartSemaphoreDictionary.GetNumberOfLocks();
 
             // Trigger cleanup
             TriggerCleanup();
 
-            // Get lock/semaphore count after cleanup
-            var lockCountAfterCleanup = SmartLockDictionary.GetNumberOfLocks();
+            // Get semaphore count after cleanup
             var semaphoreCountAfterCleanup = SmartSemaphoreDictionary.GetNumberOfLocks();
 
-            // With our optimized cleanup, unused locks should be cleaned up immediately
+            // With our optimized cleanup, unused semaphores should be cleaned up immediately
             // This demonstrates optimal memory management
-            Assert.That(lockCountAfterCleanup, Is.EqualTo(0),
-                "Unused locks should be cleaned up immediately for optimal memory management");
             Assert.That(semaphoreCountAfterCleanup, Is.EqualTo(0),
                 "Unused semaphores should be cleaned up immediately for optimal memory management");
 
@@ -127,9 +114,9 @@ namespace BlitzCacheCore.Tests
                 "Should return cached value since it's still valid, proving cache functionality works after cleanup");
 
             // Verify that the cache functionality works perfectly after cleanup
-            // This proves that aggressive lock cleanup doesn't affect functionality
+            // This proves that aggressive semaphore cleanup doesn't affect functionality
             Assert.That(resultAfterCleanup, Is.Not.Null,
-                "Cache should work perfectly after aggressive lock cleanup, proving optimal memory management");
+                "Cache should work perfectly after aggressive semaphore cleanup, proving optimal memory management");
         }
 
         [Test]
@@ -169,11 +156,9 @@ namespace BlitzCacheCore.Tests
                 return "batch_completed";
             });
 
-            var finalLockCount = SmartLockDictionary.GetNumberOfLocks();
             var finalSemaphoreCount = SmartSemaphoreDictionary.GetNumberOfLocks();
 
             // Assert - Should handle the pressure without crashing
-            Assert.That(finalLockCount, Is.GreaterThan(0), "Should have created locks");
             Assert.That(finalSemaphoreCount, Is.GreaterThan(0), "Should have created semaphores");
             Assert.That(testResult.AllResultsIdentical, Is.True, "All concurrent batches should complete successfully");
             
@@ -191,31 +176,26 @@ namespace BlitzCacheCore.Tests
                 cache.BlitzGet($"dispose_test_{i}", () => $"value_{i}", 10000);
             }
 
-            var lockCountBeforeDispose = SmartLockDictionary.GetNumberOfLocks();
             var semaphoreCountBeforeDispose = SmartSemaphoreDictionary.GetNumberOfLocks();
 
-            Assert.That(lockCountBeforeDispose + semaphoreCountBeforeDispose, Is.GreaterThan(0), 
-                "Should have created locks/semaphores");
+            Assert.That(semaphoreCountBeforeDispose, Is.GreaterThan(0), 
+                "Should have created semaphores");
 
             // Act - Dispose the cache
             cache.Dispose();
 
-            // Manually cleanup dictionaries (in real scenarios, this would be handled by app shutdown)
-            SmartLockDictionary.Dispose();
+            // Manually cleanup dictionary (in real scenarios, this would be handled by app shutdown)
             SmartSemaphoreDictionary.Dispose();
 
             // Assert - Resources should be cleaned up
-            var lockCountAfterDispose = SmartLockDictionary.GetNumberOfLocks();
             var semaphoreCountAfterDispose = SmartSemaphoreDictionary.GetNumberOfLocks();
 
-            Assert.That(lockCountAfterDispose, Is.EqualTo(0), "All locks should be cleaned up");
             Assert.That(semaphoreCountAfterDispose, Is.EqualTo(0), "All semaphores should be cleaned up");
         }
 
         private void TriggerCleanup()
         {
-            // Trigger cleanup for both dictionaries
-            SmartLockDictionary.TriggerCleanup();
+            // Trigger cleanup for the semaphore dictionary
             SmartSemaphoreDictionary.TriggerCleanup();
         }
     }

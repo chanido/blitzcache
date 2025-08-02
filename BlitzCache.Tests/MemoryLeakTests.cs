@@ -14,32 +14,7 @@ namespace BlitzCacheCore.Tests
         public void Cleanup()
         {
             // Clean up singletons after each test
-            SmartLockDictionary.Dispose();
             SmartSemaphoreDictionary.Dispose();
-        }
-
-        [Test]
-        public void LockDictionary_Should_CleanupOldLocks()
-        {
-            // Arrange
-            var initialCount = SmartLockDictionary.GetNumberOfLocks();
-
-            // Act - Create many locks
-            for (int i = 0; i < 100; i++)
-            {
-                SmartLockDictionary.Get($"test_key_{i}");
-            }
-
-            var countAfterCreation = SmartLockDictionary.GetNumberOfLocks();
-            Assert.That(countAfterCreation, Is.EqualTo(initialCount + 100), "All locks should be created");
-
-            // Wait for cleanup (we'll use reflection to trigger cleanup immediately for testing)
-            SmartLockDictionary.TriggerCleanup();
-
-            // Assert - Some locks should be cleaned up (those not accessed recently)
-            var countAfterCleanup = SmartLockDictionary.GetNumberOfLocks();
-            Assert.That(countAfterCleanup, Is.LessThanOrEqualTo(countAfterCreation), 
-                "Old locks should be cleaned up");
         }
 
         [Test]
@@ -64,33 +39,6 @@ namespace BlitzCacheCore.Tests
             var countAfterCleanup = SmartSemaphoreDictionary.GetNumberOfLocks();
             Assert.That(countAfterCleanup, Is.LessThanOrEqualTo(countAfterCreation), 
                 "Old semaphores should be cleaned up");
-        }
-
-        [Test]
-        public async Task LockDictionary_Should_NotCleanupRecentlyUsedLocks()
-        {
-            // Arrange
-            var testKey = "recently_used_lock";
-            var initialCount = SmartLockDictionary.GetNumberOfLocks();
-
-            // Act - Create and continuously use a lock
-            for (int i = 0; i < 10; i++)
-            {
-                SmartLockDictionary.Get(testKey);
-                await Task.Delay(100); // Small delay to simulate usage over time
-            }
-
-            var countAfterUsage = SmartLockDictionary.GetNumberOfLocks();
-
-            // Trigger cleanup
-            SmartLockDictionary.TriggerCleanup();
-
-            // Assert - Recently used lock should still exist
-            var countAfterCleanup = SmartLockDictionary.GetNumberOfLocks();
-            var lockStillExists = countAfterCleanup > initialCount;
-            
-            Assert.That(lockStillExists, Is.True, 
-                "Recently used locks should not be cleaned up");
         }
 
         [Test]
@@ -122,25 +70,7 @@ namespace BlitzCacheCore.Tests
                 "Recently used semaphores should not be cleaned up");
         }
 
-        [Test]
-        public void LockDictionary_Dispose_Should_CleanupAllResources()
-        {
-            // Arrange - Create some locks
-            for (int i = 0; i < 50; i++)
-            {
-                SmartLockDictionary.Get($"dispose_test_{i}");
-            }
 
-            var countBeforeDispose = SmartLockDictionary.GetNumberOfLocks();
-            Assert.That(countBeforeDispose, Is.GreaterThan(0), "Should have locks before dispose");
-
-            // Act
-            SmartLockDictionary.Dispose();
-
-            // Assert
-            var countAfterDispose = SmartLockDictionary.GetNumberOfLocks();
-            Assert.That(countAfterDispose, Is.EqualTo(0), "All locks should be cleared after dispose");
-        }
 
         [Test]
         public void SemaphoreDictionary_Dispose_Should_CleanupAllResources()
@@ -162,32 +92,7 @@ namespace BlitzCacheCore.Tests
             Assert.That(countAfterDispose, Is.EqualTo(0), "All semaphores should be cleared after dispose");
         }
 
-        [Test]
-        public void LockDictionary_Should_HandleConcurrentAccess_WithCleanup()
-        {
-            // Arrange & Act - Use AsyncRepeater for cleaner concurrent testing
-            AsyncRepeater.GoSyncWithResults(100, () =>
-            {
-                for (int j = 0; j < 10; j++)
-                {
-                    var lockObj = SmartLockDictionary.Get($"concurrent_test_{Thread.CurrentThread.ManagedThreadId}_{j}");
-                    lock (lockObj)
-                    {
-                        // Simulate some work
-                        Thread.Sleep(1);
-                    }
-                }
-                return "completed";
-            });
 
-            // Assert - Should not crash and should have created locks
-            var finalCount = SmartLockDictionary.GetNumberOfLocks();
-            Assert.That(finalCount, Is.GreaterThan(0), "Should have created locks during concurrent access");
-            
-            // Cleanup should work even after concurrent usage
-            Assert.DoesNotThrow(() => SmartLockDictionary.TriggerCleanup(), 
-                "Cleanup should not throw exceptions after concurrent usage");
-        }
 
         [Test]
         public async Task SemaphoreDictionary_Should_HandleConcurrentAccess_WithCleanup()

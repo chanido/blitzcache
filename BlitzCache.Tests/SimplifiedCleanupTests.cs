@@ -9,61 +9,69 @@ namespace BlitzCache.Tests
     public class SimplifiedCleanupTests
     {
         [Test]
-        public void SimplifiedCleanup_RemovesAllUnusedLocks()
+        public void SimplifiedCleanup_RemovesAllUnusedSemaphores()
         {
             // Arrange
             var keys = new[] { "test1", "test2", "test3" };
 
-            // Act - Create and immediately release locks
+            // Act - Create and immediately release semaphores
             foreach (var key in keys)
             {
-                using (var smartLock = SmartLockDictionary.GetSmartLock(key))
+                using (var smartSemaphore = SmartSemaphoreDictionary.GetSmartSemaphore(key))
                 {
-                    // Lock is in use here
+                    smartSemaphore.WaitAsync().GetAwaiter().GetResult();
+                    // Semaphore is in use here
+                    smartSemaphore.Release();
                 }
-                // Lock is now released and not in use
+                // Semaphore is now released and not in use
             }
 
-            Console.WriteLine($"📊 Before cleanup: {SmartLockDictionary.GetNumberOfLocks()} locks");
+            Console.WriteLine($"📊 Before cleanup: {SmartSemaphoreDictionary.GetNumberOfLocks()} semaphores");
 
             // Trigger cleanup
-            SmartLockDictionary.TriggerCleanup();
+            SmartSemaphoreDictionary.TriggerCleanup();
 
-            Console.WriteLine($"📊 After cleanup: {SmartLockDictionary.GetNumberOfLocks()} locks");
+            Console.WriteLine($"📊 After cleanup: {SmartSemaphoreDictionary.GetNumberOfLocks()} semaphores");
 
-            // Assert - All locks should be cleaned up since they're not in use
-            Assert.AreEqual(0, SmartLockDictionary.GetNumberOfLocks(), 
-                "All unused locks should be cleaned up immediately");
+            // Assert - All semaphores should be cleaned up since they're not in use
+            Assert.AreEqual(0, SmartSemaphoreDictionary.GetNumberOfLocks(), 
+                "All unused semaphores should be cleaned up immediately");
         }
 
         [Test]
-        public void SimplifiedCleanup_KeepsLocksInUse()
+        public void SimplifiedCleanup_KeepsSemaphoresInUse()
         {
-            // Arrange - Create locks but keep them in use
-            var smartLock1 = SmartLockDictionary.GetSmartLock("test1");
-            var smartLock2 = SmartLockDictionary.GetSmartLock("test2");
+            // Arrange - Create semaphores but keep them in use
+            var smartSemaphore1 = SmartSemaphoreDictionary.GetSmartSemaphore("test1");
+            var smartSemaphore2 = SmartSemaphoreDictionary.GetSmartSemaphore("test2");
 
-            Console.WriteLine($"📊 Before cleanup: {SmartLockDictionary.GetNumberOfLocks()} locks");
+            // Acquire the semaphores
+            smartSemaphore1.WaitAsync().GetAwaiter().GetResult();
+            smartSemaphore2.WaitAsync().GetAwaiter().GetResult();
 
-            // Act - Trigger cleanup while locks are still in use
-            SmartLockDictionary.TriggerCleanup();
+            Console.WriteLine($"📊 Before cleanup: {SmartSemaphoreDictionary.GetNumberOfLocks()} semaphores");
 
-            Console.WriteLine($"📊 After cleanup: {SmartLockDictionary.GetNumberOfLocks()} locks");
+            // Act - Trigger cleanup while semaphores are still in use
+            SmartSemaphoreDictionary.TriggerCleanup();
 
-            // Assert - No locks should be cleaned up since they're all in use
-            Assert.AreEqual(2, SmartLockDictionary.GetNumberOfLocks(), 
-                "Locks in use should not be cleaned up");
+            Console.WriteLine($"📊 After cleanup: {SmartSemaphoreDictionary.GetNumberOfLocks()} semaphores");
 
-            // Clean up
-            smartLock1.Dispose();
-            smartLock2.Dispose();
+            // Assert - No semaphores should be cleaned up since they're all in use
+            Assert.AreEqual(2, SmartSemaphoreDictionary.GetNumberOfLocks(), 
+                "Semaphores in use should not be cleaned up");
+
+            // Clean up - release and dispose
+            smartSemaphore1.Release();
+            smartSemaphore2.Release();
+            smartSemaphore1.Dispose();
+            smartSemaphore2.Dispose();
 
             // Now cleanup should work
-            SmartLockDictionary.TriggerCleanup();
-            Console.WriteLine($"📊 Final cleanup: {SmartLockDictionary.GetNumberOfLocks()} locks");
+            SmartSemaphoreDictionary.TriggerCleanup();
+            Console.WriteLine($"📊 Final cleanup: {SmartSemaphoreDictionary.GetNumberOfLocks()} semaphores");
             
-            Assert.AreEqual(0, SmartLockDictionary.GetNumberOfLocks(), 
-                "All locks should be cleaned up after disposal");
+            Assert.AreEqual(0, SmartSemaphoreDictionary.GetNumberOfLocks(), 
+                "All semaphores should be cleaned up after disposal");
         }
     }
 }
