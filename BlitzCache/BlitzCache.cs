@@ -55,15 +55,7 @@ namespace BlitzCacheCore
         /// </summary>
         public ICacheStatistics Statistics => statistics;
 
-        public T BlitzGet<T>(Func<T> function, long? milliseconds = null, [CallerMemberName] string callerMemberName = "", [CallerFilePath] string sourceFilePath = "") =>
-            BlitzGet(callerMemberName + sourceFilePath, nuances => function(), milliseconds);
-
-        public T BlitzGet<T>(Func<Nuances, T> function, long? milliseconds = null, [CallerMemberName] string callerMemberName = "", [CallerFilePath] string sourceFilePath = "") =>
-            BlitzGet(callerMemberName + sourceFilePath, function, milliseconds);
-
-        public T BlitzGet<T>(string cacheKey, Func<T> function, long? milliseconds = null) => BlitzGet(cacheKey, nuances => function(), milliseconds);
-
-        public T BlitzGet<T>(string cacheKey, Func<Nuances, T> function, long? milliseconds = null)
+        private T ExecuteWithCache<T>(string cacheKey, Func<Nuances, T> function, long? milliseconds)
         {
             if (memoryCache.TryGetValue(cacheKey, out T result))
             {
@@ -71,8 +63,7 @@ namespace BlitzCacheCore
                 return result;
             }
 
-            var semaphore = semaphoreDictionary.GetSemaphore(cacheKey);
-            using (var lockHandle = semaphore.Acquire())
+            using (var lockHandle = semaphoreDictionary.Wait(cacheKey))
             {
                 if (memoryCache.TryGetValue(cacheKey, out result))
                 {
@@ -89,20 +80,11 @@ namespace BlitzCacheCore
 
                 memoryCache.Set(cacheKey, result, cacheEntryOptions);
                 statistics.TrackEntry();
+                return result;
             }
-
-            return result;
         }
 
-        public Task<T> BlitzGet<T>(Func<Task<T>> function, long? milliseconds = null, [CallerMemberName] string callerMemberName = "", [CallerFilePath] string sourceFilePath = "") =>
-            BlitzGet(callerMemberName + sourceFilePath, nuances => function(), milliseconds);
-
-        public Task<T> BlitzGet<T>(Func<Nuances, Task<T>> function, long? milliseconds = null, [CallerMemberName] string callerMemberName = "", [CallerFilePath] string sourceFilePath = "") =>
-            BlitzGet(callerMemberName + sourceFilePath, function, milliseconds);
-
-        public Task<T> BlitzGet<T>(string cacheKey, Func<Task<T>> function, long? milliseconds = null) =>
-            BlitzGet(cacheKey, nuances => function(), milliseconds);
-        public async Task<T> BlitzGet<T>(string cacheKey, Func<Nuances, Task<T>> function, long? milliseconds = null)
+        private async Task<T> ExecuteWithCacheAsync<T>(string cacheKey, Func<Nuances, Task<T>> function, long? milliseconds)
         {
             if (memoryCache.TryGetValue(cacheKey, out T result))
             {
@@ -110,8 +92,7 @@ namespace BlitzCacheCore
                 return result;
             }
 
-            var semaphore = semaphoreDictionary.GetSemaphore(cacheKey);
-            using (var lockHandle = await semaphore.AcquireAsync())
+            using (var lockHandle = await semaphoreDictionary.WaitAsync(cacheKey))
             {
                 if (memoryCache.TryGetValue(cacheKey, out result))
                 {
@@ -128,49 +109,68 @@ namespace BlitzCacheCore
 
                 memoryCache.Set(cacheKey, result, cacheEntryOptions);
                 statistics.TrackEntry();
+                return result;
             }
-
-            return result;
         }
 
-        public void BlitzUpdate<T>(string cacheKey, Func<T> function, long milliseconds)
+        public T BlitzGet<T>(Func<T> function, long? milliseconds = null, [CallerMemberName] string callerMemberName = "", [CallerFilePath] string sourceFilePath = "") =>
+            BlitzGet(callerMemberName + sourceFilePath, nuances => function(), milliseconds);
+
+        public T BlitzGet<T>(Func<Nuances, T> function, long? milliseconds = null, [CallerMemberName] string callerMemberName = "", [CallerFilePath] string sourceFilePath = "") =>
+            BlitzGet(callerMemberName + sourceFilePath, function, milliseconds);
+
+        public T BlitzGet<T>(string cacheKey, Func<T> function, long? milliseconds = null) => BlitzGet(cacheKey, nuances => function(), milliseconds);
+
+        public T BlitzGet<T>(string cacheKey, Func<Nuances, T> function, long? milliseconds = null) => ExecuteWithCache(cacheKey, function, milliseconds);
+
+        public Task<T> BlitzGet<T>(Func<Task<T>> function, long? milliseconds = null, [CallerMemberName] string callerMemberName = "", [CallerFilePath] string sourceFilePath = "") =>
+            BlitzGet(callerMemberName + sourceFilePath, nuances => function(), milliseconds);
+
+        public Task<T> BlitzGet<T>(Func<Nuances, Task<T>> function, long? milliseconds = null, [CallerMemberName] string callerMemberName = "", [CallerFilePath] string sourceFilePath = "") =>
+            BlitzGet(callerMemberName + sourceFilePath, function, milliseconds);
+
+        public Task<T> BlitzGet<T>(string cacheKey, Func<Task<T>> function, long? milliseconds = null) =>
+            BlitzGet(cacheKey, nuances => function(), milliseconds);
+
+        public Task<T> BlitzGet<T>(string cacheKey, Func<Nuances, Task<T>> function, long? milliseconds = null) => ExecuteWithCacheAsync(cacheKey, function, milliseconds);
+
+        private void UpdateCacheEntry<T>(string cacheKey, T value, long milliseconds)
         {
-            var semaphore = semaphoreDictionary.GetSemaphore(cacheKey);
-            using (var lockHandle = semaphore.Acquire())
+            using (var lockHandle = semaphoreDictionary.Wait(cacheKey))
             {
                 var existsInCache = memoryCache.TryGetValue(cacheKey, out _);
 
                 var expirationTime = DateTime.UtcNow.AddMilliseconds(milliseconds);
                 var cacheEntryOptions = statistics.CreateEntryOptions(expirationTime);
 
-                memoryCache.Set(cacheKey, function(), cacheEntryOptions);
+                memoryCache.Set(cacheKey, value, cacheEntryOptions);
 
                 if (!existsInCache) statistics.TrackEntry();
             }
         }
 
-        public async Task BlitzUpdate<T>(string cacheKey, Func<Task<T>> function, long milliseconds)
+        private async Task UpdateCacheEntryAsync<T>(string cacheKey, T value, long milliseconds)
         {
-            var semaphore = semaphoreDictionary.GetSemaphore(cacheKey);
-            using (var lockHandle = await semaphore.AcquireAsync())
+            using (var lockHandle = await semaphoreDictionary.WaitAsync(cacheKey))
             {
                 var existsInCache = memoryCache.TryGetValue(cacheKey, out _);
 
                 var expirationTime = DateTime.UtcNow.AddMilliseconds(milliseconds);
                 var cacheEntryOptions = statistics.CreateEntryOptions(expirationTime);
 
-                memoryCache.Set(cacheKey, await function.Invoke(), cacheEntryOptions);
+                memoryCache.Set(cacheKey, value, cacheEntryOptions);
                 
                 if (!existsInCache) statistics.TrackEntry();
             }
         }
 
+        public void BlitzUpdate<T>(string cacheKey, Func<T> function, long milliseconds) => UpdateCacheEntry(cacheKey, function(), milliseconds);
+
+        public async Task BlitzUpdate<T>(string cacheKey, Func<Task<T>> function, long milliseconds) => await UpdateCacheEntryAsync(cacheKey, await function.Invoke(), milliseconds);
+
         public void Remove(string cacheKey)
         {
-            if (!memoryCache.TryGetValue(cacheKey, out _)) return;
-            
-            var semaphore = semaphoreDictionary.GetSemaphore(cacheKey);
-            using (var lockHandle = semaphore.Acquire())
+            using (var lockHandle = semaphoreDictionary.Wait(cacheKey))
             {
                 memoryCache.Remove(cacheKey);
             }

@@ -31,7 +31,7 @@ namespace BlitzCacheCore.Statistics
         /// Current number of entries stored in the cache.
         /// This includes all cached values that haven't expired.
         /// </summary>
-        long CurrentEntryCount { get; }
+        long EntryCount { get; }
 
         /// <summary>
         /// Number of times cache entries have been explicitly removed or expired.

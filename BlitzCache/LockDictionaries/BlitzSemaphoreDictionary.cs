@@ -32,6 +32,22 @@ namespace BlitzCacheCore.LockDictionaries
             return semaphore;
         }
 
+        /// <summary>
+        /// Gets or creates a BlitzSemaphore for the specified key and synchronously acquires it.
+        /// Returns an IDisposable that automatically releases the semaphore when disposed.
+        /// </summary>
+        /// <param name="key">The unique key to identify the semaphore</param>
+        /// <returns>An IDisposable lock handle that releases the semaphore when disposed</returns>
+        public IDisposable Wait(string key) => GetSemaphore(key).Acquire();
+
+        /// <summary>
+        /// Gets or creates a BlitzSemaphore for the specified key and asynchronously acquires it.
+        /// Returns an IDisposable that automatically releases the semaphore when disposed.
+        /// </summary>
+        /// <param name="key">The unique key to identify the semaphore</param>
+        /// <returns>An IDisposable lock handle that releases the semaphore when disposed</returns>
+        public Task<IDisposable> WaitAsync(string key) => GetSemaphore(key).AcquireAsync();
+
         public int GetNumberOfLocks() => semaphores.Count;
 
         public void Dispose()

@@ -57,7 +57,7 @@ namespace BlitzCacheCore
         public long HitCount => 0;
         public long MissCount => 0;
         public double HitRatio => 0.0;
-        public long CurrentEntryCount => 0;
+        public long EntryCount => 0;
         public long EvictionCount => 0;
         public int ActiveSemaphoreCount => 0;
         public long TotalOperations => 0;

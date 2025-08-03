@@ -285,7 +285,7 @@ namespace BlitzCacheCore.Tests.Examples
             var initialHitCount = cache.Statistics.HitCount;
             var initialMissCount = cache.Statistics.MissCount;
             var initialTotalOperations = cache.Statistics.TotalOperations;
-            var initialEntryCount = cache.Statistics.CurrentEntryCount;
+            var initialEntryCount = cache.Statistics.EntryCount;
             var initialEvictionCount = cache.Statistics.EvictionCount;
             
             Console.WriteLine($"Initial state: {initialTotalOperations} operations, {cache.Statistics.HitRatio:P1} hit ratio");
@@ -309,7 +309,7 @@ namespace BlitzCacheCore.Tests.Examples
             
             // Access different key - will be another miss
             var missCountBeforeThird = cache.Statistics.MissCount;
-            var entryCountBeforeThird = cache.Statistics.CurrentEntryCount;
+            var entryCountBeforeThird = cache.Statistics.EntryCount;
             
             var profile3 = cache.BlitzGet("user_456", () => GetUserProfile(456), 60000);
             System.Threading.Thread.Sleep(10); // Ensure eviction callback has time to execute
@@ -331,7 +331,7 @@ namespace BlitzCacheCore.Tests.Examples
             Console.WriteLine($"Cache Hits: {finalStats.HitCount}");
             Console.WriteLine($"Cache Misses: {finalStats.MissCount}");
             Console.WriteLine($"Hit Ratio: {finalStats.HitRatio:P1}");
-            Console.WriteLine($"Current Cached Entries: {finalStats.CurrentEntryCount}");
+            Console.WriteLine($"Current Cached Entries: {finalStats.EntryCount}");
             Console.WriteLine($"Active Semaphores: {finalStats.ActiveSemaphoreCount}");
             Console.WriteLine($"Database Calls Made: {databaseCallCount}");
 
@@ -340,21 +340,21 @@ namespace BlitzCacheCore.Tests.Examples
             Assert.AreEqual(2, finalStats.HitCount, "Should have 2 cache hits");
             Assert.AreEqual(2, finalStats.MissCount, "Should have 2 cache misses");
             Assert.AreEqual(0.5, finalStats.HitRatio, 0.001, "Hit ratio should be 50%");
-            Assert.AreEqual(2, finalStats.CurrentEntryCount, "Should have 2 cached entries");
+            Assert.AreEqual(2, finalStats.EntryCount, "Should have 2 cached entries");
             Assert.AreEqual(2, databaseCallCount, "Database should only be called twice (cache working!)");
 
             // Demonstrate manual cache eviction tracking
             var evictionCountBeforeRemoval = cache.Statistics.EvictionCount;
-            var entryCountBeforeRemoval = cache.Statistics.CurrentEntryCount;
+            var entryCountBeforeRemoval = cache.Statistics.EntryCount;
             
             cache.Remove("user_123");
             System.Threading.Thread.Sleep(10); // Ensure eviction callback has time to execute
             
             var statsAfterRemoval = cache.Statistics;
-            Console.WriteLine($"\nAfter removing user_123: {statsAfterRemoval.EvictionCount} evictions, {statsAfterRemoval.CurrentEntryCount} entries");
+            Console.WriteLine($"\nAfter removing user_123: {statsAfterRemoval.EvictionCount} evictions, {statsAfterRemoval.EntryCount} entries");
             
             Assert.AreEqual(evictionCountBeforeRemoval + 1, statsAfterRemoval.EvictionCount, "Should have 1 eviction");
-            Assert.AreEqual(entryCountBeforeRemoval - 1, statsAfterRemoval.CurrentEntryCount, "Should have 1 less entry");
+            Assert.AreEqual(entryCountBeforeRemoval - 1, statsAfterRemoval.EntryCount, "Should have 1 less entry");
 
             // Reset statistics for monitoring specific time periods
             cache.Statistics.Reset();

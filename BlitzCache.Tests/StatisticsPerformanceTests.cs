@@ -104,12 +104,12 @@ namespace BlitzCacheCore.Tests
             
             var stats = cache.Statistics;
             Console.WriteLine($"Cache misses recorded: {stats.MissCount:N0}");
-            Console.WriteLine($"Cache entries created: {stats.CurrentEntryCount:N0}");
+            Console.WriteLine($"Cache entries created: {stats.EntryCount:N0}");
             
             // Verify accuracy
             Assert.AreEqual(iterations, stats.MissCount, "Should record all misses accurately");
             Assert.AreEqual(iterations, executionCount, "Should execute function for each miss");
-            Assert.AreEqual(iterations, stats.CurrentEntryCount, "Should create entry for each miss");
+            Assert.AreEqual(iterations, stats.EntryCount, "Should create entry for each miss");
             
             cache.Dispose();
         }

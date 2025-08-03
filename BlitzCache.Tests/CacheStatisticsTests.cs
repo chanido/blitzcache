@@ -36,7 +36,7 @@ namespace BlitzCacheCore.Tests
             Assert.AreEqual(0, stats.HitCount, "Initial hit count should be zero");
             Assert.AreEqual(0, stats.MissCount, "Initial miss count should be zero");
             Assert.AreEqual(0.0, stats.HitRatio, 0.001, "Initial hit ratio should be zero");
-            Assert.AreEqual(0, stats.CurrentEntryCount, "Initial entry count should be zero");
+            Assert.AreEqual(0, stats.EntryCount, "Initial entry count should be zero");
             Assert.AreEqual(0, stats.EvictionCount, "Initial eviction count should be zero");
             Assert.AreEqual(0, stats.ActiveSemaphoreCount, "Initial semaphore count should be zero");
             Assert.AreEqual(0, stats.TotalOperations, "Initial total operations should be zero");
@@ -54,7 +54,7 @@ namespace BlitzCacheCore.Tests
             }
             var hitCountBefore = cache.Statistics.HitCount;
             var missCountBefore = cache.Statistics.MissCount;
-            var entryCountBefore = cache.Statistics.CurrentEntryCount;
+            var entryCountBefore = cache.Statistics.EntryCount;
             var totalOperationsBefore = cache.Statistics.TotalOperations;
 
             // Act
@@ -66,7 +66,7 @@ namespace BlitzCacheCore.Tests
             Assert.AreEqual(hitCountBefore, stats.HitCount, "Should have no hits");
             Assert.AreEqual(missCountBefore + 1, stats.MissCount, "Should have one miss");
             Assert.AreEqual(0.0, stats.HitRatio, 0.001, "Hit ratio should be zero with only misses");
-            Assert.AreEqual(entryCountBefore + 1, stats.CurrentEntryCount, "Should have one cached entry");
+            Assert.AreEqual(entryCountBefore + 1, stats.EntryCount, "Should have one cached entry");
             Assert.AreEqual(totalOperationsBefore + 1, stats.TotalOperations, "Should have one total operation");
             Assert.AreEqual(1, callCount, "Function should be called once");
             Assert.AreEqual("test result", result, "Should return correct result");
@@ -89,7 +89,7 @@ namespace BlitzCacheCore.Tests
             
             var hitCountBefore = cache.Statistics.HitCount;
             var missCountBefore = cache.Statistics.MissCount;
-            var entryCountBefore = cache.Statistics.CurrentEntryCount;
+            var entryCountBefore = cache.Statistics.EntryCount;
             var totalOperationsBefore = cache.Statistics.TotalOperations;
             
             // Act - Second call (hit)
@@ -101,7 +101,7 @@ namespace BlitzCacheCore.Tests
             Assert.AreEqual(hitCountBefore + 1, stats.HitCount, "Should have one hit");
             Assert.AreEqual(missCountBefore, stats.MissCount, "Should have one miss");
             Assert.AreEqual(0.5, stats.HitRatio, 0.001, "Hit ratio should be 50%");
-            Assert.AreEqual(entryCountBefore, stats.CurrentEntryCount, "Should still have one cached entry");
+            Assert.AreEqual(entryCountBefore, stats.EntryCount, "Should still have one cached entry");
             Assert.AreEqual(totalOperationsBefore + 1, stats.TotalOperations, "Should have two total operations");
             Assert.AreEqual(1, callCount, "Function should only be called once");
             Assert.AreEqual("test result", result, "Should return cached result");
@@ -119,7 +119,7 @@ namespace BlitzCacheCore.Tests
             }
             var hitCountBefore = cache.Statistics.HitCount;
             var missCountBefore = cache.Statistics.MissCount;
-            var entryCountBefore = cache.Statistics.CurrentEntryCount;
+            var entryCountBefore = cache.Statistics.EntryCount;
             var totalOperationsBefore = cache.Statistics.TotalOperations;
 
             // Act - Create multiple cache entries and hits
@@ -135,7 +135,7 @@ namespace BlitzCacheCore.Tests
             Assert.AreEqual(hitCountBefore + 3, stats.HitCount, "Should have 3 hits");
             Assert.AreEqual(missCountBefore + 2, stats.MissCount, "Should have 2 misses");
             Assert.AreEqual(0.6, stats.HitRatio, 0.001, "Hit ratio should be 60% (3/5)");
-            Assert.AreEqual(entryCountBefore + 2, stats.CurrentEntryCount, "Should have 2 cached entries");
+            Assert.AreEqual(entryCountBefore + 2, stats.EntryCount, "Should have 2 cached entries");
             Assert.AreEqual(totalOperationsBefore + 5, stats.TotalOperations, "Should have 5 total operations");
             Assert.AreEqual(2, callCount, "Function should be called twice");
         }
@@ -153,7 +153,7 @@ namespace BlitzCacheCore.Tests
             }
             var hitCountBefore = cache.Statistics.HitCount;
             var missCountBefore = cache.Statistics.MissCount;
-            var entryCountBefore = cache.Statistics.CurrentEntryCount;
+            var entryCountBefore = cache.Statistics.EntryCount;
             var totalOperationsBefore = cache.Statistics.TotalOperations;
 
             // Act
@@ -172,7 +172,7 @@ namespace BlitzCacheCore.Tests
             Assert.AreEqual(hitCountAfterFirst + 1, stats.HitCount, "Should have one hit");
             Assert.AreEqual(missCountBefore + 1, stats.MissCount, "Should have one miss");
             Assert.AreEqual(0.5, stats.HitRatio, 0.001, "Hit ratio should be 50%");
-            Assert.AreEqual(entryCountBefore + 1, stats.CurrentEntryCount, "Should have one cached entry");
+            Assert.AreEqual(entryCountBefore + 1, stats.EntryCount, "Should have one cached entry");
             Assert.AreEqual(totalOperationsBefore + 2, stats.TotalOperations, "Should have two total operations");
             Assert.AreEqual(1, callCount, "Function should only be called once");
             Assert.AreEqual("async result", result1);
@@ -192,7 +192,7 @@ namespace BlitzCacheCore.Tests
 
             // Assert
             Assert.AreEqual(evictionCountBefore + 1, cache.Statistics.EvictionCount, "Eviction count should increase by 1");
-            Assert.AreEqual(0, cache.Statistics.CurrentEntryCount, "Entry count should be zero after removal");
+            Assert.AreEqual(0, cache.Statistics.EntryCount, "Entry count should be zero after removal");
         }
 
         [Test]
@@ -314,7 +314,7 @@ namespace BlitzCacheCore.Tests
         {
             // Arrange
             var evictionCountBefore = cache.Statistics.EvictionCount;
-            var entryCountBefore = cache.Statistics.CurrentEntryCount;
+            var entryCountBefore = cache.Statistics.EntryCount;
             var missCountBefore = cache.Statistics.MissCount;
             var shortExpirationMs = 200;
 
@@ -332,7 +332,7 @@ namespace BlitzCacheCore.Tests
             // Assert
             var stats = cache.Statistics;
             Assert.Greater(stats.EvictionCount, evictionCountBefore, "Should have tracked automatic evictions");
-            Assert.AreEqual(entryCountBefore + 1, stats.CurrentEntryCount, "Should have 1 new entry after re-creation");
+            Assert.AreEqual(entryCountBefore + 1, stats.EntryCount, "Should have 1 new entry after re-creation");
             Assert.AreEqual(missCountBefore + 2, stats.MissCount, "Should have 2 misses (1 initial + 1 after expiration)");
             Assert.AreEqual("new_value", result, "Should return new value");
         }
@@ -342,7 +342,7 @@ namespace BlitzCacheCore.Tests
         {
             // Arrange
             var evictionCountBefore = cache.Statistics.EvictionCount;
-            var entryCountBefore = cache.Statistics.CurrentEntryCount;
+            var entryCountBefore = cache.Statistics.EntryCount;
             var shortExpirationMs = 100;
 
             // Act - Mix of automatic and manual evictions
@@ -364,7 +364,7 @@ namespace BlitzCacheCore.Tests
 
             // Assert
             var finalStats = cache.Statistics;
-            Assert.AreEqual(entryCountBefore + 2, finalStats.CurrentEntryCount, "Should have 2 entries (keep_alive + new auto_expire)");
+            Assert.AreEqual(entryCountBefore + 2, finalStats.EntryCount, "Should have 2 entries (keep_alive + new auto_expire)");
             Assert.Greater(finalStats.EvictionCount, evictionCountBefore + 1, "Should have tracked both manual and automatic evictions");
         }
 
@@ -372,7 +372,7 @@ namespace BlitzCacheCore.Tests
         public void Statistics_CurrentEntryCount_StaysAccurate()
         {
             // Arrange
-            var entryCountBefore = cache.Statistics.CurrentEntryCount;
+            var entryCountBefore = cache.Statistics.EntryCount;
             var evictionCountBefore = cache.Statistics.EvictionCount;
 
             // Act - Add some entries
@@ -381,13 +381,13 @@ namespace BlitzCacheCore.Tests
             cache.BlitzGet("key3", () => "value3", 30000);
             System.Threading.Thread.Sleep(10); // Ensure eviction callback has time to execute
 
-            var entryCountAfterAdding = cache.Statistics.CurrentEntryCount;
+            var entryCountAfterAdding = cache.Statistics.EntryCount;
 
             // Remove one
             cache.Remove("key2");
             System.Threading.Thread.Sleep(10); // Ensure eviction callback has time to execute
 
-            var entryCountAfterRemoval = cache.Statistics.CurrentEntryCount;
+            var entryCountAfterRemoval = cache.Statistics.EntryCount;
             var evictionCountAfterRemoval = cache.Statistics.EvictionCount;
 
             // Add another
@@ -398,7 +398,7 @@ namespace BlitzCacheCore.Tests
             Assert.AreEqual(entryCountBefore + 3, entryCountAfterAdding, "Should have 3 entries after adding");
             Assert.AreEqual(entryCountBefore + 2, entryCountAfterRemoval, "Should have 2 entries after removal");
             Assert.AreEqual(evictionCountBefore + 1, evictionCountAfterRemoval, "Should have 1 eviction after removal");
-            Assert.AreEqual(entryCountBefore + 3, cache.Statistics.CurrentEntryCount, "Should have 3 entries again after final addition");
+            Assert.AreEqual(entryCountBefore + 3, cache.Statistics.EntryCount, "Should have 3 entries again after final addition");
             Assert.AreEqual(evictionCountBefore + 1, cache.Statistics.EvictionCount, "Eviction count should remain at 1");
         }
     }

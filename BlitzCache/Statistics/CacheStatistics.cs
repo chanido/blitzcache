@@ -11,20 +11,20 @@ namespace BlitzCacheCore.Statistics
     /// </summary>
     internal class CacheStatistics : ICacheStatistics
     {
-        private long _hitCount;
-        private long _missCount;
-        private long _evictionCount;
-        private long _trackedKeysCount;
-        private readonly Func<int> _getActiveSemaphoreCount;
+        private long hitCount;
+        private long missCount;
+        private long evictionCount;
+        private long entryCount;
+        private readonly Func<int> getActiveSemaphoreCount;
 
         public CacheStatistics(Func<int> getActiveSemaphoreCount)
         {
-            _getActiveSemaphoreCount = getActiveSemaphoreCount ?? throw new ArgumentNullException(nameof(getActiveSemaphoreCount));
+            this.getActiveSemaphoreCount = getActiveSemaphoreCount ?? throw new ArgumentNullException(nameof(getActiveSemaphoreCount));
         }
 
-        public long HitCount => Interlocked.Read(ref _hitCount);
+        public long HitCount => Interlocked.Read(ref hitCount);
 
-        public long MissCount => Interlocked.Read(ref _missCount);
+        public long MissCount => Interlocked.Read(ref missCount);
 
         public double HitRatio
         {
@@ -36,37 +36,36 @@ namespace BlitzCacheCore.Statistics
             }
         }
 
-        public long CurrentEntryCount => Interlocked.Read(ref _trackedKeysCount);
+        public long EntryCount => Interlocked.Read(ref entryCount);
 
-        public long EvictionCount => Interlocked.Read(ref _evictionCount);
+        public long EvictionCount => Interlocked.Read(ref evictionCount);
 
-        public int ActiveSemaphoreCount => _getActiveSemaphoreCount();
+        public int ActiveSemaphoreCount => getActiveSemaphoreCount();
 
         public long TotalOperations => HitCount + MissCount;
 
         /// <summary>
         /// Records a cache hit. Thread-safe.
         /// </summary>
-        internal void RecordHit() => Interlocked.Increment(ref _hitCount);
+        internal void RecordHit() => Interlocked.Increment(ref hitCount);
 
         /// <summary>
         /// Records a cache miss. Thread-safe.
         /// </summary>
-        internal void RecordMiss() => Interlocked.Increment(ref _missCount);
+        internal void RecordMiss() => Interlocked.Increment(ref missCount);
 
         /// <summary>
         /// Records a cache eviction. Thread-safe.
         /// </summary>
         internal void RecordEviction()
         {
-            Interlocked.Increment(ref _evictionCount);
-            Interlocked.Decrement(ref _trackedKeysCount);
+            Interlocked.Increment(ref evictionCount);
+            Interlocked.Decrement(ref entryCount);
         }
 
         /// <summary>
         /// Creates memory cache entry options with eviction callback for statistics tracking.
         /// </summary>
-        /// <param name="cacheKey">The cache key</param>
         /// <param name="expirationTime">When the entry should expire</param>
         /// <returns>MemoryCacheEntryOptions configured with eviction tracking</returns>
         internal MemoryCacheEntryOptions CreateEntryOptions(DateTime expirationTime) => new MemoryCacheEntryOptions
@@ -78,9 +77,8 @@ namespace BlitzCacheCore.Statistics
                 {
                     // Track automatic evictions (expiration, memory pressure, etc.)
                     // Don't count Replaced as eviction since it's just an update
-                    if (reason == EvictionReason.Replaced) return;
-
-                    RecordEviction();
+                    if (reason != EvictionReason.Replaced)
+                        RecordEviction();
                 }
             }}
         };
@@ -88,18 +86,17 @@ namespace BlitzCacheCore.Statistics
         /// <summary>
         /// Tracks a new cache entry.
         /// </summary>
-        /// <param name="cacheKey">The cache key to track</param>
-        internal void TrackEntry() => Interlocked.Increment(ref _trackedKeysCount);
+        internal void TrackEntry() => Interlocked.Increment(ref entryCount);
 
         /// <summary>
         /// Resets all statistics counters to zero. Thread-safe.
         /// </summary>
         public void Reset()
         {
-            Interlocked.Exchange(ref _hitCount, 0);
-            Interlocked.Exchange(ref _missCount, 0);
-            Interlocked.Exchange(ref _evictionCount, 0);
-            Interlocked.Exchange(ref _trackedKeysCount, 0);
+            Interlocked.Exchange(ref hitCount, 0);
+            Interlocked.Exchange(ref missCount, 0);
+            Interlocked.Exchange(ref evictionCount, 0);
+            Interlocked.Exchange(ref entryCount, 0);
         }
     }
 }
