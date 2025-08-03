@@ -1,6 +1,6 @@
 using System;
 
-namespace BlitzCacheCore
+namespace BlitzCacheCore.Statistics
 {
     /// <summary>
     /// Provides cache performance statistics and monitoring capabilities.
@@ -31,7 +31,7 @@ namespace BlitzCacheCore
         /// Current number of entries stored in the cache.
         /// This includes all cached values that haven't expired.
         /// </summary>
-        int CurrentEntryCount { get; }
+        long CurrentEntryCount { get; }
 
         /// <summary>
         /// Number of times cache entries have been explicitly removed or expired.

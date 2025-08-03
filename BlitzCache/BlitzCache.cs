@@ -1,7 +1,7 @@
 ﻿using BlitzCacheCore.LockDictionaries;
+using BlitzCacheCore.Statistics;
 using Microsoft.Extensions.Caching.Memory;
 using System;
-using System.Collections.Concurrent;
 using System.Runtime.CompilerServices;
 using System.Threading.Tasks;
 
@@ -14,7 +14,6 @@ namespace BlitzCacheCore
         private readonly long defaultMilliseconds;
         private readonly bool usingGlobalCache;
         private readonly BlitzSemaphoreDictionary semaphoreDictionary;
-        private readonly ConcurrentDictionary<string, bool> trackedKeys;
         private readonly CacheStatistics statistics;
 
         /// <summary>
@@ -28,11 +27,7 @@ namespace BlitzCacheCore
             usingGlobalCache = useGlobalCache;
             memoryCache = useGlobalCache ? globalCache : new MemoryCache(new MemoryCacheOptions());
             semaphoreDictionary = new BlitzSemaphoreDictionary();
-            trackedKeys = new ConcurrentDictionary<string, bool>();
-            statistics = new CacheStatistics(
-                getCurrentEntryCount: () => trackedKeys.Count,
-                getActiveSemaphoreCount: () => semaphoreDictionary.GetNumberOfLocks()
-            );
+            statistics = new CacheStatistics(() => semaphoreDictionary.GetNumberOfLocks());
         }
 
         /// <summary>
@@ -46,11 +41,7 @@ namespace BlitzCacheCore
             this.defaultMilliseconds = defaultMilliseconds;
             usingGlobalCache = false; // Custom cache is never global
             semaphoreDictionary = new BlitzSemaphoreDictionary();
-            trackedKeys = new ConcurrentDictionary<string, bool>();
-            statistics = new CacheStatistics(
-                getCurrentEntryCount: () => trackedKeys.Count,
-                getActiveSemaphoreCount: () => semaphoreDictionary.GetNumberOfLocks()
-            );
+            statistics = new CacheStatistics(() => semaphoreDictionary.GetNumberOfLocks());
         }
 
         /// <summary>
@@ -74,7 +65,7 @@ namespace BlitzCacheCore
 
         public T BlitzGet<T>(string cacheKey, Func<Nuances, T> function, long? milliseconds = null)
         {
-            if (memoryCache.TryGetValue(cacheKey, out T result)) 
+            if (memoryCache.TryGetValue(cacheKey, out T result))
             {
                 statistics.RecordHit();
                 return result;
@@ -83,7 +74,7 @@ namespace BlitzCacheCore
             var semaphore = semaphoreDictionary.GetSemaphore(cacheKey);
             using (var lockHandle = semaphore.Acquire())
             {
-                if (memoryCache.TryGetValue(cacheKey, out result)) 
+                if (memoryCache.TryGetValue(cacheKey, out result))
                 {
                     statistics.RecordHit();
                     return result;
@@ -94,8 +85,10 @@ namespace BlitzCacheCore
                 result = function.Invoke(nuances);
 
                 var expirationTime = DateTime.UtcNow.AddMilliseconds(nuances.CacheRetention ?? milliseconds ?? defaultMilliseconds);
-                memoryCache.Set(cacheKey, result, expirationTime);
-                trackedKeys.TryAdd(cacheKey, true);
+                var cacheEntryOptions = statistics.CreateEntryOptions(expirationTime);
+
+                memoryCache.Set(cacheKey, result, cacheEntryOptions);
+                statistics.TrackEntry();
             }
 
             return result;
@@ -111,7 +104,7 @@ namespace BlitzCacheCore
             BlitzGet(cacheKey, nuances => function(), milliseconds);
         public async Task<T> BlitzGet<T>(string cacheKey, Func<Nuances, Task<T>> function, long? milliseconds = null)
         {
-            if (memoryCache.TryGetValue(cacheKey, out T result)) 
+            if (memoryCache.TryGetValue(cacheKey, out T result))
             {
                 statistics.RecordHit();
                 return result;
@@ -120,19 +113,21 @@ namespace BlitzCacheCore
             var semaphore = semaphoreDictionary.GetSemaphore(cacheKey);
             using (var lockHandle = await semaphore.AcquireAsync())
             {
-                if (memoryCache.TryGetValue(cacheKey, out result)) 
+                if (memoryCache.TryGetValue(cacheKey, out result))
                 {
                     statistics.RecordHit();
                     return result;
                 }
-                
+
                 statistics.RecordMiss();
                 var nuances = new Nuances();
                 result = await function.Invoke(nuances);
-                
+
                 var expirationTime = DateTime.UtcNow.AddMilliseconds(nuances.CacheRetention ?? milliseconds ?? defaultMilliseconds);
-                memoryCache.Set(cacheKey, result, expirationTime);
-                trackedKeys.TryAdd(cacheKey, true);
+                var cacheEntryOptions = statistics.CreateEntryOptions(expirationTime);
+
+                memoryCache.Set(cacheKey, result, cacheEntryOptions);
+                statistics.TrackEntry();
             }
 
             return result;
@@ -143,9 +138,14 @@ namespace BlitzCacheCore
             var semaphore = semaphoreDictionary.GetSemaphore(cacheKey);
             using (var lockHandle = semaphore.Acquire())
             {
+                var existsInCache = memoryCache.TryGetValue(cacheKey, out _);
+
                 var expirationTime = DateTime.UtcNow.AddMilliseconds(milliseconds);
-                memoryCache.Set(cacheKey, function(), expirationTime);
-                trackedKeys.TryAdd(cacheKey, true);
+                var cacheEntryOptions = statistics.CreateEntryOptions(expirationTime);
+
+                memoryCache.Set(cacheKey, function(), cacheEntryOptions);
+
+                if (!existsInCache) statistics.TrackEntry();
             }
         }
 
@@ -154,29 +154,32 @@ namespace BlitzCacheCore
             var semaphore = semaphoreDictionary.GetSemaphore(cacheKey);
             using (var lockHandle = await semaphore.AcquireAsync())
             {
+                var existsInCache = memoryCache.TryGetValue(cacheKey, out _);
+
                 var expirationTime = DateTime.UtcNow.AddMilliseconds(milliseconds);
-                memoryCache.Set(cacheKey, await function.Invoke(), expirationTime);
-                trackedKeys.TryAdd(cacheKey, true);
+                var cacheEntryOptions = statistics.CreateEntryOptions(expirationTime);
+
+                memoryCache.Set(cacheKey, await function.Invoke(), cacheEntryOptions);
+                
+                if (!existsInCache) statistics.TrackEntry();
             }
         }
 
         public void Remove(string cacheKey)
         {
+            if (!memoryCache.TryGetValue(cacheKey, out _)) return;
+            
             var semaphore = semaphoreDictionary.GetSemaphore(cacheKey);
             using (var lockHandle = semaphore.Acquire())
             {
                 memoryCache.Remove(cacheKey);
-                if (trackedKeys.TryRemove(cacheKey, out _))
-                {
-                    statistics.RecordEviction();
-                }
             }
         }
-
+        
         public void Dispose()
         {
             semaphoreDictionary?.Dispose();
-            
+
             if (!usingGlobalCache && memoryCache != globalCache)
             {
                 memoryCache?.Dispose();

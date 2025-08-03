@@ -281,24 +281,47 @@ namespace BlitzCacheCore.Tests.Examples
             // Perform various cache operations
             Console.WriteLine("=== Cache Statistics Example ===");
             
-            // Initial state
-            var initialStats = cache.Statistics;
-            Console.WriteLine($"Initial state: {initialStats.TotalOperations} operations, {initialStats.HitRatio:P1} hit ratio");
+            // Capture initial statistics
+            var initialHitCount = cache.Statistics.HitCount;
+            var initialMissCount = cache.Statistics.MissCount;
+            var initialTotalOperations = cache.Statistics.TotalOperations;
+            var initialEntryCount = cache.Statistics.CurrentEntryCount;
+            var initialEvictionCount = cache.Statistics.EvictionCount;
+            
+            Console.WriteLine($"Initial state: {initialTotalOperations} operations, {cache.Statistics.HitRatio:P1} hit ratio");
 
             // First access - will be a cache miss
             var profile1 = cache.BlitzGet("user_123", () => GetUserProfile(123), 60000);
+            System.Threading.Thread.Sleep(10); // Ensure eviction callback has time to execute
             Console.WriteLine($"First access result: {profile1}");
             
+            var statsAfterFirst = cache.Statistics;
+            
             // Second access to same key - will be a cache hit
+            var hitCountBeforeSecond = cache.Statistics.HitCount;
+            var totalOperationsBeforeSecond = cache.Statistics.TotalOperations;
+            
             var profile2 = cache.BlitzGet("user_123", () => GetUserProfile(123), 60000);
+            System.Threading.Thread.Sleep(10); // Ensure eviction callback has time to execute
             Console.WriteLine($"Second access result: {profile2}");
             
+            var statsAfterSecond = cache.Statistics;
+            
             // Access different key - will be another miss
+            var missCountBeforeThird = cache.Statistics.MissCount;
+            var entryCountBeforeThird = cache.Statistics.CurrentEntryCount;
+            
             var profile3 = cache.BlitzGet("user_456", () => GetUserProfile(456), 60000);
+            System.Threading.Thread.Sleep(10); // Ensure eviction callback has time to execute
             Console.WriteLine($"Different key result: {profile3}");
             
+            var statsAfterThird = cache.Statistics;
+            
             // Another hit on first key
+            var hitCountBeforeFourth = cache.Statistics.HitCount;
+            
             var profile4 = cache.BlitzGet("user_123", () => GetUserProfile(123), 60000);
+            System.Threading.Thread.Sleep(10); // Ensure eviction callback has time to execute
             Console.WriteLine($"Third access to first key: {profile4}");
 
             // Check final statistics
@@ -312,7 +335,7 @@ namespace BlitzCacheCore.Tests.Examples
             Console.WriteLine($"Active Semaphores: {finalStats.ActiveSemaphoreCount}");
             Console.WriteLine($"Database Calls Made: {databaseCallCount}");
 
-            // Verify cache effectiveness
+            // Verify cache effectiveness using final statistics
             Assert.AreEqual(4, finalStats.TotalOperations, "Should have 4 total operations");
             Assert.AreEqual(2, finalStats.HitCount, "Should have 2 cache hits");
             Assert.AreEqual(2, finalStats.MissCount, "Should have 2 cache misses");
@@ -321,15 +344,22 @@ namespace BlitzCacheCore.Tests.Examples
             Assert.AreEqual(2, databaseCallCount, "Database should only be called twice (cache working!)");
 
             // Demonstrate manual cache eviction tracking
+            var evictionCountBeforeRemoval = cache.Statistics.EvictionCount;
+            var entryCountBeforeRemoval = cache.Statistics.CurrentEntryCount;
+            
             cache.Remove("user_123");
+            System.Threading.Thread.Sleep(10); // Ensure eviction callback has time to execute
+            
             var statsAfterRemoval = cache.Statistics;
             Console.WriteLine($"\nAfter removing user_123: {statsAfterRemoval.EvictionCount} evictions, {statsAfterRemoval.CurrentEntryCount} entries");
             
-            Assert.AreEqual(1, statsAfterRemoval.EvictionCount, "Should have 1 eviction");
-            Assert.AreEqual(1, statsAfterRemoval.CurrentEntryCount, "Should have 1 remaining entry");
+            Assert.AreEqual(evictionCountBeforeRemoval + 1, statsAfterRemoval.EvictionCount, "Should have 1 eviction");
+            Assert.AreEqual(entryCountBeforeRemoval - 1, statsAfterRemoval.CurrentEntryCount, "Should have 1 less entry");
 
             // Reset statistics for monitoring specific time periods
             cache.Statistics.Reset();
+            System.Threading.Thread.Sleep(10); // Ensure eviction callback has time to execute
+            
             var resetStats = cache.Statistics;
             Console.WriteLine($"After reset: {resetStats.TotalOperations} operations, {resetStats.HitRatio:P1} hit ratio");
             

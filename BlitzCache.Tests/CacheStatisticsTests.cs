@@ -52,17 +52,22 @@ namespace BlitzCacheCore.Tests
                 callCount++;
                 return "test result";
             }
+            var hitCountBefore = cache.Statistics.HitCount;
+            var missCountBefore = cache.Statistics.MissCount;
+            var entryCountBefore = cache.Statistics.CurrentEntryCount;
+            var totalOperationsBefore = cache.Statistics.TotalOperations;
 
             // Act
             var result = cache.BlitzGet("test_key", TestFunction, 30000);
+            System.Threading.Thread.Sleep(10); // Ensure eviction callback has time to execute
 
             // Assert
             var stats = cache.Statistics;
-            Assert.AreEqual(0, stats.HitCount, "Should have no hits");
-            Assert.AreEqual(1, stats.MissCount, "Should have one miss");
+            Assert.AreEqual(hitCountBefore, stats.HitCount, "Should have no hits");
+            Assert.AreEqual(missCountBefore + 1, stats.MissCount, "Should have one miss");
             Assert.AreEqual(0.0, stats.HitRatio, 0.001, "Hit ratio should be zero with only misses");
-            Assert.AreEqual(1, stats.CurrentEntryCount, "Should have one cached entry");
-            Assert.AreEqual(1, stats.TotalOperations, "Should have one total operation");
+            Assert.AreEqual(entryCountBefore + 1, stats.CurrentEntryCount, "Should have one cached entry");
+            Assert.AreEqual(totalOperationsBefore + 1, stats.TotalOperations, "Should have one total operation");
             Assert.AreEqual(1, callCount, "Function should be called once");
             Assert.AreEqual("test result", result, "Should return correct result");
         }
@@ -80,17 +85,24 @@ namespace BlitzCacheCore.Tests
 
             // Act - First call (miss)
             cache.BlitzGet("test_key", TestFunction, 30000);
+            System.Threading.Thread.Sleep(10); // Ensure eviction callback has time to execute
+            
+            var hitCountBefore = cache.Statistics.HitCount;
+            var missCountBefore = cache.Statistics.MissCount;
+            var entryCountBefore = cache.Statistics.CurrentEntryCount;
+            var totalOperationsBefore = cache.Statistics.TotalOperations;
             
             // Act - Second call (hit)
             var result = cache.BlitzGet("test_key", TestFunction, 30000);
+            System.Threading.Thread.Sleep(10); // Ensure eviction callback has time to execute
 
             // Assert
             var stats = cache.Statistics;
-            Assert.AreEqual(1, stats.HitCount, "Should have one hit");
-            Assert.AreEqual(1, stats.MissCount, "Should have one miss");
+            Assert.AreEqual(hitCountBefore + 1, stats.HitCount, "Should have one hit");
+            Assert.AreEqual(missCountBefore, stats.MissCount, "Should have one miss");
             Assert.AreEqual(0.5, stats.HitRatio, 0.001, "Hit ratio should be 50%");
-            Assert.AreEqual(1, stats.CurrentEntryCount, "Should still have one cached entry");
-            Assert.AreEqual(2, stats.TotalOperations, "Should have two total operations");
+            Assert.AreEqual(entryCountBefore, stats.CurrentEntryCount, "Should still have one cached entry");
+            Assert.AreEqual(totalOperationsBefore + 1, stats.TotalOperations, "Should have two total operations");
             Assert.AreEqual(1, callCount, "Function should only be called once");
             Assert.AreEqual("test result", result, "Should return cached result");
         }
@@ -105,6 +117,10 @@ namespace BlitzCacheCore.Tests
                 callCount++;
                 return $"result for {key}";
             }
+            var hitCountBefore = cache.Statistics.HitCount;
+            var missCountBefore = cache.Statistics.MissCount;
+            var entryCountBefore = cache.Statistics.CurrentEntryCount;
+            var totalOperationsBefore = cache.Statistics.TotalOperations;
 
             // Act - Create multiple cache entries and hits
             cache.BlitzGet("key1", () => TestFunction("key1"), 30000); // Miss
@@ -112,14 +128,15 @@ namespace BlitzCacheCore.Tests
             cache.BlitzGet("key1", () => TestFunction("key1"), 30000); // Hit
             cache.BlitzGet("key2", () => TestFunction("key2"), 30000); // Hit
             cache.BlitzGet("key1", () => TestFunction("key1"), 30000); // Hit
+            System.Threading.Thread.Sleep(10); // Ensure eviction callback has time to execute
 
             // Assert
             var stats = cache.Statistics;
-            Assert.AreEqual(3, stats.HitCount, "Should have 3 hits");
-            Assert.AreEqual(2, stats.MissCount, "Should have 2 misses");
+            Assert.AreEqual(hitCountBefore + 3, stats.HitCount, "Should have 3 hits");
+            Assert.AreEqual(missCountBefore + 2, stats.MissCount, "Should have 2 misses");
             Assert.AreEqual(0.6, stats.HitRatio, 0.001, "Hit ratio should be 60% (3/5)");
-            Assert.AreEqual(2, stats.CurrentEntryCount, "Should have 2 cached entries");
-            Assert.AreEqual(5, stats.TotalOperations, "Should have 5 total operations");
+            Assert.AreEqual(entryCountBefore + 2, stats.CurrentEntryCount, "Should have 2 cached entries");
+            Assert.AreEqual(totalOperationsBefore + 5, stats.TotalOperations, "Should have 5 total operations");
             Assert.AreEqual(2, callCount, "Function should be called twice");
         }
 
@@ -134,18 +151,29 @@ namespace BlitzCacheCore.Tests
                 await Task.Delay(10);
                 return "async result";
             }
+            var hitCountBefore = cache.Statistics.HitCount;
+            var missCountBefore = cache.Statistics.MissCount;
+            var entryCountBefore = cache.Statistics.CurrentEntryCount;
+            var totalOperationsBefore = cache.Statistics.TotalOperations;
 
             // Act
             var result1 = await cache.BlitzGet("async_key", TestFunctionAsync, 30000); // Miss
+            System.Threading.Thread.Sleep(10); // Ensure eviction callback has time to execute
+            
+            var hitCountAfterFirst = cache.Statistics.HitCount;
+            var missCountAfterFirst = cache.Statistics.MissCount;
+            var totalOperationsAfterFirst = cache.Statistics.TotalOperations;
+            
             var result2 = await cache.BlitzGet("async_key", TestFunctionAsync, 30000); // Hit
+            System.Threading.Thread.Sleep(10); // Ensure eviction callback has time to execute
 
             // Assert
             var stats = cache.Statistics;
-            Assert.AreEqual(1, stats.HitCount, "Should have one hit");
-            Assert.AreEqual(1, stats.MissCount, "Should have one miss");
+            Assert.AreEqual(hitCountAfterFirst + 1, stats.HitCount, "Should have one hit");
+            Assert.AreEqual(missCountBefore + 1, stats.MissCount, "Should have one miss");
             Assert.AreEqual(0.5, stats.HitRatio, 0.001, "Hit ratio should be 50%");
-            Assert.AreEqual(1, stats.CurrentEntryCount, "Should have one cached entry");
-            Assert.AreEqual(2, stats.TotalOperations, "Should have two total operations");
+            Assert.AreEqual(entryCountBefore + 1, stats.CurrentEntryCount, "Should have one cached entry");
+            Assert.AreEqual(totalOperationsBefore + 2, stats.TotalOperations, "Should have two total operations");
             Assert.AreEqual(1, callCount, "Function should only be called once");
             Assert.AreEqual("async result", result1);
             Assert.AreEqual("async result", result2);
@@ -156,30 +184,29 @@ namespace BlitzCacheCore.Tests
         {
             // Arrange
             cache.BlitzGet("test_key", () => "test value", 30000);
-            var statsBefore = cache.Statistics;
-            var evictionCountBefore = statsBefore.EvictionCount;
-
+            var evictionCountBefore = cache.Statistics.EvictionCount;
+    
             // Act
             cache.Remove("test_key");
+            System.Threading.Thread.Sleep(10); // Ensure eviction callback has time to execute
 
             // Assert
-            var statsAfter = cache.Statistics;
-            Assert.AreEqual(evictionCountBefore + 1, statsAfter.EvictionCount, "Eviction count should increase by 1");
-            Assert.AreEqual(0, statsAfter.CurrentEntryCount, "Entry count should be zero after removal");
+            Assert.AreEqual(evictionCountBefore + 1, cache.Statistics.EvictionCount, "Eviction count should increase by 1");
+            Assert.AreEqual(0, cache.Statistics.CurrentEntryCount, "Entry count should be zero after removal");
         }
 
         [Test]
         public void Statistics_RemoveNonExistentKey_DoesNotIncrementEvictionCount()
         {
             // Arrange
-            var statsBefore = cache.Statistics;
+            var evictionCountBefore = cache.Statistics.EvictionCount;
 
             // Act
             cache.Remove("non_existent_key");
+            System.Threading.Thread.Sleep(10); // Ensure eviction callback has time to execute
 
             // Assert
-            var statsAfter = cache.Statistics;
-            Assert.AreEqual(statsBefore.EvictionCount, statsAfter.EvictionCount, "Eviction count should not change");
+            Assert.AreEqual(evictionCountBefore, cache.Statistics.EvictionCount, "Eviction count should not change");
         }
 
         [Test]
@@ -187,16 +214,21 @@ namespace BlitzCacheCore.Tests
         {
             // Arrange
             cache.BlitzGet("test_key", () => "original", 30000);
-            var statsBefore = cache.Statistics;
+            System.Threading.Thread.Sleep(10); // Ensure eviction callback has time to execute
+            
+            var hitCountBefore = cache.Statistics.HitCount;
+            var missCountBefore = cache.Statistics.MissCount;
+            var totalOperationsBefore = cache.Statistics.TotalOperations;
 
             // Act
             cache.BlitzUpdate("test_key", () => "updated", 30000);
+            System.Threading.Thread.Sleep(10); // Ensure eviction callback has time to execute
 
             // Assert
             var statsAfter = cache.Statistics;
-            Assert.AreEqual(statsBefore.HitCount, statsAfter.HitCount, "Hit count should not change");
-            Assert.AreEqual(statsBefore.MissCount, statsAfter.MissCount, "Miss count should not change");
-            Assert.AreEqual(statsBefore.TotalOperations, statsAfter.TotalOperations, "Total operations should not change");
+            Assert.AreEqual(hitCountBefore, statsAfter.HitCount, "Hit count should not change");
+            Assert.AreEqual(missCountBefore, statsAfter.MissCount, "Miss count should not change");
+            Assert.AreEqual(totalOperationsBefore, statsAfter.TotalOperations, "Total operations should not change");
         }
 
         [Test]
@@ -206,6 +238,7 @@ namespace BlitzCacheCore.Tests
             cache.BlitzGet("key1", () => "value1", 30000); // Miss
             cache.BlitzGet("key1", () => "value1", 30000); // Hit
             cache.Remove("key1"); // Eviction
+            System.Threading.Thread.Sleep(10); // Ensure eviction callback has time to execute
 
             // Verify we have some stats
             var statsBefore = cache.Statistics;
@@ -213,6 +246,7 @@ namespace BlitzCacheCore.Tests
 
             // Act
             cache.Statistics.Reset();
+            System.Threading.Thread.Sleep(10); // Ensure eviction callback has time to execute
 
             // Assert
             var statsAfter = cache.Statistics;
@@ -230,6 +264,9 @@ namespace BlitzCacheCore.Tests
             // Arrange
             var tasks = new Task[10];
             var totalOperations = 100;
+            var hitCountBefore = cache.Statistics.HitCount;
+            var missCountBefore = cache.Statistics.MissCount;
+            var totalOperationsBefore = cache.Statistics.TotalOperations;
 
             // Act - Multiple threads performing cache operations
             for (int i = 0; i < tasks.Length; i++)
@@ -246,12 +283,13 @@ namespace BlitzCacheCore.Tests
             }
 
             Task.WaitAll(tasks);
+            System.Threading.Thread.Sleep(10); // Ensure eviction callback has time to execute
 
             // Assert
             var stats = cache.Statistics;
-            Assert.AreEqual(totalOperations, stats.TotalOperations, "Should track all operations");
-            Assert.Greater(stats.HitCount, 0, "Should have some hits due to key repetition");
-            Assert.Greater(stats.MissCount, 0, "Should have some misses");
+            Assert.AreEqual(totalOperationsBefore + totalOperations, stats.TotalOperations, "Should track all operations");
+            Assert.Greater(stats.HitCount, hitCountBefore, "Should have some hits due to key repetition");
+            Assert.Greater(stats.MissCount, missCountBefore, "Should have some misses");
             Assert.AreEqual(stats.HitCount + stats.MissCount, stats.TotalOperations, "Hits + misses should equal total operations");
         }
 
@@ -259,15 +297,109 @@ namespace BlitzCacheCore.Tests
         public void Statistics_ActiveSemaphoreCount_ReflectsCurrentState()
         {
             // Arrange
-            var initialCount = cache.Statistics.ActiveSemaphoreCount;
+            var initialSemaphoreCount = cache.Statistics.ActiveSemaphoreCount;
 
             // Act - Create some cache entries
             cache.BlitzGet("key1", () => "value1", 30000);
             cache.BlitzGet("key2", () => "value2", 30000);
+            System.Threading.Thread.Sleep(10); // Ensure eviction callback has time to execute
 
             // Assert
             var statsAfter = cache.Statistics;
-            Assert.GreaterOrEqual(statsAfter.ActiveSemaphoreCount, initialCount, "Semaphore count should reflect active semaphores");
+            Assert.GreaterOrEqual(statsAfter.ActiveSemaphoreCount, initialSemaphoreCount, "Semaphore count should reflect active semaphores");
+        }
+
+        [Test]
+        public async Task Statistics_AutomaticExpiration_TracksEvictionCorrectly()
+        {
+            // Arrange
+            var evictionCountBefore = cache.Statistics.EvictionCount;
+            var entryCountBefore = cache.Statistics.CurrentEntryCount;
+            var missCountBefore = cache.Statistics.MissCount;
+            var shortExpirationMs = 200;
+
+            // Act - Add cache entry with short expiration
+            cache.BlitzGet("expiring_key", () => "value1", shortExpirationMs);
+            System.Threading.Thread.Sleep(10); // Ensure eviction callback has time to execute
+
+            // Wait for automatic expiration
+            await Task.Delay(shortExpirationMs + 100);
+
+            // Try to access the expired entry (this should trigger cleanup and create new entry)
+            var result = cache.BlitzGet("expiring_key", () => "new_value", 30000);
+            System.Threading.Thread.Sleep(10); // Ensure eviction callback has time to execute
+
+            // Assert
+            var stats = cache.Statistics;
+            Assert.Greater(stats.EvictionCount, evictionCountBefore, "Should have tracked automatic evictions");
+            Assert.AreEqual(entryCountBefore + 1, stats.CurrentEntryCount, "Should have 1 new entry after re-creation");
+            Assert.AreEqual(missCountBefore + 2, stats.MissCount, "Should have 2 misses (1 initial + 1 after expiration)");
+            Assert.AreEqual("new_value", result, "Should return new value");
+        }
+
+        [Test]
+        public async Task Statistics_MixedEvictions_TracksAllCorrectly()
+        {
+            // Arrange
+            var evictionCountBefore = cache.Statistics.EvictionCount;
+            var entryCountBefore = cache.Statistics.CurrentEntryCount;
+            var shortExpirationMs = 100;
+
+            // Act - Mix of automatic and manual evictions
+            cache.BlitzGet("auto_expire", () => "value1", shortExpirationMs);
+            cache.BlitzGet("manual_remove", () => "value2", 30000);
+            cache.BlitzGet("keep_alive", () => "value3", 30000);
+            System.Threading.Thread.Sleep(10); // Ensure eviction callback has time to execute
+
+            // Manual removal
+            cache.Remove("manual_remove");
+            System.Threading.Thread.Sleep(10); // Ensure eviction callback has time to execute
+
+            // Wait for automatic expiration
+            await Task.Delay(shortExpirationMs + 50);
+
+            // Access expired key to trigger callback
+            cache.BlitzGet("auto_expire", () => "new_value", 30000);
+            System.Threading.Thread.Sleep(10); // Ensure eviction callback has time to execute
+
+            // Assert
+            var finalStats = cache.Statistics;
+            Assert.AreEqual(entryCountBefore + 2, finalStats.CurrentEntryCount, "Should have 2 entries (keep_alive + new auto_expire)");
+            Assert.Greater(finalStats.EvictionCount, evictionCountBefore + 1, "Should have tracked both manual and automatic evictions");
+        }
+
+        [Test]
+        public void Statistics_CurrentEntryCount_StaysAccurate()
+        {
+            // Arrange
+            var entryCountBefore = cache.Statistics.CurrentEntryCount;
+            var evictionCountBefore = cache.Statistics.EvictionCount;
+
+            // Act - Add some entries
+            cache.BlitzGet("key1", () => "value1", 30000);
+            cache.BlitzGet("key2", () => "value2", 30000);
+            cache.BlitzGet("key3", () => "value3", 30000);
+            System.Threading.Thread.Sleep(10); // Ensure eviction callback has time to execute
+
+            var entryCountAfterAdding = cache.Statistics.CurrentEntryCount;
+
+            // Remove one
+            cache.Remove("key2");
+            System.Threading.Thread.Sleep(10); // Ensure eviction callback has time to execute
+
+            var entryCountAfterRemoval = cache.Statistics.CurrentEntryCount;
+            var evictionCountAfterRemoval = cache.Statistics.EvictionCount;
+
+            // Add another
+            cache.BlitzGet("key4", () => "value4", 30000);
+            System.Threading.Thread.Sleep(10); // Ensure eviction callback has time to execute
+
+            // Assert
+            Assert.AreEqual(entryCountBefore + 3, entryCountAfterAdding, "Should have 3 entries after adding");
+            Assert.AreEqual(entryCountBefore + 2, entryCountAfterRemoval, "Should have 2 entries after removal");
+            Assert.AreEqual(evictionCountBefore + 1, evictionCountAfterRemoval, "Should have 1 eviction after removal");
+            Assert.AreEqual(entryCountBefore + 3, cache.Statistics.CurrentEntryCount, "Should have 3 entries again after final addition");
+            Assert.AreEqual(evictionCountBefore + 1, cache.Statistics.EvictionCount, "Eviction count should remain at 1");
         }
     }
 }
