@@ -12,6 +12,7 @@ namespace BlitzCacheCore
         private readonly IMemoryCache memoryCache;
         private readonly long defaultMilliseconds;
         private readonly bool usingGlobalCache;
+        private readonly BlitzSemaphoreDictionary semaphoreDictionary;
 
         /// <summary>
         /// Creates a new BlitzCache instance.
@@ -23,6 +24,7 @@ namespace BlitzCacheCore
             this.defaultMilliseconds = defaultMilliseconds;
             this.usingGlobalCache = useGlobalCache;
             this.memoryCache = useGlobalCache ? globalCache : new MemoryCache(new MemoryCacheOptions());
+            this.semaphoreDictionary = new BlitzSemaphoreDictionary();
         }
 
         /// <summary>
@@ -35,7 +37,13 @@ namespace BlitzCacheCore
             this.memoryCache = memoryCache ?? throw new ArgumentNullException(nameof(memoryCache));
             this.defaultMilliseconds = defaultMilliseconds;
             this.usingGlobalCache = false; // Custom cache is never global
+            this.semaphoreDictionary = new BlitzSemaphoreDictionary();
         }
+
+        /// <summary>
+        /// Gets the current number of semaphores for testing and monitoring purposes.
+        /// </summary>
+        public int GetSemaphoreCount() => semaphoreDictionary.GetNumberOfLocks();
 
         public T BlitzGet<T>(Func<T> function, long? milliseconds = null, [CallerMemberName] string callerMemberName = "", [CallerFilePath] string sourceFilePath = "")
         {
@@ -58,8 +66,8 @@ namespace BlitzCacheCore
         {
             if (memoryCache.TryGetValue(cacheKey, out T result)) return result;
 
-            var semaphore = BlitzSemaphoreDictionary.GetSemaphore(cacheKey);
-            using (var lockHandle = semaphore.AcquireAsync().GetAwaiter().GetResult())
+            var semaphore = semaphoreDictionary.GetSemaphore(cacheKey);
+            using (var lockHandle = semaphore.Acquire())
             {
                 if (memoryCache.TryGetValue(cacheKey, out result)) return result;
 
@@ -93,7 +101,7 @@ namespace BlitzCacheCore
         {
             if (memoryCache.TryGetValue(cacheKey, out T result)) return result;
 
-            var semaphore = BlitzSemaphoreDictionary.GetSemaphore(cacheKey);
+            var semaphore = semaphoreDictionary.GetSemaphore(cacheKey);
             using (var lockHandle = await semaphore.AcquireAsync())
             {
                 if (!memoryCache.TryGetValue(cacheKey, out result))
@@ -111,8 +119,8 @@ namespace BlitzCacheCore
 
         public void BlitzUpdate<T>(string cacheKey, Func<T> function, long milliseconds)
         {
-            var semaphore = BlitzSemaphoreDictionary.GetSemaphore(cacheKey);
-            using (var lockHandle = semaphore.AcquireAsync().GetAwaiter().GetResult())
+            var semaphore = semaphoreDictionary.GetSemaphore(cacheKey);
+            using (var lockHandle = semaphore.Acquire())
             {
                 var expirationTime = DateTime.Now.AddMilliseconds(milliseconds);
                 memoryCache.Set(cacheKey, function(), expirationTime);
@@ -121,7 +129,7 @@ namespace BlitzCacheCore
 
         public async Task BlitzUpdate<T>(string cacheKey, Func<Task<T>> function, long milliseconds)
         {
-            var semaphore = BlitzSemaphoreDictionary.GetSemaphore(cacheKey);
+            var semaphore = semaphoreDictionary.GetSemaphore(cacheKey);
             using (var lockHandle = await semaphore.AcquireAsync())
             {
                 var expirationTime = DateTime.Now.AddMilliseconds(milliseconds);
@@ -131,8 +139,8 @@ namespace BlitzCacheCore
 
         public void Remove(string cacheKey)
         {
-            var semaphore = BlitzSemaphoreDictionary.GetSemaphore(cacheKey);
-            using (var lockHandle = semaphore.AcquireAsync().GetAwaiter().GetResult())
+            var semaphore = semaphoreDictionary.GetSemaphore(cacheKey);
+            using (var lockHandle = semaphore.Acquire())
             {
                 memoryCache.Remove(cacheKey);
             }
@@ -148,6 +156,9 @@ namespace BlitzCacheCore
         {
             if (dispose)
             {
+                // Dispose the semaphore dictionary first
+                semaphoreDictionary?.Dispose();
+                
                 // Only dispose the cache if it's not the global shared cache
                 if (!usingGlobalCache && memoryCache != globalCache)
                 {

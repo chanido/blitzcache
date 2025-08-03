@@ -9,13 +9,9 @@ namespace BlitzCacheCore.LockDictionaries
     public interface ICleanupEntry
     {
         /// <summary>
-        /// When this entry was last accessed.
+        /// Attempts to dispose the entry and return true if successful.
         /// </summary>
-        DateTime LastAccessed { get; set; }
-
-        /// <summary>
-        /// Updates the last accessed time to now.
-        /// </summary>
-        void UpdateAccess();
+        /// <returns>True if the entry was successfully disposed, false otherwise.</returns>
+        bool AttemptDispose();
     }
 }

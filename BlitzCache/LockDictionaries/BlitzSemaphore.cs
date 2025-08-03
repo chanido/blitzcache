@@ -11,85 +11,95 @@ namespace BlitzCacheCore.LockDictionaries
     {
         private readonly SemaphoreSlim semaphore;
         private int activeUsers = 0;
-        private bool disposed = false;
-        
-        public DateTime LastAccessed { get; set; }
-        public bool IsInUse => activeUsers > 0;
+        public DateTime LastAccessed { get; private set; } = DateTime.UtcNow;
+        public bool IsInUse => activeUsers > 0 || (DateTime.UtcNow - LastAccessed).TotalSeconds < 1;
+        public bool IsDisposed { get; private set; }= false;
+        private static readonly object blitzSemaphoreLock = new object();
+
 
         public BlitzSemaphore()
         {
             semaphore = new SemaphoreSlim(1, 1);
-            LastAccessed = DateTime.UtcNow;
         }
 
-        public void UpdateAccess() => LastAccessed = DateTime.UtcNow;
+        public void MarkAsAccessed() => LastAccessed = DateTime.UtcNow; // Update last accessed time
+
+        private void IncreaseActiveUsers()
+        {
+            if (IsDisposed) return;
+
+            lock (blitzSemaphoreLock)
+            {
+                if (IsDisposed) return; // Double-check after acquiring lock
+                MarkAsAccessed(); // Update access time
+                activeUsers++;
+            }
+        }
+
+        private void DecreaseActiveUsers()
+        {
+            if (IsDisposed || activeUsers == 0) return;
+            lock (blitzSemaphoreLock)
+            {
+                if (IsDisposed || activeUsers == 0) return; // Double-check after acquiring lock
+                activeUsers--;
+            }
+        }
 
         /// <summary>
         /// Asynchronously acquire the semaphore. Returns an IDisposable that automatically releases when disposed.
         /// </summary>
         public async Task<IDisposable> AcquireAsync()
         {
-            if (disposed) throw new ObjectDisposedException(nameof(BlitzSemaphore));
-            
-            Interlocked.Increment(ref activeUsers);
-            UpdateAccess();
+            if (IsDisposed) throw new ObjectDisposedException(nameof(BlitzSemaphore));
+
+            IncreaseActiveUsers();
             await semaphore.WaitAsync();
-            return new SemaphoreReleaser(this);
+            return new BlitzSemaphoreReleaser(this);
         }
-
+        
         /// <summary>
-        /// Asynchronously acquire the semaphore with a timeout. Returns null if timeout expires.
+        /// Synchronously acquire the semaphore. Returns an IDisposable that automatically releases when disposed.
         /// </summary>
-        public async Task<IDisposable> AcquireAsync(int timeoutMs)
-        {
-            if (disposed) throw new ObjectDisposedException(nameof(BlitzSemaphore));
-            
-            Interlocked.Increment(ref activeUsers);
-            UpdateAccess();
-            var acquired = await semaphore.WaitAsync(timeoutMs);
-            if (acquired)
-                return new SemaphoreReleaser(this);
-            
-            Interlocked.Decrement(ref activeUsers);
-            return null;
-        }
-
-        /// <summary>
-        /// Asynchronously acquire the semaphore with cancellation support.
-        /// </summary>
-        public async Task<IDisposable> AcquireAsync(CancellationToken cancellationToken)
-        {
-            if (disposed) throw new ObjectDisposedException(nameof(BlitzSemaphore));
-            
-            Interlocked.Increment(ref activeUsers);
-            UpdateAccess();
-            await semaphore.WaitAsync(cancellationToken);
-            return new SemaphoreReleaser(this);
-        }
+        public IDisposable Acquire() => AcquireAsync().GetAwaiter().GetResult();
 
         private void ReleaseSemaphore()
         {
-            if (disposed) return;
+            if (IsDisposed) return;
             
-            semaphore.Release();
-            Interlocked.Decrement(ref activeUsers);
+            lock (blitzSemaphoreLock)
+            {
+                if (IsDisposed) return; // Double-check after acquiring lock
+                semaphore.Release();
+                DecreaseActiveUsers();
+            }
+        }
+
+        public bool AttemptDispose()
+        {
+            if (IsDisposed) return true;
+            if (IsInUse) return false;
+
+            IsDisposed = true;
+            semaphore?.Dispose();
+            return true;
         }
 
         public void Dispose()
         {
-            if (!disposed)
+            if (!IsDisposed)
             {
                 semaphore?.Dispose();
-                disposed = true;
+                IsDisposed = true;
             }
         }
 
-        private class SemaphoreReleaser : IDisposable
+        private class BlitzSemaphoreReleaser : IDisposable
         {
             private readonly BlitzSemaphore entry;
             private bool disposed = false;
 
-            public SemaphoreReleaser(BlitzSemaphore entry) => this.entry = entry;
+            public BlitzSemaphoreReleaser(BlitzSemaphore entry) => this.entry = entry;
 
             public void Dispose()
             {

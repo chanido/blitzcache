@@ -17,6 +17,7 @@ namespace BlitzCacheCore
         void BlitzUpdate<T>(string cacheKey, Func<T> function, long milliseconds);
         Task BlitzUpdate<T>(string cacheKey, Func<Task<T>> function, long milliseconds);
         void Remove(string cacheKey);
+        int GetSemaphoreCount();
         void Dispose();
     }
 }

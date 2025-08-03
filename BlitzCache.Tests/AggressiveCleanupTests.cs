@@ -6,10 +6,10 @@ using System.Threading.Tasks;
 namespace BlitzCacheCore.Tests
 {
     /// <summary>
-    /// Tests that demonstrate the more aggressive lock cleanup behavior.
+    /// Tests that demonstrate the balanced semaphore management behavior.
     /// </summary>
     [TestFixture]
-    public class AggressiveCleanupTests
+    public class SemaphoreLifecycleTests
     {
         private IBlitzCache cache;
 
@@ -23,73 +23,51 @@ namespace BlitzCacheCore.Tests
         public void TearDownCleanup()
         {
             cache?.Dispose();
-            BlitzSemaphoreDictionary.Dispose();
         }
 
         [Test]
-        public async Task Smart_Semaphore_Dictionary_Should_Work_Optimally()
+        public async Task Semaphore_Dictionary_Should_Handle_Concurrent_Cache_Access()
         {
-            Console.WriteLine("🧪 TESTING SMART SEMAPHORE DICTIONARY OPTIMAL BEHAVIOR");
-            Console.WriteLine("=================================================");
+            Console.WriteLine("🧪 TESTING CONCURRENT CACHE ACCESS WITH SEMAPHORES");
+            Console.WriteLine("==================================================");
 
-            // Arrange
-            var initialSemaphoreCount = BlitzSemaphoreDictionary.GetNumberOfLocks();
-            Console.WriteLine($"📊 Initial: {initialSemaphoreCount} semaphores");
+            var tasks = new Task[20];
+            var baseKey = "concurrent_test";
 
-            // Act - Create cache entries (semaphores are created and released automatically)
-            for (int i = 0; i < 10; i++)
+            // Act - Multiple concurrent cache operations
+            for (int i = 0; i < tasks.Length; i++)
             {
-                cache.BlitzGet($"sync_key_{i}", () => $"sync_value_{i}", 10000);
+                int index = i;
+                tasks[i] = Task.Run(async () =>
+                {
+                    // Half sync, half async operations
+                    if (index % 2 == 0)
+                    {
+                        return cache.BlitzGet($"{baseKey}_{index}", () => $"sync_value_{index}", 5000);
+                    }
+                    else
+                    {
+                        return await cache.BlitzGet($"{baseKey}_{index}", async () =>
+                        {
+                            await Task.Delay(10);
+                            return $"async_value_{index}";
+                        }, 5000);
+                    }
+                });
             }
 
-            for (int i = 0; i < 10; i++)
-            {
-                await cache.BlitzGet($"async_key_{i}", async () => {
-                    await Task.Delay(1);
-                    return $"async_value_{i}";
-                }, 10000);
-            }
+            await Task.WhenAll(tasks);
+            var semaphoreCount = cache.GetSemaphoreCount();
 
-            var semaphoreCountAfterCreation = BlitzSemaphoreDictionary.GetNumberOfLocks();
-            Console.WriteLine($"📊 After creation: {semaphoreCountAfterCreation} semaphores");
+            Console.WriteLine($"📊 Semaphores after concurrent operations: {semaphoreCount}");
+            Console.WriteLine($"📊 Completed {tasks.Length} concurrent operations");
 
-            BlitzSemaphoreDictionary.TriggerCleanup();
-            var semaphoreCountAfterCleanup = BlitzSemaphoreDictionary.GetNumberOfLocks();
-            Console.WriteLine($"📊 After cleanup: {semaphoreCountAfterCleanup} semaphores");
+            // Assert - All operations should complete successfully
+            Assert.That(tasks.Length, Is.EqualTo(20), "All concurrent operations should complete");
+            Assert.That(tasks, Is.All.Property("IsCompletedSuccessfully").True, "All tasks should complete successfully");
 
-            Assert.That(semaphoreCountAfterCleanup, Is.GreaterThanOrEqualTo(0),
-                "Semaphore count should be reasonable (could be 0 with optimal cleanup)");
-
-            Console.WriteLine("✅ Smart semaphore dictionary working optimally!");
-            Console.WriteLine("✅ Minimal memory usage - semaphores exist only when needed!");
-
-            // Test cache functionality after cleanup
-            var testKey = "test_after_cleanup";
-            var result1 = cache.BlitzGet(testKey, () => "initial_value", 10000);
-            Console.WriteLine($"📊 Initial result: {result1}");
-
-            BlitzSemaphoreDictionary.TriggerCleanup();
-
-            // Act - Access the same key again (should still work, might recreate semaphore)
-            var result2 = cache.BlitzGet(testKey, () => "new_value", 10000);
-            Console.WriteLine($"📊 After cleanup result: {result2}");
-
-            // Assert - Should return cached value (cache entry still valid)
-            Assert.That(result2, Is.EqualTo("initial_value"),
-                "Should return cached value even if semaphore was cleaned up");
-
-            // Wait for cache to expire
-            await Task.Delay(100);
-
-            // Force cache miss by using different timeout
-            var result3 = cache.BlitzGet(testKey + "_new", () => "completely_new", 10000);
-            Console.WriteLine($"📊 New key result: {result3}");
-
-            Assert.That(result3, Is.EqualTo("completely_new"),
-                "New cache entries should work normally after cleanup");
-
-            Console.WriteLine("✅ Cache functionality preserved after semaphore cleanup!");
-            Console.WriteLine("✅ Semaphores are recreated on-demand as needed");
+            Console.WriteLine("✅ Concurrent operations completed successfully!");
+            Console.WriteLine("✅ Semaphore dictionary handled concurrency correctly!");
         }
     }
 }

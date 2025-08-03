@@ -33,6 +33,8 @@ namespace BlitzCacheCore
 
         public void Remove(string cacheKey) { }
 
+        public int GetSemaphoreCount() => 0;
+
         public void Dispose() { }
 
         protected virtual void Dispose(bool dispose) { }

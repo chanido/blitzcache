@@ -19,16 +19,12 @@ namespace BlitzCacheCore.Tests
         public void Setup()
         {
             cache = new BlitzCache(useGlobalCache: false);
-            
-            // Clean up any existing state
-            BlitzSemaphoreDictionary.Dispose();
         }
 
         [TearDown]
         public void Cleanup()
         {
             cache?.Dispose();
-            BlitzSemaphoreDictionary.Dispose();
         }
 
         [Test]
@@ -37,25 +33,18 @@ namespace BlitzCacheCore.Tests
             Console.WriteLine("🧪 TESTING BLITZCACHE WITH SMARTSEMAPHOREDICTIONARY");
             Console.WriteLine("===================================================");
 
-            var initialSemaphores = BlitzSemaphoreDictionary.GetNumberOfLocks();
+            var initialSemaphores = cache.GetSemaphoreCount();
             Console.WriteLine($"📊 Initial semaphores: {initialSemaphores}");
 
             // Perform sync operations
             var result1 = cache.BlitzGet("sync_key", () => "sync_value", 10000);
-            var semaphoresDuringOperation = BlitzSemaphoreDictionary.GetNumberOfLocks();
+            var semaphoresDuringOperation = cache.GetSemaphoreCount();
             
             Console.WriteLine($"📊 Semaphores during operation: {semaphoresDuringOperation}");
             Assert.That(result1, Is.EqualTo("sync_value"));
             Assert.That(semaphoresDuringOperation, Is.GreaterThan(initialSemaphores), "Should create semaphores for sync operations");
 
-            // Trigger cleanup
-            Console.WriteLine("🧹 Triggering cleanup...");
-            BlitzSemaphoreDictionary.TriggerCleanup();
-            
-            var semaphoresAfterCleanup = BlitzSemaphoreDictionary.GetNumberOfLocks();
-            Console.WriteLine($"📊 Semaphores after cleanup: {semaphoresAfterCleanup}");
-
-            // Cache should still work
+            // Cache should work correctly with semaphore management
             var result2 = cache.BlitzGet("sync_key", () => "new_value", 10000);
             Assert.That(result2, Is.EqualTo("sync_value"), "Should return cached value");
 
@@ -68,7 +57,7 @@ namespace BlitzCacheCore.Tests
             Console.WriteLine("🧪 TESTING BLITZCACHE WITH SMARTSEMAPHOREDICTIONARY");
             Console.WriteLine("===================================================");
 
-            var initialSemaphores = BlitzSemaphoreDictionary.GetNumberOfLocks();
+            var initialSemaphores = cache.GetSemaphoreCount();
             Console.WriteLine($"📊 Initial semaphores: {initialSemaphores}");
 
             // Perform async operations
@@ -77,20 +66,13 @@ namespace BlitzCacheCore.Tests
                 return "async_value";
             }, 10000);
 
-            var semaphoresDuringOperation = BlitzSemaphoreDictionary.GetNumberOfLocks();
+            var semaphoresDuringOperation = cache.GetSemaphoreCount();
             Console.WriteLine($"📊 Semaphores during operation: {semaphoresDuringOperation}");
             
             Assert.That(result1, Is.EqualTo("async_value"));
             Assert.That(semaphoresDuringOperation, Is.GreaterThan(initialSemaphores), "Should create semaphores for async operations");
 
-            // Trigger cleanup
-            Console.WriteLine("🧹 Triggering cleanup...");
-            BlitzSemaphoreDictionary.TriggerCleanup();
-            
-            var semaphoresAfterCleanup = BlitzSemaphoreDictionary.GetNumberOfLocks();
-            Console.WriteLine($"📊 Semaphores after cleanup: {semaphoresAfterCleanup}");
-
-            // Cache should still work
+            // Cache should work correctly with semaphore management
             var result2 = await cache.BlitzGet("async_key", async () => {
                 await Task.Delay(10);
                 return "new_async_value";
@@ -107,12 +89,12 @@ namespace BlitzCacheCore.Tests
             Console.WriteLine("🧪 TESTING BLITZUPDATE WITH SMARTSEMAPHOREDICTIONARY");
             Console.WriteLine("====================================================");
 
-            var initialSemaphores = BlitzSemaphoreDictionary.GetNumberOfLocks();
+            var initialSemaphores = cache.GetSemaphoreCount();
             
             // Update cache
             cache.BlitzUpdate("update_key", () => "updated_value", 10000);
             
-            var semaphoresAfterUpdate = BlitzSemaphoreDictionary.GetNumberOfLocks();
+            var semaphoresAfterUpdate = cache.GetSemaphoreCount();
             Console.WriteLine($"📊 Semaphores after update: {semaphoresAfterUpdate}");
 
             // Verify the update worked
@@ -128,7 +110,7 @@ namespace BlitzCacheCore.Tests
             Console.WriteLine("🧪 TESTING ASYNC BLITZUPDATE WITH SMARTSEMAPHOREDICTIONARY");
             Console.WriteLine("==========================================================");
 
-            var initialSemaphores = BlitzSemaphoreDictionary.GetNumberOfLocks();
+            var initialSemaphores = cache.GetSemaphoreCount();
             
             // Update cache asynchronously
             await cache.BlitzUpdate("async_update_key", async () => {
@@ -136,7 +118,7 @@ namespace BlitzCacheCore.Tests
                 return "async_updated_value";
             }, 10000);
             
-            var semaphoresAfterUpdate = BlitzSemaphoreDictionary.GetNumberOfLocks();
+            var semaphoresAfterUpdate = cache.GetSemaphoreCount();
             Console.WriteLine($"📊 Semaphores after async update: {semaphoresAfterUpdate}");
 
             // Verify the update worked
@@ -160,19 +142,12 @@ namespace BlitzCacheCore.Tests
             var result = cache.BlitzGet("short_expiry", () => "expires_soon", 50); // 50ms expiration
             Assert.That(result, Is.EqualTo("expires_soon"));
 
-            var semaphoresAfterCreation = BlitzSemaphoreDictionary.GetNumberOfLocks();
+            var semaphoresAfterCreation = cache.GetSemaphoreCount();
             Console.WriteLine($"📊 Semaphores after creation: {semaphoresAfterCreation}");
 
             // Wait for cache to expire
             Console.WriteLine("⏱️ Waiting for cache expiration...");
             System.Threading.Thread.Sleep(100);
-
-            // Trigger cleanup
-            Console.WriteLine("🧹 Triggering cleanup after cache expiration...");
-            BlitzSemaphoreDictionary.TriggerCleanup();
-
-            var semaphoresAfterCleanup = BlitzSemaphoreDictionary.GetNumberOfLocks();
-            Console.WriteLine($"📊 Semaphores after cleanup: {semaphoresAfterCleanup}");
 
             // Verify cache actually expired by trying to get new value
             var newResult = cache.BlitzGet("short_expiry", () => "new_value_after_expiry", 10000);
@@ -214,7 +189,7 @@ namespace BlitzCacheCore.Tests
             Console.WriteLine($"⏱️ Time for {iterations} mixed operations: {duration.TotalMilliseconds:F2}ms");
             Console.WriteLine($"📊 Average per operation: {duration.TotalMilliseconds / iterations:F4}ms");
 
-            var finalSemaphores = BlitzSemaphoreDictionary.GetNumberOfLocks();
+            var finalSemaphores = cache.GetSemaphoreCount();
 
             Console.WriteLine($"📊 Final semaphores: {finalSemaphores}");
 
