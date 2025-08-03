@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Concurrent;
-using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -16,11 +15,8 @@ namespace BlitzCacheCore.LockDictionaries
         private readonly SmartCleanupManager<string, BlitzSemaphore> cleanupManager;
         private bool disposed = false;
 
-        public BlitzSemaphoreDictionary()
-        {
-            // Only keep semaphores that are actively in use or recently used
+        public BlitzSemaphoreDictionary() =>
             cleanupManager = new SmartCleanupManager<string, BlitzSemaphore>(semaphores, cleanupInterval: TimeSpan.FromSeconds(10));
-        }
 
         /// <summary>
         /// Gets or creates a BlitzSemaphore for the specified key.
@@ -31,21 +27,9 @@ namespace BlitzCacheCore.LockDictionaries
         {
             if (disposed) throw new ObjectDisposedException(nameof(BlitzSemaphoreDictionary));
             
-            if (!semaphores.ContainsKey(key))
-            {
-                semaphores.TryAdd(key, new BlitzSemaphore());
-            }
-
-            if (semaphores.TryGetValue(key, out var entry))
-            {
-                entry.MarkAsAccessed();
-                return entry;
-            }
-
-            // Fallback - should not happen
-            var fallbackEntry = new BlitzSemaphore();
-            semaphores.TryAdd(key, fallbackEntry);
-            return fallbackEntry;
+            var semaphore = semaphores.GetOrAdd(key, _ => new BlitzSemaphore());
+            semaphore.MarkAsAccessed();
+            return semaphore;
         }
 
         public int GetNumberOfLocks() => semaphores.Count;
@@ -54,16 +38,15 @@ namespace BlitzCacheCore.LockDictionaries
         {
             if (disposed) return;
             
+            disposed = true;
             cleanupManager?.Dispose();
 
-            // Dispose all semaphores
             foreach (var entry in semaphores.Values)
             {
                 entry.Dispose();
             }
 
             semaphores?.Clear();
-            disposed = true;
         }
     }
 }

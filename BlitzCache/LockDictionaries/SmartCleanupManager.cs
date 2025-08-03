@@ -1,7 +1,5 @@
 using System;
 using System.Collections.Concurrent;
-using System.Collections.Generic;
-using System.Linq;
 using System.Threading;
 
 namespace BlitzCacheCore.LockDictionaries
@@ -13,7 +11,6 @@ namespace BlitzCacheCore.LockDictionaries
     {
         private readonly ConcurrentDictionary<TKey, TValue> dictionary;
         private readonly Timer cleanupTimer;
-        private readonly TimeSpan cleanupInterval;
         private bool disposed = false;
 
         /// <summary>
@@ -26,10 +23,9 @@ namespace BlitzCacheCore.LockDictionaries
             TimeSpan? cleanupInterval = null)
         {
             this.dictionary = dictionary ?? throw new ArgumentNullException(nameof(dictionary));
-            this.cleanupInterval = cleanupInterval ?? TimeSpan.FromMinutes(5);
+            var interval = cleanupInterval ?? TimeSpan.FromMinutes(5);
 
-            // Start the cleanup timer
-            cleanupTimer = new Timer(PerformCleanup, null, this.cleanupInterval, this.cleanupInterval);
+            cleanupTimer = new Timer(PerformCleanup, null, interval, interval);
         }
 
         /// <summary>
@@ -41,22 +37,17 @@ namespace BlitzCacheCore.LockDictionaries
 
             try
             {
-                var keysToRemove = dictionary
-                    .Select(kvp => kvp.Key)
-                    .ToList();
-
-                foreach (var key in keysToRemove)
+                foreach (var kvp in dictionary)
                 {
-                    if (dictionary.TryGetValue(key, out var entry) && entry.AttemptDispose())
+                    if (kvp.Value.AttemptDispose())
                     {
-                        dictionary.TryRemove(key, out _);
-                    } // If we can't dispose, we just leave it in the dictionary for the next cleanup
+                        dictionary.TryRemove(kvp.Key, out _);
+                    }
                 }
             }
             catch
             {
                 // Ignore cleanup errors to prevent timer from stopping
-                // In a production scenario, you might want to log this
             }
         }
 
@@ -65,11 +56,10 @@ namespace BlitzCacheCore.LockDictionaries
         /// </summary>
         public void Dispose()
         {
-            if (!disposed)
-            {
-                cleanupTimer?.Dispose();
-                disposed = true;
-            }
+            if (disposed) return;
+            
+            disposed = true;
+            cleanupTimer?.Dispose();
         }
     }
 }

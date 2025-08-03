@@ -10,40 +10,45 @@ namespace BlitzCacheCore.LockDictionaries
     public class BlitzSemaphore : ICleanupEntry, IDisposable
     {
         private readonly SemaphoreSlim semaphore;
+        private readonly object lockObject = new object();
         private int activeUsers = 0;
         public DateTime LastAccessed { get; private set; } = DateTime.UtcNow;
         public bool IsInUse => activeUsers > 0 || (DateTime.UtcNow - LastAccessed).TotalSeconds < 1;
-        public bool IsDisposed { get; private set; }= false;
-        private static readonly object blitzSemaphoreLock = new object();
+        public bool IsDisposed { get; private set; } = false;
 
 
-        public BlitzSemaphore()
+        public BlitzSemaphore() => semaphore = new SemaphoreSlim(1, 1);
+
+        public void MarkAsAccessed() => LastAccessed = DateTime.UtcNow;
+
+        private bool ExecuteIfNotDisposed(Action action)
         {
-            semaphore = new SemaphoreSlim(1, 1);
+            if (IsDisposed) return false;
+            
+            lock (lockObject)
+            {
+                if (IsDisposed) return false;
+                action();
+                return true;
+            }
         }
-
-        public void MarkAsAccessed() => LastAccessed = DateTime.UtcNow; // Update last accessed time
 
         private void IncreaseActiveUsers()
         {
-            if (IsDisposed) return;
-
-            lock (blitzSemaphoreLock)
+            ExecuteIfNotDisposed(() =>
             {
-                if (IsDisposed) return; // Double-check after acquiring lock
-                MarkAsAccessed(); // Update access time
+                MarkAsAccessed();
                 activeUsers++;
-            }
+            });
         }
 
         private void DecreaseActiveUsers()
         {
-            if (IsDisposed || activeUsers == 0) return;
-            lock (blitzSemaphoreLock)
+            if (activeUsers == 0) return;
+            ExecuteIfNotDisposed(() =>
             {
-                if (IsDisposed || activeUsers == 0) return; // Double-check after acquiring lock
-                activeUsers--;
-            }
+                if (activeUsers > 0) activeUsers--;
+            });
         }
 
         /// <summary>
@@ -65,12 +70,8 @@ namespace BlitzCacheCore.LockDictionaries
 
         private void ReleaseSemaphore()
         {
-            if (IsDisposed) return;
-            
-            lock (blitzSemaphoreLock)
+            if (ExecuteIfNotDisposed(() => semaphore.Release()))
             {
-                if (IsDisposed) return; // Double-check after acquiring lock
-                semaphore.Release();
                 DecreaseActiveUsers();
             }
         }
@@ -78,20 +79,32 @@ namespace BlitzCacheCore.LockDictionaries
         public bool AttemptDispose()
         {
             if (IsDisposed) return true;
-            if (IsInUse) return false;
-
-            IsDisposed = true;
-            semaphore?.Dispose();
-            return true;
+            
+            lock (lockObject)
+            {
+                if (IsDisposed) return true;
+                if (IsInUse) return false;
+                
+                PerformDisposal();
+                return true;
+            }
         }
 
         public void Dispose()
         {
-            if (!IsDisposed)
+            if (IsDisposed) return;
+            
+            lock (lockObject)
             {
-                semaphore?.Dispose();
-                IsDisposed = true;
+                if (IsDisposed) return;
+                PerformDisposal();
             }
+        }
+
+        private void PerformDisposal()
+        {
+            IsDisposed = true;
+            semaphore?.Dispose();
         }
 
         private class BlitzSemaphoreReleaser : IDisposable
@@ -103,11 +116,10 @@ namespace BlitzCacheCore.LockDictionaries
 
             public void Dispose()
             {
-                if (!disposed)
-                {
-                    entry.ReleaseSemaphore();
-                    disposed = true;
-                }
+                if (disposed) return;
+                
+                entry.ReleaseSemaphore();
+                disposed = true;
             }
         }
     }

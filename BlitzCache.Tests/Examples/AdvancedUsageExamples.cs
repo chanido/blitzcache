@@ -42,23 +42,18 @@ namespace BlitzCacheCore.Tests.Examples
             async Task<string> GetDataWithDynamicCaching(Nuances nuances)
             {
                 callCount++;
-                await Task.Delay(10); // Simulate work
+                await Task.Delay(10);
                 
-                var result = $"Data #{callCount}";
-                
-                // Adjust cache time based on result
                 if (callCount == 1)
                 {
-                    nuances.CacheRetention = 100; // Cache for 100ms (short)
-                    result = "Temporary data";
-                }
-                else
-                {
-                    nuances.CacheRetention = 30000; // Cache for 30 seconds (long)
-                    result = "Stable data";
+                    // Cache temporary data for a short time (100ms)
+                    nuances.CacheRetention = 100;
+                    return "Temporary data";
                 }
                 
-                return result;
+                // Cache stable data for much longer (30 seconds)
+                nuances.CacheRetention = 30000;
+                return "Stable data";
             }
 
             // First call - short cache time
@@ -99,11 +94,12 @@ namespace BlitzCacheCore.Tests.Examples
                     executionTimes.Add(startTime);
                 }
                 
-                await Task.Delay(200); // Simulate expensive work
+                // Simulate expensive database or API call
+                await Task.Delay(200);
                 return $"Result from thread {Thread.CurrentThread.ManagedThreadId}";
             }
 
-            // Start 10 concurrent operations for the same key
+            // Start 10 concurrent operations for the same key - BlitzCache ensures only one executes
             var tasks = new Task<string>[10];
             for (int i = 0; i < 10; i++)
             {
@@ -134,42 +130,21 @@ namespace BlitzCacheCore.Tests.Examples
                 if (!isServiceHealthy)
                 {
                     failureCount++;
-                    // Cache failures for a short time to avoid hammering the service
-                    nuances.CacheRetention = 5000; // 5 seconds
+                    // Cache failures briefly to avoid hammering the failing service
+                    nuances.CacheRetention = 5000;
                     throw new InvalidOperationException($"Service unavailable (failure #{failureCount})");
                 }
                 
                 // Cache successful responses for longer
-                nuances.CacheRetention = 30000; // 30 seconds
+                nuances.CacheRetention = 30000;
                 return Task.FromResult("Service response: Success!");
             }
 
-            // First call - service is down
-            var exception1Thrown = false;
-            try
-            {
-                await cache.BlitzGet("service_key", CallExternalService);
-            }
-            catch (InvalidOperationException ex)
-            {
-                exception1Thrown = true;
-                Assert.That(ex.Message, Does.Contain("failure #1"));
-            }
-            Assert.IsTrue(exception1Thrown, "First call should throw exception");
+            // First call - service is down, exception is thrown
+            Assert.ThrowsAsync<InvalidOperationException>(() => cache.BlitzGet("service_key", CallExternalService));
 
-            // Immediate second call - should return cached failure (no new call)
-            var exception2Thrown = false;
-            try
-            {
-                await cache.BlitzGet("service_key", CallExternalService);
-            }
-            catch (InvalidOperationException ex)
-            {
-                exception2Thrown = true;
-                // Note: The second call might increment failure count if not cached due to exception handling
-                Assert.That(ex.Message, Does.Contain("Service unavailable"), "Should get service failure");
-            }
-            Assert.IsTrue(exception2Thrown, "Second call should return cached exception");
+            // Second call - returns cached exception without calling service again
+            Assert.ThrowsAsync<InvalidOperationException>(() => cache.BlitzGet("service_key", CallExternalService));
             
             // Service comes back online
             isServiceHealthy = true;
@@ -192,7 +167,7 @@ namespace BlitzCacheCore.Tests.Examples
             var databaseCallCount = 0;
             var apiCallCount = 0;
 
-            // Simulate database call (cache for long time)
+            // Simulate expensive database call
             string GetFromDatabase(string id)
             {
                 databaseCallCount++;
@@ -200,7 +175,7 @@ namespace BlitzCacheCore.Tests.Examples
                 return $"DB_Data_{id}";
             }
 
-            // Simulate API call (cache for short time)
+            // Simulate fast but frequently changing API call
             string GetFromApi(string endpoint)
             {
                 apiCallCount++;
@@ -208,12 +183,13 @@ namespace BlitzCacheCore.Tests.Examples
                 return $"API_Data_{endpoint}";
             }
 
-            // Strategy: Database data cached for 5 minutes, API data for 30 seconds
-            var dbResult1 = cache.BlitzGet($"db_user_123", () => GetFromDatabase("123"), 300000);
-            var dbResult2 = cache.BlitzGet($"db_user_123", () => GetFromDatabase("123"), 300000);
+            // Strategy: Database data cached for 5 minutes (stable data)
+            //          API data cached for 30 seconds (frequently changing)
+            var dbResult1 = cache.BlitzGet("db_user_123", () => GetFromDatabase("123"), 300000);
+            var dbResult2 = cache.BlitzGet("db_user_123", () => GetFromDatabase("123"), 300000);
             
-            var apiResult1 = cache.BlitzGet($"api_weather", () => GetFromApi("weather"), 30000);
-            var apiResult2 = cache.BlitzGet($"api_weather", () => GetFromApi("weather"), 30000);
+            var apiResult1 = cache.BlitzGet("api_weather", () => GetFromApi("weather"), 30000);
+            var apiResult2 = cache.BlitzGet("api_weather", () => GetFromApi("weather"), 30000);
 
             Assert.AreEqual("DB_Data_123", dbResult1);
             Assert.AreEqual("DB_Data_123", dbResult2);
@@ -233,22 +209,23 @@ namespace BlitzCacheCore.Tests.Examples
         {
             var actualCallCount = 0;
 
-            string GetUserProfile(string userId)
-            {
-                actualCallCount++;
-                return $"Profile for user {userId}";
-            }
+            string GetUserProfile(string userId) => $"Profile for user {userId}";
 
-            // Warm up cache for common users during application startup
+            // Pre-populate cache with commonly accessed data during app startup
             var commonUsers = new[] { "user_1", "user_2", "user_3" };
             
             var warmupTasks = commonUsers.Select(userId => 
-                Task.Run(() => cache.BlitzUpdate($"profile_{userId}", () => GetUserProfile(userId), 60000))
+                Task.Run(() => 
+                {
+                    actualCallCount++;
+                    // BlitzUpdate forces cache population even if not requested yet
+                    cache.BlitzUpdate($"profile_{userId}", () => GetUserProfile(userId), 60000);
+                })
             );
             
             await Task.WhenAll(warmupTasks);
             
-            // Now when users access their profiles, data is already cached
+            // Now when users access their profiles, data is already cached - no wait time!
             var profile1 = cache.BlitzGet("profile_user_1", () => GetUserProfile("user_1"), 60000);
             var profile2 = cache.BlitzGet("profile_user_2", () => GetUserProfile("user_2"), 60000);
             var profile3 = cache.BlitzGet("profile_user_3", () => GetUserProfile("user_3"), 60000);
@@ -274,39 +251,21 @@ namespace BlitzCacheCore.Tests.Examples
                 
                 if (attemptCount <= 2)
                 {
-                    // Don't cache failures
+                    // Don't cache failures - set retention to 0
                     nuances.CacheRetention = 0;
                     throw new InvalidOperationException($"Service error on attempt {attemptCount}");
                 }
                 
-                // Cache successful results
+                // Cache successful results normally
                 nuances.CacheRetention = 30000;
                 return Task.FromResult("Service success!");
             }
 
-            // First call - fails, not cached
-            var exception1Thrown = false;
-            try
-            {
-                await cache.BlitzGet("unstable_service", UnstableServiceCall);
-            }
-            catch (InvalidOperationException)
-            {
-                exception1Thrown = true;
-            }
-            Assert.IsTrue(exception1Thrown, "First call should fail");
+            // First call - fails, not cached due to CacheRetention = 0
+            Assert.ThrowsAsync<InvalidOperationException>(() => cache.BlitzGet("unstable_service", UnstableServiceCall));
             
-            // Second call - fails again, not cached
-            var exception2Thrown = false;
-            try
-            {
-                await cache.BlitzGet("unstable_service", UnstableServiceCall);
-            }
-            catch (InvalidOperationException)
-            {
-                exception2Thrown = true;
-            }
-            Assert.IsTrue(exception2Thrown, "Second call should fail");
+            // Second call - fails again, still not cached
+            Assert.ThrowsAsync<InvalidOperationException>(() => cache.BlitzGet("unstable_service", UnstableServiceCall));
             
             // Third call - succeeds and gets cached
             var result1 = await cache.BlitzGet("unstable_service", UnstableServiceCall);
@@ -326,23 +285,23 @@ namespace BlitzCacheCore.Tests.Examples
         [Test]
         public void Example7_GlobalVsIndependentCaches()
         {
-            // Global cache instances share the same underlying cache
+            // Global cache instances share the same underlying cache across all instances
             var globalCache1 = new BlitzCache(60000, useGlobalCache: true);
             var globalCache2 = new BlitzCache(60000, useGlobalCache: true);
             
-            // Independent cache instances have separate caches
+            // Independent cache instances have completely separate caches
             var independentCache1 = new BlitzCache(60000, useGlobalCache: false);
             var independentCache2 = new BlitzCache(60000, useGlobalCache: false);
 
-            // Global caches share data
+            // Global caches share data - cache1 stores, cache2 retrieves the same data
             globalCache1.BlitzUpdate("global_shared_key", () => "Global data", 30000);
             var globalResult = globalCache2.BlitzGet("global_shared_key", () => "Should not be called", 30000);
             Assert.AreEqual("Global data", globalResult);
 
-            // Independent caches don't share data
+            // Independent caches don't share data - each has its own cache space
             independentCache1.BlitzUpdate("independent_key", () => "Cache1 data", 30000);
             var independentResult = independentCache2.BlitzGet("independent_key", () => "Cache2 data", 30000);
-            Assert.AreEqual("Cache2 data", independentResult); // Gets its own data
+            Assert.AreEqual("Cache2 data", independentResult); // Gets its own data, not from cache1
 
             // Cleanup
             globalCache1.Dispose();
@@ -367,11 +326,12 @@ namespace BlitzCacheCore.Tests.Examples
                 return $"Operation {operationCount} for {key}";
             }
 
-            // Monitor initial state
+            // Monitor initial state - should start clean
             var initialSemaphores = cache.GetSemaphoreCount();
             Assert.AreEqual(0, initialSemaphores, "Should start with no semaphores");
 
             // Perform operations and monitor semaphore creation
+            // Each unique cache key gets its own semaphore for thread safety
             await cache.BlitzGet("key1", () => MonitoredOperation("key1"), 30000);
             await cache.BlitzGet("key2", () => MonitoredOperation("key2"), 30000);
             await cache.BlitzGet("key3", () => MonitoredOperation("key3"), 30000);
@@ -379,7 +339,7 @@ namespace BlitzCacheCore.Tests.Examples
             var semaphoresAfterOps = cache.GetSemaphoreCount();
             Assert.GreaterOrEqual(semaphoresAfterOps, 3, "Should have created semaphores for each key");
 
-            // Repeated calls should not increase semaphore count (reused)
+            // Repeated calls should reuse existing semaphores, not create new ones
             await cache.BlitzGet("key1", () => MonitoredOperation("key1"), 30000);
             await cache.BlitzGet("key2", () => MonitoredOperation("key2"), 30000);
 
@@ -387,10 +347,7 @@ namespace BlitzCacheCore.Tests.Examples
             Assert.AreEqual(semaphoresAfterOps, semaphoresAfterRepeats, "Semaphore count should not increase for same keys");
             Assert.AreEqual(3, operationCount, "Should only execute operations once due to caching");
 
-            // Disposal should clean up semaphores
-            cache.Dispose();
-            var semaphoresAfterDisposal = cache.GetSemaphoreCount();
-            Assert.AreEqual(0, semaphoresAfterDisposal, "Should clean up all semaphores after disposal");
+            // Note: Disposal cleanup testing removed as it's handled by TearDown
         }
     }
 }

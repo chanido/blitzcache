@@ -22,9 +22,9 @@ namespace BlitzCacheCore
         public BlitzCache(long defaultMilliseconds = 60000, bool useGlobalCache = true)
         {
             this.defaultMilliseconds = defaultMilliseconds;
-            this.usingGlobalCache = useGlobalCache;
-            this.memoryCache = useGlobalCache ? globalCache : new MemoryCache(new MemoryCacheOptions());
-            this.semaphoreDictionary = new BlitzSemaphoreDictionary();
+            usingGlobalCache = useGlobalCache;
+            memoryCache = useGlobalCache ? globalCache : new MemoryCache(new MemoryCacheOptions());
+            semaphoreDictionary = new BlitzSemaphoreDictionary();
         }
 
         /// <summary>
@@ -36,8 +36,8 @@ namespace BlitzCacheCore
         {
             this.memoryCache = memoryCache ?? throw new ArgumentNullException(nameof(memoryCache));
             this.defaultMilliseconds = defaultMilliseconds;
-            this.usingGlobalCache = false; // Custom cache is never global
-            this.semaphoreDictionary = new BlitzSemaphoreDictionary();
+            usingGlobalCache = false; // Custom cache is never global
+            semaphoreDictionary = new BlitzSemaphoreDictionary();
         }
 
         /// <summary>
@@ -45,22 +45,13 @@ namespace BlitzCacheCore
         /// </summary>
         public int GetSemaphoreCount() => semaphoreDictionary.GetNumberOfLocks();
 
-        public T BlitzGet<T>(Func<T> function, long? milliseconds = null, [CallerMemberName] string callerMemberName = "", [CallerFilePath] string sourceFilePath = "")
-        {
-            T f(Nuances nuances) => function();
-
-            return BlitzGet(f, milliseconds, callerMemberName, sourceFilePath);
-        }
+        public T BlitzGet<T>(Func<T> function, long? milliseconds = null, [CallerMemberName] string callerMemberName = "", [CallerFilePath] string sourceFilePath = "") =>
+            BlitzGet(callerMemberName + sourceFilePath, nuances => function(), milliseconds);
 
         public T BlitzGet<T>(Func<Nuances, T> function, long? milliseconds = null, [CallerMemberName] string callerMemberName = "", [CallerFilePath] string sourceFilePath = "") =>
             BlitzGet(callerMemberName + sourceFilePath, function, milliseconds);
 
-        public T BlitzGet<T>(string cacheKey, Func<T> function, long? milliseconds = null)
-        {
-            T f(Nuances nuances) => function();
-
-            return BlitzGet(cacheKey, f, milliseconds);
-        }
+        public T BlitzGet<T>(string cacheKey, Func<T> function, long? milliseconds = null) => BlitzGet(cacheKey, nuances => function(), milliseconds);
 
         public T BlitzGet<T>(string cacheKey, Func<Nuances, T> function, long? milliseconds = null)
         {
@@ -74,29 +65,21 @@ namespace BlitzCacheCore
                 var nuances = new Nuances();
                 result = function.Invoke(nuances);
 
-                var expirationTime = DateTime.Now.AddMilliseconds(nuances.CacheRetention ?? milliseconds ?? defaultMilliseconds);
+                var expirationTime = DateTime.UtcNow.AddMilliseconds(nuances.CacheRetention ?? milliseconds ?? defaultMilliseconds);
                 memoryCache.Set(cacheKey, result, expirationTime);
             }
 
             return result;
         }
 
-        public Task<T> BlitzGet<T>(Func<Task<T>> function, long? milliseconds = null, [CallerMemberName] string callerMemberName = "", [CallerFilePath] string sourceFilePath = "")
-        {
-            Task<T> f(Nuances nuances) => function();
-
-            return BlitzGet(f, milliseconds, callerMemberName, sourceFilePath);
-        }
+        public Task<T> BlitzGet<T>(Func<Task<T>> function, long? milliseconds = null, [CallerMemberName] string callerMemberName = "", [CallerFilePath] string sourceFilePath = "") =>
+            BlitzGet(callerMemberName + sourceFilePath, nuances => function(), milliseconds);
 
         public Task<T> BlitzGet<T>(Func<Nuances, Task<T>> function, long? milliseconds = null, [CallerMemberName] string callerMemberName = "", [CallerFilePath] string sourceFilePath = "") =>
             BlitzGet(callerMemberName + sourceFilePath, function, milliseconds);
 
-        public Task<T> BlitzGet<T>(string cacheKey, Func<Task<T>> function, long? milliseconds = null)
-        {
-            Task<T> f(Nuances nuances) => function();
-
-            return BlitzGet(cacheKey, f, milliseconds);
-        }
+        public Task<T> BlitzGet<T>(string cacheKey, Func<Task<T>> function, long? milliseconds = null) =>
+            BlitzGet(cacheKey, nuances => function(), milliseconds);
         public async Task<T> BlitzGet<T>(string cacheKey, Func<Nuances, Task<T>> function, long? milliseconds = null)
         {
             if (memoryCache.TryGetValue(cacheKey, out T result)) return result;
@@ -104,14 +87,13 @@ namespace BlitzCacheCore
             var semaphore = semaphoreDictionary.GetSemaphore(cacheKey);
             using (var lockHandle = await semaphore.AcquireAsync())
             {
-                if (!memoryCache.TryGetValue(cacheKey, out result))
-                {
-                    var nuances = new Nuances();
-                    result = await function.Invoke(nuances);
-                    
-                    var expirationTime = DateTime.Now.AddMilliseconds(nuances.CacheRetention ?? milliseconds ?? defaultMilliseconds);
-                    memoryCache.Set(cacheKey, result, expirationTime);
-                }
+                if (memoryCache.TryGetValue(cacheKey, out result)) return result;
+                
+                var nuances = new Nuances();
+                result = await function.Invoke(nuances);
+                
+                var expirationTime = DateTime.UtcNow.AddMilliseconds(nuances.CacheRetention ?? milliseconds ?? defaultMilliseconds);
+                memoryCache.Set(cacheKey, result, expirationTime);
             }
 
             return result;
@@ -122,7 +104,7 @@ namespace BlitzCacheCore
             var semaphore = semaphoreDictionary.GetSemaphore(cacheKey);
             using (var lockHandle = semaphore.Acquire())
             {
-                var expirationTime = DateTime.Now.AddMilliseconds(milliseconds);
+                var expirationTime = DateTime.UtcNow.AddMilliseconds(milliseconds);
                 memoryCache.Set(cacheKey, function(), expirationTime);
             }
         }
@@ -132,7 +114,7 @@ namespace BlitzCacheCore
             var semaphore = semaphoreDictionary.GetSemaphore(cacheKey);
             using (var lockHandle = await semaphore.AcquireAsync())
             {
-                var expirationTime = DateTime.Now.AddMilliseconds(milliseconds);
+                var expirationTime = DateTime.UtcNow.AddMilliseconds(milliseconds);
                 memoryCache.Set(cacheKey, await function.Invoke(), expirationTime);
             }
         }
@@ -148,22 +130,11 @@ namespace BlitzCacheCore
 
         public void Dispose()
         {
-            Dispose(true);
-            GC.SuppressFinalize(this);
-        }
-
-        protected virtual void Dispose(bool dispose)
-        {
-            if (dispose)
+            semaphoreDictionary?.Dispose();
+            
+            if (!usingGlobalCache && memoryCache != globalCache)
             {
-                // Dispose the semaphore dictionary first
-                semaphoreDictionary?.Dispose();
-                
-                // Only dispose the cache if it's not the global shared cache
-                if (!usingGlobalCache && memoryCache != globalCache)
-                {
-                    memoryCache?.Dispose();
-                }
+                memoryCache?.Dispose();
             }
         }
     }

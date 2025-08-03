@@ -34,7 +34,7 @@ namespace BlitzCacheCore.Tests.Examples
         [Test]
         public void Example1_BasicSyncCaching()
         {
-            // Simulate an expensive operation
+            // Simulate an expensive operation (database call, API request, computation, etc.)
             var callCount = 0;
             string ExpensiveOperation()
             {
@@ -43,13 +43,13 @@ namespace BlitzCacheCore.Tests.Examples
                 return $"Computed result #{callCount}";
             }
 
-            // First call - will execute the function
+            // First call - BlitzCache will execute the function and cache the result
             var result1 = cache.BlitzGet("my_key", ExpensiveOperation, 30000); // Cache for 30 seconds
             
-            // Second call - will return cached value (no function execution)
+            // Second call - BlitzCache returns cached value instantly, no function execution!
             var result2 = cache.BlitzGet("my_key", ExpensiveOperation, 30000);
             
-            // Verify caching worked
+            // Verify caching worked - both results are identical, function only called once
             Assert.AreEqual("Computed result #1", result1);
             Assert.AreEqual("Computed result #1", result2); // Same cached result
             Assert.AreEqual(1, callCount, "Function should only be called once");
@@ -62,7 +62,7 @@ namespace BlitzCacheCore.Tests.Examples
         [Test]
         public async Task Example2_BasicAsyncCaching()
         {
-            // Simulate an expensive async operation
+            // Simulate an expensive async operation (HTTP calls, database queries, etc.)
             var callCount = 0;
             async Task<string> ExpensiveAsyncOperation()
             {
@@ -71,13 +71,13 @@ namespace BlitzCacheCore.Tests.Examples
                 return $"Async result #{callCount}";
             }
 
-            // First call - will execute the async function
+            // BlitzCache works seamlessly with async/await - just use await!
             var result1 = await cache.BlitzGet("async_key", ExpensiveAsyncOperation, 30000);
             
-            // Second call - will return cached value
+            // Second call returns cached result, no async operation needed
             var result2 = await cache.BlitzGet("async_key", ExpensiveAsyncOperation, 30000);
             
-            // Verify caching worked
+            // Verify async caching worked perfectly
             Assert.AreEqual("Async result #1", result1);
             Assert.AreEqual("Async result #1", result2);
             Assert.AreEqual(1, callCount, "Async function should only be called once");
@@ -95,11 +95,12 @@ namespace BlitzCacheCore.Tests.Examples
                 return $"User data for {userId}";
             }
 
-            // Cache data for different users
+            // Different cache keys = different cached values
+            // Perfect for user-specific data, API endpoints, etc.
             var user1Data = cache.BlitzGet("user_123", () => GetUserData("123"), 30000);
             var user2Data = cache.BlitzGet("user_456", () => GetUserData("456"), 30000);
             
-            // Each key has its own cached value
+            // Each key maintains its own separate cached value
             Assert.AreEqual("User data for 123", user1Data);
             Assert.AreEqual("User data for 456", user2Data);
             Assert.AreNotEqual(user1Data, user2Data);
@@ -119,17 +120,17 @@ namespace BlitzCacheCore.Tests.Examples
                 return DateTime.Now.ToString("HH:mm:ss.fff");
             }
 
-            // Cache with very short expiration (100ms)
+            // Cache with very short expiration (100ms) - perfect for testing
             var result1 = cache.BlitzGet("timestamp", GetTimestamp, 100);
             
-            // Immediate second call - should return cached value
+            // Immediate second call - returns cached value (no function execution)
             var result2 = cache.BlitzGet("timestamp", GetTimestamp, 100);
             Assert.AreEqual(result1, result2, "Should return cached value immediately");
             
-            // Wait for expiration
+            // Wait for cache to expire
             System.Threading.Thread.Sleep(150);
             
-            // Call after expiration - should execute function again
+            // After expiration - BlitzCache automatically calls function again
             var result3 = cache.BlitzGet("timestamp", GetTimestamp, 100);
             
             Assert.AreNotEqual(result1, result3, "Should return new value after expiration");
@@ -150,19 +151,19 @@ namespace BlitzCacheCore.Tests.Examples
                 return $"Data #{callCount}";
             }
 
-            // Cache some data
+            // Cache some data normally
             var result1 = cache.BlitzGet("removable_key", GetData, 30000);
             Assert.AreEqual("Data #1", result1);
             
-            // Verify it's cached
+            // Verify it's cached (no function call)
             var result2 = cache.BlitzGet("removable_key", GetData, 30000);
             Assert.AreEqual("Data #1", result2);
             Assert.AreEqual(1, callCount, "Should still be only one call");
             
-            // Remove from cache
+            // Manually remove from cache - useful for cache invalidation
             cache.Remove("removable_key");
             
-            // Next call should execute function again
+            // Next call executes function again (cache was cleared)
             var result3 = cache.BlitzGet("removable_key", GetData, 30000);
             Assert.AreEqual("Data #2", result3);
             Assert.AreEqual(2, callCount, "Function should be called again after removal");
@@ -175,10 +176,10 @@ namespace BlitzCacheCore.Tests.Examples
         [Test]
         public void Example6_BlitzUpdate()
         {
-            // Pre-populate cache with BlitzUpdate
+            // Pre-populate cache with BlitzUpdate - great for cache warming!
             cache.BlitzUpdate("preloaded_key", () => "Preloaded value", 30000);
             
-            // When we try to get it, no function execution needed
+            // When we request it, the value is already there - zero wait time!
             var callCount = 0;
             string FallbackFunction()
             {
@@ -199,16 +200,18 @@ namespace BlitzCacheCore.Tests.Examples
         [Test]
         public void Example7_DifferentDataTypes()
         {
+            // BlitzCache works with ANY data type - no configuration needed!
+            
             // Cache a number
             var number = cache.BlitzGet("number_key", () => 42, 30000);
             Assert.AreEqual(42, number);
             
-            // Cache a complex object
+            // Cache a complex object (automatically serialized)
             var person = cache.BlitzGet("person_key", () => new { Name = "John", Age = 30 }, 30000);
             Assert.AreEqual("John", person.Name);
             Assert.AreEqual(30, person.Age);
             
-            // Cache a list
+            // Cache collections - arrays, lists, etc.
             var list = cache.BlitzGet("list_key", () => new[] { "a", "b", "c" }, 30000);
             Assert.AreEqual(3, list.Length);
             Assert.AreEqual("a", list[0]);
@@ -221,30 +224,31 @@ namespace BlitzCacheCore.Tests.Examples
         [Test]
         public void Example8_DependencyInjection()
         {
-            // This example shows the setup, actual DI would be in your Startup.cs or Program.cs
+            // BlitzCache integrates perfectly with Dependency Injection!
+            // Setup is incredibly simple - just one line in your DI container:
             
-            // In your DI container setup:
-            // services.AddBlitzCache(); // Uses default timeout
-            // or
+            // In your Startup.cs or Program.cs:
+            // services.AddBlitzCache(); // Uses default 60-second timeout
+            // or customize:
             // services.AddBlitzCache(30000); // Specify default timeout in milliseconds
             
-            // Then inject IBlitzCache into your services:
-            // public class MyService
+            // Then inject IBlitzCache anywhere you need caching:
+            // public class UserService
             // {
             //     private readonly IBlitzCache _cache;
             //     
-            //     public MyService(IBlitzCache cache)
-            //     {
-            //         _cache = cache;
-            //     }
+            //     public UserService(IBlitzCache cache) => _cache = cache;
             //     
-            //     public string GetExpensiveData(string key)
+            //     public async Task<User> GetUserAsync(int userId)
             //     {
-            //         return _cache.BlitzGet(key, () => FetchFromDatabase(key), 60000);
+            //         // One line adds caching to any method!
+            //         return await _cache.BlitzGet($"user_{userId}", 
+            //             () => _database.GetUserAsync(userId), 
+            //             TimeSpan.FromMinutes(5).TotalMilliseconds);
             //     }
             // }
             
-            // For this test, we'll simulate the injected cache
+            // Simulation for this test
             IBlitzCache injectedCache = new BlitzCache();
             
             string SimulateServiceMethod(string key)
