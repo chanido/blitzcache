@@ -29,8 +29,9 @@ BlitzCache is a **production-ready**, high-performance, thread-safe caching solu
 - [Performance Benefits](#-performance-benefits)
 - [Installation](#-installation)
 - [Quick Start](#-quick-start)
+- [Learning BlitzCache - Examples & Tutorials](#-learning-blitzcache---examples--tutorials)
 - [Real-World Examples](#-real-world-examples)
-- [Advanced Usage](#-advanced-usage)yes, please
+- [Advanced Usage](#-advanced-usage)
 - [API Reference](#-api-reference)
 - [Comparison](#-comparison-with-alternatives)
 - [Contributing](#-contributing)
@@ -155,6 +156,47 @@ var result = await cache.BlitzGet("expensive-operation",
 ```
 
 > **💡 Note:** BlitzCache uses a singleton pattern internally, so multiple instances share the same cache storage.
+
+## 📚 Learning BlitzCache - Examples & Tutorials
+
+### **Comprehensive Example Files**
+BlitzCache includes comprehensive example test files that serve as **interactive tutorials** and **real-world usage guides**:
+
+#### 🌱 **[BasicUsageExamples.cs](BlitzCache.Tests/Examples/BasicUsageExamples.cs)**
+Perfect for **getting started** - covers essential patterns:
+- ✅ **Basic synchronous caching** - Simple function caching
+- ✅ **Asynchronous operations** - Async/await patterns  
+- ✅ **Cache key management** - Working with different keys
+- ✅ **Cache expiration** - Understanding timeout behavior
+- ✅ **Manual cache removal** - Cache invalidation strategies
+- ✅ **BlitzUpdate usage** - Pre-populating cache
+- ✅ **Different data types** - Caching various objects
+- ✅ **Dependency injection** - ASP.NET Core integration
+
+#### 🚀 **[AdvancedUsageExamples.cs](BlitzCache.Tests/Examples/AdvancedUsageExamples.cs)**
+For **experienced users** - sophisticated scenarios:
+- ✅ **Dynamic cache timeout with Nuances** - Result-based cache duration
+- ✅ **Thread-safe concurrent access** - Multi-threading patterns
+- ✅ **Circuit breaker pattern** - Resilient external service calls
+- ✅ **Multi-level caching strategy** - Complex caching hierarchies
+- ✅ **Cache warming techniques** - Pre-loading strategies
+- ✅ **Conditional caching** - Success/failure caching logic
+- ✅ **Global vs Independent caches** - Instance management
+- ✅ **Performance monitoring** - Metrics and diagnostics
+
+### **Running the Examples**
+```bash
+# Run basic examples
+dotnet test --filter "BasicUsageExamples"
+
+# Run advanced examples  
+dotnet test --filter "AdvancedUsageExamples"
+
+# Run specific example
+dotnet test --filter "Example1_BasicSyncCaching"
+```
+
+These example files are **executable tests** that demonstrate real-world usage patterns and serve as **living documentation** that stays up-to-date with the codebase.
 
 ## 🌟 Real-World Examples
 

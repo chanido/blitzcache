@@ -6,8 +6,11 @@ using System.Threading.Tasks;
 
 namespace BlitzCacheCore.Tests
 {
+    /// <summary>
+    /// Tests for concurrent access behavior, thread safety, and queuing mechanisms in BlitzCache.
+    /// </summary>
     [TestFixture]
-    public class ConcurrentQueuingBehaviorTests
+    public class ConcurrencyTests
     {
         private IBlitzCache cache;
         private SlowClass slowClass;

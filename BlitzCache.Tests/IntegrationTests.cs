@@ -7,11 +7,11 @@ using System.Threading.Tasks;
 namespace BlitzCacheCore.Tests
 {
     /// <summary>
-    /// Tests that demonstrate BlitzCache using the new SmartSemaphoreDictionary
-    /// with optimal usage-based cleanup.
+    /// Integration tests for BlitzCache including end-to-end scenarios, 
+    /// DI integration, and real-world usage patterns.
     /// </summary>
     [TestFixture]
-    public class SmartBlitzCacheIntegrationTests
+    public class IntegrationTests
     {
         private IBlitzCache cache;
 
