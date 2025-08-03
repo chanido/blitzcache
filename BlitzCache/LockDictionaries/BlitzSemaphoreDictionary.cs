@@ -18,9 +18,8 @@ namespace BlitzCacheCore.LockDictionaries
 
         public BlitzSemaphoreDictionary()
         {
-            // Ultra-aggressive cleanup - check every 10 milliseconds for stress testing
             // Only keep semaphores that are actively in use or recently used
-            cleanupManager = new SmartCleanupManager<string, BlitzSemaphore>(semaphores, cleanupInterval: TimeSpan.FromMilliseconds(10));
+            cleanupManager = new SmartCleanupManager<string, BlitzSemaphore>(semaphores, cleanupInterval: TimeSpan.FromSeconds(10));
         }
 
         /// <summary>
