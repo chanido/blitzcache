@@ -1,6 +1,7 @@
 ﻿using BlitzCacheCore.LockDictionaries;
 using Microsoft.Extensions.Caching.Memory;
 using System;
+using System.Collections.Concurrent;
 using System.Runtime.CompilerServices;
 using System.Threading.Tasks;
 
@@ -13,6 +14,8 @@ namespace BlitzCacheCore
         private readonly long defaultMilliseconds;
         private readonly bool usingGlobalCache;
         private readonly BlitzSemaphoreDictionary semaphoreDictionary;
+        private readonly ConcurrentDictionary<string, bool> trackedKeys;
+        private readonly CacheStatistics statistics;
 
         /// <summary>
         /// Creates a new BlitzCache instance.
@@ -25,6 +28,11 @@ namespace BlitzCacheCore
             usingGlobalCache = useGlobalCache;
             memoryCache = useGlobalCache ? globalCache : new MemoryCache(new MemoryCacheOptions());
             semaphoreDictionary = new BlitzSemaphoreDictionary();
+            trackedKeys = new ConcurrentDictionary<string, bool>();
+            statistics = new CacheStatistics(
+                getCurrentEntryCount: () => trackedKeys.Count,
+                getActiveSemaphoreCount: () => semaphoreDictionary.GetNumberOfLocks()
+            );
         }
 
         /// <summary>
@@ -38,12 +46,23 @@ namespace BlitzCacheCore
             this.defaultMilliseconds = defaultMilliseconds;
             usingGlobalCache = false; // Custom cache is never global
             semaphoreDictionary = new BlitzSemaphoreDictionary();
+            trackedKeys = new ConcurrentDictionary<string, bool>();
+            statistics = new CacheStatistics(
+                getCurrentEntryCount: () => trackedKeys.Count,
+                getActiveSemaphoreCount: () => semaphoreDictionary.GetNumberOfLocks()
+            );
         }
 
         /// <summary>
         /// Gets the current number of semaphores for testing and monitoring purposes.
         /// </summary>
         public int GetSemaphoreCount() => semaphoreDictionary.GetNumberOfLocks();
+
+        /// <summary>
+        /// Gets cache performance statistics and monitoring information.
+        /// Use these metrics to understand cache effectiveness and optimize cache configuration.
+        /// </summary>
+        public ICacheStatistics Statistics => statistics;
 
         public T BlitzGet<T>(Func<T> function, long? milliseconds = null, [CallerMemberName] string callerMemberName = "", [CallerFilePath] string sourceFilePath = "") =>
             BlitzGet(callerMemberName + sourceFilePath, nuances => function(), milliseconds);
@@ -55,18 +74,28 @@ namespace BlitzCacheCore
 
         public T BlitzGet<T>(string cacheKey, Func<Nuances, T> function, long? milliseconds = null)
         {
-            if (memoryCache.TryGetValue(cacheKey, out T result)) return result;
+            if (memoryCache.TryGetValue(cacheKey, out T result)) 
+            {
+                statistics.RecordHit();
+                return result;
+            }
 
             var semaphore = semaphoreDictionary.GetSemaphore(cacheKey);
             using (var lockHandle = semaphore.Acquire())
             {
-                if (memoryCache.TryGetValue(cacheKey, out result)) return result;
+                if (memoryCache.TryGetValue(cacheKey, out result)) 
+                {
+                    statistics.RecordHit();
+                    return result;
+                }
 
+                statistics.RecordMiss();
                 var nuances = new Nuances();
                 result = function.Invoke(nuances);
 
                 var expirationTime = DateTime.UtcNow.AddMilliseconds(nuances.CacheRetention ?? milliseconds ?? defaultMilliseconds);
                 memoryCache.Set(cacheKey, result, expirationTime);
+                trackedKeys.TryAdd(cacheKey, true);
             }
 
             return result;
@@ -82,18 +111,28 @@ namespace BlitzCacheCore
             BlitzGet(cacheKey, nuances => function(), milliseconds);
         public async Task<T> BlitzGet<T>(string cacheKey, Func<Nuances, Task<T>> function, long? milliseconds = null)
         {
-            if (memoryCache.TryGetValue(cacheKey, out T result)) return result;
+            if (memoryCache.TryGetValue(cacheKey, out T result)) 
+            {
+                statistics.RecordHit();
+                return result;
+            }
 
             var semaphore = semaphoreDictionary.GetSemaphore(cacheKey);
             using (var lockHandle = await semaphore.AcquireAsync())
             {
-                if (memoryCache.TryGetValue(cacheKey, out result)) return result;
+                if (memoryCache.TryGetValue(cacheKey, out result)) 
+                {
+                    statistics.RecordHit();
+                    return result;
+                }
                 
+                statistics.RecordMiss();
                 var nuances = new Nuances();
                 result = await function.Invoke(nuances);
                 
                 var expirationTime = DateTime.UtcNow.AddMilliseconds(nuances.CacheRetention ?? milliseconds ?? defaultMilliseconds);
                 memoryCache.Set(cacheKey, result, expirationTime);
+                trackedKeys.TryAdd(cacheKey, true);
             }
 
             return result;
@@ -106,6 +145,7 @@ namespace BlitzCacheCore
             {
                 var expirationTime = DateTime.UtcNow.AddMilliseconds(milliseconds);
                 memoryCache.Set(cacheKey, function(), expirationTime);
+                trackedKeys.TryAdd(cacheKey, true);
             }
         }
 
@@ -116,6 +156,7 @@ namespace BlitzCacheCore
             {
                 var expirationTime = DateTime.UtcNow.AddMilliseconds(milliseconds);
                 memoryCache.Set(cacheKey, await function.Invoke(), expirationTime);
+                trackedKeys.TryAdd(cacheKey, true);
             }
         }
 
@@ -125,6 +166,10 @@ namespace BlitzCacheCore
             using (var lockHandle = semaphore.Acquire())
             {
                 memoryCache.Remove(cacheKey);
+                if (trackedKeys.TryRemove(cacheKey, out _))
+                {
+                    statistics.RecordEviction();
+                }
             }
         }
 

@@ -18,6 +18,13 @@ namespace BlitzCacheCore
         Task BlitzUpdate<T>(string cacheKey, Func<Task<T>> function, long milliseconds);
         void Remove(string cacheKey);
         int GetSemaphoreCount();
+        
+        /// <summary>
+        /// Gets cache performance statistics and monitoring information.
+        /// Use these metrics to understand cache effectiveness and optimize cache configuration.
+        /// </summary>
+        ICacheStatistics Statistics { get; }
+        
         void Dispose();
     }
 }

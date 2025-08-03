@@ -32,6 +32,7 @@ BlitzCache is a **production-ready**, high-performance, thread-safe caching solu
 - [Learning BlitzCache - Examples & Tutorials](#-learning-blitzcache---examples--tutorials)
 - [Real-World Examples](#-real-world-examples)
 - [Advanced Usage](#-advanced-usage)
+  - [Cache Statistics and Monitoring](#cache-statistics-and-monitoring)
 - [API Reference](#-api-reference)
 - [Comparison](#-comparison-with-alternatives)
 - [Contributing](#-contributing)
@@ -61,6 +62,7 @@ Task.Run(() => cache.BlitzGet("api-call", ExpensiveApiCall)); // Waits & gets ca
 - ⚡ **Ultra-High Performance** - 0.03ms per operation with optimal memory usage
 - 🛡️ **Memory Leak Prevention** - Intelligent usage-based cleanup prevents memory bloat
 - 🔄 **Sync & Async Support** - Works seamlessly with both synchronous and asynchronous operations
+- 📈 **Built-in Statistics** - Real-time cache performance monitoring and hit/miss analytics
 - 🎛️ **Flexible Configuration** - Multiple ways to define cache keys and retention periods
 - 📦 **Dependency Injection Ready** - First-class support for ASP.NET Core DI
 - 🎯 **Simple API** - One method (`BlitzGet`) handles everything
@@ -171,6 +173,7 @@ Perfect for **getting started** - covers essential patterns:
 - ✅ **Manual cache removal** - Cache invalidation strategies
 - ✅ **BlitzUpdate usage** - Pre-populating cache
 - ✅ **Different data types** - Caching various objects
+- ✅ **Cache statistics monitoring** - Performance analytics and hit/miss tracking
 - ✅ **Dependency injection** - ASP.NET Core integration
 
 #### 🚀 **[AdvancedUsageExamples.cs](BlitzCache.Tests/Examples/AdvancedUsageExamples.cs)**
@@ -319,6 +322,76 @@ cache.Remove("user_123");
 // Async update
 await cache.BlitzUpdate("weather_data", async () => await GetWeatherAsync(), 300000);
 ```
+
+### Cache Statistics and Monitoring
+BlitzCache provides built-in performance statistics to help you monitor cache effectiveness and optimize your application:
+
+```csharp
+// Access cache statistics
+var stats = cache.Statistics;
+
+Console.WriteLine($"Cache Hit Ratio: {stats.HitRatio:P1}"); // e.g., "75.5%"
+Console.WriteLine($"Total Operations: {stats.TotalOperations}");
+Console.WriteLine($"Cache Hits: {stats.HitCount}");
+Console.WriteLine($"Cache Misses: {stats.MissCount}");
+Console.WriteLine($"Current Entries: {stats.CurrentEntryCount}");
+Console.WriteLine($"Evictions: {stats.EvictionCount}");
+Console.WriteLine($"Active Semaphores: {stats.ActiveSemaphoreCount}");
+```
+
+#### Real-World Monitoring Example
+```csharp
+public class UserService
+{
+    private readonly IBlitzCache _cache;
+    
+    public UserService(IBlitzCache cache)
+    {
+        _cache = cache;
+    }
+    
+    public async Task<UserProfile> GetUserProfileAsync(int userId)
+    {
+        // Cache the expensive database operation
+        var profile = await _cache.BlitzGet($"user_profile_{userId}", 
+            async () => await database.GetUserProfileAsync(userId), 
+            300000); // 5 minutes
+            
+        // Log cache performance periodically
+        var stats = _cache.Statistics;
+        if (stats.TotalOperations % 100 == 0) // Every 100 operations
+        {
+            _logger.LogInformation("Cache performance: {HitRatio:P1} hit ratio, {CurrentEntries} entries", 
+                stats.HitRatio, stats.CurrentEntryCount);
+        }
+        
+        return profile;
+    }
+}
+```
+
+#### Statistics Reset for Time-Windowed Monitoring
+```csharp
+// Reset statistics to monitor performance over specific periods
+cache.Statistics.Reset();
+
+// Perform operations...
+DoSomeWork();
+
+// Check performance for this period only
+var periodStats = cache.Statistics;
+Console.WriteLine($"Period hit ratio: {periodStats.HitRatio:P1}");
+```
+
+**Available Statistics:**
+- **`HitCount`**: Total cache hits since instance creation
+- **`MissCount`**: Total cache misses since instance creation  
+- **`HitRatio`**: Hit percentage (0.0 to 1.0)
+- **`TotalOperations`**: Sum of hits and misses
+- **`CurrentEntryCount`**: Current number of cached entries
+- **`EvictionCount`**: Number of manual removals and expirations
+- **`ActiveSemaphoreCount`**: Current concurrency control structures
+- **`Reset()`**: Method to reset all counters to zero
 
 ## 📖 API Reference
 

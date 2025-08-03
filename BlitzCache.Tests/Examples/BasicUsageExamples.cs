@@ -261,5 +261,80 @@ namespace BlitzCacheCore.Tests.Examples
             
             injectedCache.Dispose();
         }
+
+        /// <summary>
+        /// Example 10: Cache Statistics and Monitoring
+        /// Shows how to monitor cache performance and effectiveness
+        /// </summary>
+        [Test]
+        public void Example10_CacheStatisticsAndMonitoring()
+        {
+            // Simulate a data service with expensive operations
+            var databaseCallCount = 0;
+            string GetUserProfile(int userId)
+            {
+                databaseCallCount++; // Track actual database calls
+                System.Threading.Thread.Sleep(50); // Simulate database latency
+                return $"User Profile for ID: {userId}";
+            }
+
+            // Perform various cache operations
+            Console.WriteLine("=== Cache Statistics Example ===");
+            
+            // Initial state
+            var initialStats = cache.Statistics;
+            Console.WriteLine($"Initial state: {initialStats.TotalOperations} operations, {initialStats.HitRatio:P1} hit ratio");
+
+            // First access - will be a cache miss
+            var profile1 = cache.BlitzGet("user_123", () => GetUserProfile(123), 60000);
+            Console.WriteLine($"First access result: {profile1}");
+            
+            // Second access to same key - will be a cache hit
+            var profile2 = cache.BlitzGet("user_123", () => GetUserProfile(123), 60000);
+            Console.WriteLine($"Second access result: {profile2}");
+            
+            // Access different key - will be another miss
+            var profile3 = cache.BlitzGet("user_456", () => GetUserProfile(456), 60000);
+            Console.WriteLine($"Different key result: {profile3}");
+            
+            // Another hit on first key
+            var profile4 = cache.BlitzGet("user_123", () => GetUserProfile(123), 60000);
+            Console.WriteLine($"Third access to first key: {profile4}");
+
+            // Check final statistics
+            var finalStats = cache.Statistics;
+            Console.WriteLine("\n=== Final Statistics ===");
+            Console.WriteLine($"Total Operations: {finalStats.TotalOperations}");
+            Console.WriteLine($"Cache Hits: {finalStats.HitCount}");
+            Console.WriteLine($"Cache Misses: {finalStats.MissCount}");
+            Console.WriteLine($"Hit Ratio: {finalStats.HitRatio:P1}");
+            Console.WriteLine($"Current Cached Entries: {finalStats.CurrentEntryCount}");
+            Console.WriteLine($"Active Semaphores: {finalStats.ActiveSemaphoreCount}");
+            Console.WriteLine($"Database Calls Made: {databaseCallCount}");
+
+            // Verify cache effectiveness
+            Assert.AreEqual(4, finalStats.TotalOperations, "Should have 4 total operations");
+            Assert.AreEqual(2, finalStats.HitCount, "Should have 2 cache hits");
+            Assert.AreEqual(2, finalStats.MissCount, "Should have 2 cache misses");
+            Assert.AreEqual(0.5, finalStats.HitRatio, 0.001, "Hit ratio should be 50%");
+            Assert.AreEqual(2, finalStats.CurrentEntryCount, "Should have 2 cached entries");
+            Assert.AreEqual(2, databaseCallCount, "Database should only be called twice (cache working!)");
+
+            // Demonstrate manual cache eviction tracking
+            cache.Remove("user_123");
+            var statsAfterRemoval = cache.Statistics;
+            Console.WriteLine($"\nAfter removing user_123: {statsAfterRemoval.EvictionCount} evictions, {statsAfterRemoval.CurrentEntryCount} entries");
+            
+            Assert.AreEqual(1, statsAfterRemoval.EvictionCount, "Should have 1 eviction");
+            Assert.AreEqual(1, statsAfterRemoval.CurrentEntryCount, "Should have 1 remaining entry");
+
+            // Reset statistics for monitoring specific time periods
+            cache.Statistics.Reset();
+            var resetStats = cache.Statistics;
+            Console.WriteLine($"After reset: {resetStats.TotalOperations} operations, {resetStats.HitRatio:P1} hit ratio");
+            
+            Assert.AreEqual(0, resetStats.TotalOperations, "Operations should be reset to zero");
+            Assert.AreEqual(0.0, resetStats.HitRatio, 0.001, "Hit ratio should be reset to zero");
+        }
     }
 }

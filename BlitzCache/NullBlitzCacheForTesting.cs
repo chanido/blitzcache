@@ -6,7 +6,14 @@ namespace BlitzCacheCore
 {
     public class NullBlitzCacheForTesting : IBlitzCache
     {
-        public NullBlitzCacheForTesting() { }
+        private readonly ICacheStatistics nullStatistics;
+
+        public NullBlitzCacheForTesting() 
+        { 
+            nullStatistics = new NullCacheStatistics();
+        }
+
+        public ICacheStatistics Statistics => nullStatistics;
 
         public T BlitzGet<T>(Func<T> function, long? milliseconds = null, [CallerMemberName] string callerMemberName = "", [CallerFilePath] string sourceFilePath = "") =>
             BlitzGet(callerMemberName + sourceFilePath, function, milliseconds);
@@ -38,5 +45,21 @@ namespace BlitzCacheCore
         public void Dispose() { }
 
         protected virtual void Dispose(bool dispose) { }
+    }
+
+    /// <summary>
+    /// Null implementation of cache statistics for testing purposes.
+    /// Always returns zero for all metrics.
+    /// </summary>
+    internal class NullCacheStatistics : ICacheStatistics
+    {
+        public long HitCount => 0;
+        public long MissCount => 0;
+        public double HitRatio => 0.0;
+        public int CurrentEntryCount => 0;
+        public long EvictionCount => 0;
+        public int ActiveSemaphoreCount => 0;
+        public long TotalOperations => 0;
+        public void Reset() { }
     }
 }
