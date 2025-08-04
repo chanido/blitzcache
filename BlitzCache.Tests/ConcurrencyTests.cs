@@ -40,10 +40,10 @@ namespace BlitzCacheCore.Tests
             var cacheKey = GetUniqueCacheKey();
             
             // Act - Use AsyncRepeater for cleaner test like existing UnitTests
-            await AsyncRepeater.Go(TestFactory.ConcurrentOperationsCount, () => cache.BlitzGet(cacheKey, slowClassAsync.ProcessQuickly, 10000));
+            await AsyncRepeater.Go(TestHelpers.ConcurrentOperationsCount, () => cache.BlitzGet(cacheKey, slowClassAsync.ProcessQuickly, 10000));
 
             // Assert
-            Assert.AreEqual(1, slowClassAsync.Counter, $"Expensive async operation should only execute once despite {TestFactory.ConcurrentOperationsCount} concurrent calls");
+            Assert.AreEqual(1, slowClassAsync.Counter, $"Expensive async operation should only execute once despite {TestHelpers.ConcurrentOperationsCount} concurrent calls");
         }
 
         [Test]
@@ -53,11 +53,11 @@ namespace BlitzCacheCore.Tests
             var cacheKey = GetUniqueCacheKey();
 
             // Act - Use enhanced AsyncRepeater with existing SlowClassAsync
-            var testResult = await AsyncRepeater.GoWithResults(TestFactory.SmallLoopCount, () => cache.BlitzGet(cacheKey, slowClassAsync.ProcessSlowly, TestFactory.LongTimeoutMs));
+            var testResult = await AsyncRepeater.GoWithResults(TestHelpers.SmallLoopCount, () => cache.BlitzGet(cacheKey, slowClassAsync.ProcessSlowly, TestHelpers.LongTimeoutMs));
 
             // Assert
             Assert.AreEqual(1, slowClassAsync.Counter, "Expensive operation should only execute once");
-            Assert.AreEqual(TestFactory.SmallLoopCount, testResult.ResultCount, $"Should have {TestFactory.SmallLoopCount} results (one per concurrent call)");
+            Assert.AreEqual(TestHelpers.SmallLoopCount, testResult.ResultCount, $"Should have {TestHelpers.SmallLoopCount} results (one per concurrent call)");
             Assert.AreEqual(1, testResult.UniqueResultCount, "All calls should receive the same result");
             Assert.IsTrue(testResult.AllResultsIdentical, "All results should be identical");
         }
@@ -71,7 +71,7 @@ namespace BlitzCacheCore.Tests
             // Act - Use enhanced AsyncRepeater with staggered calls and existing SlowClassAsync
             var testResult = await AsyncRepeater.GoWithResults(5, 
                 () => cache.BlitzGet(cacheKey, slowClassAsync.ProcessSlowly, 10000), 
-                staggerDelayMs: TestFactory.VeryShortTimeoutMs);
+                staggerDelayMs: TestHelpers.VeryShortTimeoutMs);
 
             // Assert
             Assert.AreEqual(1, slowClassAsync.Counter, "Only one execution should have occurred");
@@ -87,13 +87,13 @@ namespace BlitzCacheCore.Tests
             var cacheKey = GetUniqueCacheKey();
             
             // Act - Use Parallel.For for sync operations like existing UnitTests
-            Parallel.For(0, TestFactory.ConcurrentOperationsCount, (i) =>
+            Parallel.For(0, TestHelpers.ConcurrentOperationsCount, (i) =>
             {
                 cache.BlitzGet(cacheKey, slowClass.ProcessQuickly, 10000);
             });
 
             // Assert
-            Assert.AreEqual(1, slowClass.Counter, $"Expensive sync operation should only execute once despite {TestFactory.ConcurrentOperationsCount} concurrent calls");
+            Assert.AreEqual(1, slowClass.Counter, $"Expensive sync operation should only execute once despite {TestHelpers.ConcurrentOperationsCount} concurrent calls");
         }
 
         [Test]
@@ -124,14 +124,14 @@ namespace BlitzCacheCore.Tests
             string SyncOperation()
             {
                 Interlocked.Increment(ref executionCount);
-                TestFactory.ShortDelay();
+                TestHelpers.ShortDelay();
                 return "MixedResult";
             }
 
             async Task<string> AsyncOperation()
             {
                 Interlocked.Increment(ref executionCount);
-                await TestFactory.ShortDelay();
+                await TestHelpers.ShortDelay();
                 return "MixedResult";
             }
 

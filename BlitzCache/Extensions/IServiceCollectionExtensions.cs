@@ -20,7 +20,7 @@ namespace BlitzCacheCore.Extensions
             if (services == null) throw new ArgumentNullException(nameof(services));
 
             OptionsServiceCollectionExtensions.AddOptions(services);
-            ServiceCollectionDescriptorExtensions.TryAdd(services, ServiceDescriptor.Singleton<IBlitzCache>(_ => BlitzCache.Global));
+            ServiceCollectionDescriptorExtensions.TryAdd(services, ServiceDescriptor.Singleton(_ => BlitzCache.Global));
 
             return services;
         }

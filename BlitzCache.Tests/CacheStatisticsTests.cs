@@ -18,7 +18,7 @@ namespace BlitzCacheCore.Tests
         [SetUp]
         public void Setup()
         {
-            cache = TestFactory.CreateWithStatistics();
+            cache = TestHelpers.CreateWithStatistics();
         }
 
         [TearDown]
@@ -59,8 +59,8 @@ namespace BlitzCacheCore.Tests
             var totalOperationsBefore = cache.Statistics.TotalOperations;
 
             // Act
-            var result = cache.BlitzGet("test_key", TestFunction, TestFactory.StandardTimeoutMs);
-            TestFactory.WaitForEvictionCallbacksSync();
+            var result = cache.BlitzGet("test_key", TestFunction, TestHelpers.StandardTimeoutMs);
+            TestHelpers.WaitForEvictionCallbacksSync();
 
             // Assert
             var stats = cache.Statistics;
@@ -85,8 +85,8 @@ namespace BlitzCacheCore.Tests
             }
 
             // Act - First call (miss)
-            cache.BlitzGet("test_key", TestFunction, TestFactory.StandardTimeoutMs);
-            TestFactory.WaitForEvictionCallbacksSync();
+            cache.BlitzGet("test_key", TestFunction, TestHelpers.StandardTimeoutMs);
+            TestHelpers.WaitForEvictionCallbacksSync();
             
             var hitCountBefore = cache.Statistics.HitCount;
             var missCountBefore = cache.Statistics.MissCount;
@@ -94,8 +94,8 @@ namespace BlitzCacheCore.Tests
             var totalOperationsBefore = cache.Statistics.TotalOperations;
             
             // Act - Second call (hit)
-            var result = cache.BlitzGet("test_key", TestFunction, TestFactory.StandardTimeoutMs);
-            TestFactory.WaitForEvictionCallbacksSync();
+            var result = cache.BlitzGet("test_key", TestFunction, TestHelpers.StandardTimeoutMs);
+            TestHelpers.WaitForEvictionCallbacksSync();
 
             // Assert
             var stats = cache.Statistics;
@@ -124,12 +124,12 @@ namespace BlitzCacheCore.Tests
             var totalOperationsBefore = cache.Statistics.TotalOperations;
 
             // Act - Create multiple cache entries and hits
-            cache.BlitzGet("key1", () => TestFunction("key1"), TestFactory.StandardTimeoutMs); // Miss
-            cache.BlitzGet("key2", () => TestFunction("key2"), TestFactory.StandardTimeoutMs); // Miss
-            cache.BlitzGet("key1", () => TestFunction("key1"), TestFactory.StandardTimeoutMs); // Hit
-            cache.BlitzGet("key2", () => TestFunction("key2"), TestFactory.StandardTimeoutMs); // Hit
-            cache.BlitzGet("key1", () => TestFunction("key1"), TestFactory.StandardTimeoutMs); // Hit
-            TestFactory.WaitForEvictionCallbacksSync();
+            cache.BlitzGet("key1", () => TestFunction("key1"), TestHelpers.StandardTimeoutMs); // Miss
+            cache.BlitzGet("key2", () => TestFunction("key2"), TestHelpers.StandardTimeoutMs); // Miss
+            cache.BlitzGet("key1", () => TestFunction("key1"), TestHelpers.StandardTimeoutMs); // Hit
+            cache.BlitzGet("key2", () => TestFunction("key2"), TestHelpers.StandardTimeoutMs); // Hit
+            cache.BlitzGet("key1", () => TestFunction("key1"), TestHelpers.StandardTimeoutMs); // Hit
+            TestHelpers.WaitForEvictionCallbacksSync();
 
             // Assert
             var stats = cache.Statistics;
@@ -149,7 +149,7 @@ namespace BlitzCacheCore.Tests
             async Task<string> TestFunctionAsync()
             {
                 callCount++;
-                await TestFactory.ShortDelay();
+                await TestHelpers.ShortDelay();
                 return "async result";
             }
             var hitCountBefore = cache.Statistics.HitCount;
@@ -158,15 +158,15 @@ namespace BlitzCacheCore.Tests
             var totalOperationsBefore = cache.Statistics.TotalOperations;
 
             // Act
-            var result1 = await cache.BlitzGet("async_key", TestFunctionAsync, TestFactory.StandardTimeoutMs); // Miss
-            await TestFactory.WaitForEvictionCallbacks();
+            var result1 = await cache.BlitzGet("async_key", TestFunctionAsync, TestHelpers.StandardTimeoutMs); // Miss
+            await TestHelpers.WaitForEvictionCallbacks();
             
             var hitCountAfterFirst = cache.Statistics.HitCount;
             var missCountAfterFirst = cache.Statistics.MissCount;
             var totalOperationsAfterFirst = cache.Statistics.TotalOperations;
             
-            var result2 = await cache.BlitzGet("async_key", TestFunctionAsync, TestFactory.StandardTimeoutMs); // Hit
-            await TestFactory.WaitForEvictionCallbacks();
+            var result2 = await cache.BlitzGet("async_key", TestFunctionAsync, TestHelpers.StandardTimeoutMs); // Hit
+            await TestHelpers.WaitForEvictionCallbacks();
 
             // Assert
             var stats = cache.Statistics;
@@ -184,12 +184,12 @@ namespace BlitzCacheCore.Tests
         public void Statistics_RemoveOperation_IncrementsEvictionCount()
         {
             // Arrange
-            cache.BlitzGet("test_key", () => "test value", TestFactory.StandardTimeoutMs);
+            cache.BlitzGet("test_key", () => "test value", TestHelpers.StandardTimeoutMs);
             var evictionCountBefore = cache.Statistics.EvictionCount;
     
             // Act
             cache.Remove("test_key");
-            TestFactory.WaitForEvictionCallbacksSync();
+            TestHelpers.WaitForEvictionCallbacksSync();
 
             // Assert
             Assert.AreEqual(evictionCountBefore + 1, cache.Statistics.EvictionCount, "Eviction count should increase by 1");
@@ -204,7 +204,7 @@ namespace BlitzCacheCore.Tests
 
             // Act
             cache.Remove("non_existent_key");
-            TestFactory.WaitForEvictionCallbacksSync();
+            TestHelpers.WaitForEvictionCallbacksSync();
 
             // Assert
             Assert.AreEqual(evictionCountBefore, cache.Statistics.EvictionCount, "Eviction count should not change");
@@ -214,16 +214,16 @@ namespace BlitzCacheCore.Tests
         public void Statistics_BlitzUpdate_DoesNotAffectHitMissCounters()
         {
             // Arrange
-            cache.BlitzGet("test_key", () => "original", TestFactory.StandardTimeoutMs);
-            TestFactory.WaitForEvictionCallbacksSync();
+            cache.BlitzGet("test_key", () => "original", TestHelpers.StandardTimeoutMs);
+            TestHelpers.WaitForEvictionCallbacksSync();
             
             var hitCountBefore = cache.Statistics.HitCount;
             var missCountBefore = cache.Statistics.MissCount;
             var totalOperationsBefore = cache.Statistics.TotalOperations;
 
             // Act
-            cache.BlitzUpdate("test_key", () => "updated", TestFactory.StandardTimeoutMs);
-            TestFactory.WaitForEvictionCallbacksSync();
+            cache.BlitzUpdate("test_key", () => "updated", TestHelpers.StandardTimeoutMs);
+            TestHelpers.WaitForEvictionCallbacksSync();
 
             // Assert
             var statsAfter = cache.Statistics;
@@ -236,10 +236,10 @@ namespace BlitzCacheCore.Tests
         public void Statistics_Reset_ClearsAllCounters()
         {
             // Arrange - Generate some statistics
-            cache.BlitzGet("key1", () => "value1", TestFactory.StandardTimeoutMs); // Miss
-            cache.BlitzGet("key1", () => "value1", TestFactory.StandardTimeoutMs); // Hit
+            cache.BlitzGet("key1", () => "value1", TestHelpers.StandardTimeoutMs); // Miss
+            cache.BlitzGet("key1", () => "value1", TestHelpers.StandardTimeoutMs); // Hit
             cache.Remove("key1"); // Eviction
-            TestFactory.WaitForEvictionCallbacksSync();
+            TestHelpers.WaitForEvictionCallbacksSync();
 
             // Verify we have some stats
             var statsBefore = cache.Statistics;
@@ -247,7 +247,7 @@ namespace BlitzCacheCore.Tests
 
             // Act
             cache.Statistics.Reset();
-            TestFactory.WaitForEvictionCallbacksSync();
+            TestHelpers.WaitForEvictionCallbacksSync();
 
             // Assert
             var statsAfter = cache.Statistics;
@@ -263,8 +263,8 @@ namespace BlitzCacheCore.Tests
         public void Statistics_ConcurrentAccess_ThreadSafe()
         {
             // Arrange
-            var tasks = new Task[TestFactory.SmallLoopCount];
-            var totalOperations = TestFactory.ConcurrentOperationsCount;
+            var tasks = new Task[TestHelpers.SmallLoopCount];
+            var totalOperations = TestHelpers.ConcurrentOperationsCount;
             var hitCountBefore = cache.Statistics.HitCount;
             var missCountBefore = cache.Statistics.MissCount;
             var totalOperationsBefore = cache.Statistics.TotalOperations;
@@ -278,13 +278,13 @@ namespace BlitzCacheCore.Tests
                     for (int j = 0; j < totalOperations / tasks.Length; j++)
                     {
                         var key = $"thread_{threadId}_key_{j % 5}"; // Some keys will repeat (hits)
-                        cache.BlitzGet<string>(key, (Func<string>)(() => $"value_{threadId}_{j}"), TestFactory.StandardTimeoutMs);
+                        cache.BlitzGet<string>(key, (Func<string>)(() => $"value_{threadId}_{j}"), TestHelpers.StandardTimeoutMs);
                     }
                 }));
             }
 
             Task.WaitAll(tasks);
-            TestFactory.WaitForEvictionCallbacksSync();
+            TestHelpers.WaitForEvictionCallbacksSync();
 
             // Assert
             var stats = cache.Statistics;
@@ -301,9 +301,9 @@ namespace BlitzCacheCore.Tests
             var initialSemaphoreCount = cache.Statistics.ActiveSemaphoreCount;
 
             // Act - Create some cache entries
-            cache.BlitzGet("key1", () => "value1", TestFactory.StandardTimeoutMs);
-            cache.BlitzGet("key2", () => "value2", TestFactory.StandardTimeoutMs);
-            TestFactory.WaitForEvictionCallbacksSync();
+            cache.BlitzGet("key1", () => "value1", TestHelpers.StandardTimeoutMs);
+            cache.BlitzGet("key2", () => "value2", TestHelpers.StandardTimeoutMs);
+            TestHelpers.WaitForEvictionCallbacksSync();
 
             // Assert
             var statsAfter = cache.Statistics;
@@ -319,15 +319,15 @@ namespace BlitzCacheCore.Tests
             var missCountBefore = cache.Statistics.MissCount;
 
             // Act - Add cache entry with short expiration
-            cache.BlitzGet("expiring_key", () => "value1", TestFactory.StandardTimeoutMs);
-            await TestFactory.WaitForEvictionCallbacks();
+            cache.BlitzGet("expiring_key", () => "value1", TestHelpers.StandardTimeoutMs);
+            await TestHelpers.WaitForEvictionCallbacks();
 
             // Wait for automatic expiration
-            await TestFactory.WaitForStandardExpiration();
+            await TestHelpers.WaitForStandardExpiration();
 
             // Try to access the expired entry (this should trigger cleanup and create new entry)
-            var result = cache.BlitzGet("expiring_key", () => "new_value", TestFactory.StandardTimeoutMs);
-            await TestFactory.WaitForEvictionCallbacks();
+            var result = cache.BlitzGet("expiring_key", () => "new_value", TestHelpers.StandardTimeoutMs);
+            await TestHelpers.WaitForEvictionCallbacks();
 
             // Assert
             var stats = cache.Statistics;
@@ -345,21 +345,21 @@ namespace BlitzCacheCore.Tests
             var entryCountBefore = cache.Statistics.EntryCount;
 
             // Act - Mix of automatic and manual evictions
-            cache.BlitzGet("auto_expire", () => "value1", TestFactory.StandardTimeoutMs);
-            cache.BlitzGet("manual_remove", () => "value2", TestFactory.StandardTimeoutMs);
-            cache.BlitzGet("keep_alive", () => "value3", TestFactory.StandardTimeoutMs);
-            await TestFactory.WaitForEvictionCallbacks();
+            cache.BlitzGet("auto_expire", () => "value1", TestHelpers.StandardTimeoutMs);
+            cache.BlitzGet("manual_remove", () => "value2", TestHelpers.StandardTimeoutMs);
+            cache.BlitzGet("keep_alive", () => "value3", TestHelpers.StandardTimeoutMs);
+            await TestHelpers.WaitForEvictionCallbacks();
 
             // Manual removal
             cache.Remove("manual_remove");
-            await TestFactory.WaitForEvictionCallbacks();
+            await TestHelpers.WaitForEvictionCallbacks();
 
             // Wait for automatic expiration
-            await TestFactory.WaitForStandardExpiration();
+            await TestHelpers.WaitForStandardExpiration();
 
             // Access expired key to trigger callback
-            cache.BlitzGet("auto_expire", () => "new_value", TestFactory.StandardTimeoutMs);
-            await TestFactory.WaitForEvictionCallbacks();
+            cache.BlitzGet("auto_expire", () => "new_value", TestHelpers.StandardTimeoutMs);
+            await TestHelpers.WaitForEvictionCallbacks();
 
             // Assert
             var finalStats = cache.Statistics;
@@ -375,23 +375,23 @@ namespace BlitzCacheCore.Tests
             var evictionCountBefore = cache.Statistics.EvictionCount;
 
             // Act - Add some entries
-            cache.BlitzGet("key1", () => "value1", TestFactory.StandardTimeoutMs);
-            cache.BlitzGet("key2", () => "value2", TestFactory.StandardTimeoutMs);
-            cache.BlitzGet("key3", () => "value3", TestFactory.StandardTimeoutMs);
-            TestFactory.WaitForEvictionCallbacksSync();
+            cache.BlitzGet("key1", () => "value1", TestHelpers.StandardTimeoutMs);
+            cache.BlitzGet("key2", () => "value2", TestHelpers.StandardTimeoutMs);
+            cache.BlitzGet("key3", () => "value3", TestHelpers.StandardTimeoutMs);
+            TestHelpers.WaitForEvictionCallbacksSync();
 
             var entryCountAfterAdding = cache.Statistics.EntryCount;
 
             // Remove one
             cache.Remove("key2");
-            TestFactory.WaitForEvictionCallbacksSync();
+            TestHelpers.WaitForEvictionCallbacksSync();
 
             var entryCountAfterRemoval = cache.Statistics.EntryCount;
             var evictionCountAfterRemoval = cache.Statistics.EvictionCount;
 
             // Add another
-            cache.BlitzGet("key4", () => "value4", TestFactory.StandardTimeoutMs);
-            TestFactory.WaitForEvictionCallbacksSync();
+            cache.BlitzGet("key4", () => "value4", TestHelpers.StandardTimeoutMs);
+            TestHelpers.WaitForEvictionCallbacksSync();
 
             // Assert
             Assert.AreEqual(entryCountBefore + 3, entryCountAfterAdding, "Should have 3 entries after adding");
@@ -433,8 +433,8 @@ namespace BlitzCacheCore.Tests
             try
             {
                 // Act
-                var result1 = cacheWithoutStats.BlitzGet("test-key", TestFunction, TestFactory.StandardTimeoutMs);
-                var result2 = cacheWithoutStats.BlitzGet("test-key", TestFunction, TestFactory.StandardTimeoutMs);
+                var result1 = cacheWithoutStats.BlitzGet("test-key", TestFunction, TestHelpers.StandardTimeoutMs);
+                var result2 = cacheWithoutStats.BlitzGet("test-key", TestFunction, TestHelpers.StandardTimeoutMs);
 
                 // Assert
                 Assert.AreEqual("result-1", result1, "First call should return computed result");
@@ -457,15 +457,15 @@ namespace BlitzCacheCore.Tests
             async Task<string> TestFunction()
             {
                 callCount++;
-                await TestFactory.ShortDelay();
+                await TestHelpers.ShortDelay();
                 return $"async-result-{callCount}";
             }
 
             try
             {
                 // Act
-                var result1 = await cacheWithoutStats.BlitzGet("async-test-key", TestFunction, TestFactory.StandardTimeoutMs);
-                var result2 = await cacheWithoutStats.BlitzGet("async-test-key", TestFunction, TestFactory.StandardTimeoutMs);
+                var result1 = await cacheWithoutStats.BlitzGet("async-test-key", TestFunction, TestHelpers.StandardTimeoutMs);
+                var result2 = await cacheWithoutStats.BlitzGet("async-test-key", TestFunction, TestHelpers.StandardTimeoutMs);
 
                 // Assert
                 Assert.AreEqual("async-result-1", result1, "First async call should return computed result");
@@ -488,11 +488,11 @@ namespace BlitzCacheCore.Tests
             try
             {
                 // Act
-                cacheWithoutStats.BlitzUpdate("update-key", () => "initial-value", TestFactory.StandardTimeoutMs);
-                var result1 = cacheWithoutStats.BlitzGet("update-key", () => "fallback-value", TestFactory.StandardTimeoutMs);
+                cacheWithoutStats.BlitzUpdate("update-key", () => "initial-value", TestHelpers.StandardTimeoutMs);
+                var result1 = cacheWithoutStats.BlitzGet("update-key", () => "fallback-value", TestHelpers.StandardTimeoutMs);
                 
-                cacheWithoutStats.BlitzUpdate("update-key", () => "updated-value", TestFactory.StandardTimeoutMs);
-                var result2 = cacheWithoutStats.BlitzGet("update-key", () => "fallback-value", TestFactory.StandardTimeoutMs);
+                cacheWithoutStats.BlitzUpdate("update-key", () => "updated-value", TestHelpers.StandardTimeoutMs);
+                var result2 = cacheWithoutStats.BlitzGet("update-key", () => "fallback-value", TestHelpers.StandardTimeoutMs);
 
                 // Assert
                 Assert.AreEqual("initial-value", result1, "Should get initial updated value");

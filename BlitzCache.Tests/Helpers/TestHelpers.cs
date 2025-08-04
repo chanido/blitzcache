@@ -9,31 +9,27 @@ namespace BlitzCacheCore.Tests.Helpers
     /// Factory class for creating commonly used test configurations and constants.
     /// Centralizes test timeouts and cache configurations for easier maintenance.
     /// </summary>
-    public static class TestFactory
+    public static class TestHelpers
     {
+        #region Timeout Constants - Use These for New Tests
+
         public const int ConcurrentOperationsCount = 100;
         public const int SmallLoopCount = 10;
         public const int LargeLoopCount = 1000;
 
-        #region Core Timeout Constants - Use These for New Tests
-
-        /// <summary>Small delay for eviction callback execution (1ms - reduced for faster tests)</summary>
         public const int EvictionCallbackWaitMs = 1;
 
-        /// <summary>Very short timeout for quick expiration tests</summary>
         public const int VeryShortTimeoutMs = EvictionCallbackWaitMs * 5;
 
-        /// <summary>Short timeout for quick tests</summary>
         public const int StandardTimeoutMs = EvictionCallbackWaitMs * 25;
 
-        /// <summary>Default timeout matching BlitzCache default</summary>
         public const int LongTimeoutMs = EvictionCallbackWaitMs * 100;
 
         public const int ExpirationBufferMs = VeryShortTimeoutMs;
 
         #endregion
 
-        #region Core Factory Methods
+        #region Factory Methods
 
         /// <summary>
         /// Creates a basic BlitzCache instance for general testing. RECOMMENDED
@@ -48,9 +44,10 @@ namespace BlitzCacheCore.Tests.Helpers
         public static IBlitzCache CreateWithStatistics() =>
             new BlitzCache(defaultMilliseconds: LongTimeoutMs, enableStatistics: true,
                 cleanupInterval: TimeSpan.FromMilliseconds(StandardTimeoutMs));
+
         #endregion
 
-        #region Core Wait Methods
+        #region Wait Methods
 
         public static Task WaitForEvictionCallbacks() => Task.Delay(EvictionCallbackWaitMs);
         public static void WaitForEvictionCallbacksSync() => Thread.Sleep(EvictionCallbackWaitMs);
