@@ -60,8 +60,9 @@ for (int i = 0; i < 100; i++)
 ✅ **Ultra-fast performance** - 0.03ms per operation with intelligent memory management  
 ✅ **Thread-safe by design** - Handles any concurrency scenario automatically  
 ✅ **Memory leak prevention** - Advanced cleanup prevents memory bloat  
-✅ **Production tested** - 119 comprehensive tests ensure reliability  
-✅ **Works with everything** - Sync, async, any data type, any .NET app
+✅ **Production tested** - 122 comprehensive tests ensure reliability  
+✅ **Works with everything** - Sync, async, any data type, any .NET app  
+✅ **Automatic logging** - Built-in statistics monitoring with one line setup (v2.0.1+)
 
 ## 📋 Table of Contents
 
@@ -109,6 +110,9 @@ var data = await cache.BlitzGet("key", ExpensiveOperation, timeoutMs);
 ```csharp
 // Setup (one line in Program.cs)
 services.AddBlitzCache();
+
+// Optional: Add automatic logging of cache statistics (v2.0.1+)
+services.AddBlitzCacheLogging(); // Logs cache performance hourly
 
 // Usage anywhere
 public WeatherService(IBlitzCache cache) => _cache = cache;
@@ -448,7 +452,7 @@ Cleans up resources (implements IDisposable).
 BlitzCache delivers enterprise-grade performance and reliability:
 - ✅ **Zero memory leaks** - Advanced usage-based cleanup
 - ✅ **0.03ms per operation** - Ultra-high performance 
-- ✅ **119 tests passing** - Comprehensive reliability
+- ✅ **122 tests passing** - Comprehensive reliability
 - ✅ **Advanced architecture** - Intelligent memory management
 - ✅ **Thread-safe** - Concurrent operation guarantees
 

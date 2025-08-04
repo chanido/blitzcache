@@ -5,6 +5,23 @@ All notable changes to BlitzCache will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.0.1] - 2025-08-04
+
+### Added
+- **Automatic Cache Logging**: New `AddBlitzCacheLogging()` extension method for automatic periodic statistics logging
+- **Microservice Support**: Application identification feature for distributed environments
+- **Background Service Integration**: Built-in hosted service for automatic cache monitoring
+- **Configurable Log Intervals**: Customizable logging frequency (defaults to hourly)
+- **Auto-detection of Application Names**: Intelligent application identification with custom override support
+
+### Changed
+- Enhanced `IServiceCollectionExtensions` with logging configuration options
+- Improved test coverage with logging functionality examples
+- Updated comprehensive test suite to 122 tests
+
+### Fixed
+- Enhanced documentation with logging setup examples
+
 ## [2.0.0]
 
 ### Added
