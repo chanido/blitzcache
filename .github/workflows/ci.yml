@@ -58,6 +58,7 @@ jobs:
         slug: chanido/blitzcache
         
     - name: Update README codecov badge for current branch
+      if: github.event_name == 'push' && (github.ref == 'refs/heads/master' || github.ref == 'refs/heads/develop')
       run: |
         CURRENT_BRANCH=${GITHUB_REF#refs/heads/}
         echo "Updating codecov badge for branch: $CURRENT_BRANCH"

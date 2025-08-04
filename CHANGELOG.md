@@ -13,6 +13,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Background Service Integration**: Built-in hosted service for automatic cache monitoring
 - **Configurable Log Intervals**: Customizable logging frequency (defaults to hourly)
 - **Auto-detection of Application Names**: Intelligent application identification with custom override support
+- **Dynamic Codecov Badge**: Automated branch-specific codecov badge URL updates in CI/CD pipeline
 
 ### Changed
 - Enhanced `IServiceCollectionExtensions` with logging configuration options
@@ -22,6 +23,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 - Enhanced documentation with logging setup examples
+- **Fixed CI/CD badge update**: Prevented codecov badge updates during pull request builds to avoid detached HEAD errors
 
 ## [2.0.0]
 
