@@ -94,10 +94,11 @@ jobs:
         name: nuget-packages-dev
         path: ./packages/*.nupkg
         
-    - name: Publish to NuGet (Pre-release)
-      run: dotnet nuget push ./packages/*.nupkg --api-key ${{ secrets.NUGET_API_KEY }} --source https://api.nuget.org/v3/index.json --skip-duplicate
-      env:
-        NUGET_API_KEY: ${{ secrets.NUGET_API_KEY }}
+    # Commented out - only publish manually when needed
+    # - name: Publish to NuGet (Pre-release)
+    #   run: dotnet nuget push ./packages/*.nupkg --api-key ${{ secrets.NUGET_API_KEY }} --source https://api.nuget.org/v3/index.json --skip-duplicate
+    #   env:
+    #     NUGET_API_KEY: ${{ secrets.NUGET_API_KEY }}
 
   package:
     name: Create NuGet Package

@@ -1,7 +1,7 @@
 # ⚡ BlitzCache
 
 <div align="center">
-  <img src="BlitzCache.png" alt="BlitzCache" width="300"/>
+  <img src="https://github.com/chanido/blitzcache/raw/develop/BlitzCache.png" alt="BlitzCache" width="300"/>
 </div>
 
 [![NuGet](https://img.shields.io/nuget/v/BlitzCache.svg)](https://www.nuget.org/packages/BlitzCache/)
