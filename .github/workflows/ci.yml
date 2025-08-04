@@ -104,7 +104,7 @@ jobs:
     name: Create Development NuGet Package
     runs-on: ubuntu-latest
     needs: test
-    if: (github.event_name == 'push' && github.ref == 'refs/heads/develop') || github.event_name == 'workflow_dispatch'
+    if: (github.event_name == 'push' && github.ref == 'refs/heads/develop') || (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/develop')
     
     steps:
     - name: Checkout repository
@@ -138,7 +138,7 @@ jobs:
     name: Create NuGet Package
     runs-on: ubuntu-latest
     needs: test
-    if: github.event_name == 'release' || github.event_name == 'workflow_dispatch'
+    if: github.event_name == 'release' || (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/master')
     
     steps:
     - name: Checkout repository
@@ -164,33 +164,56 @@ jobs:
         name: nuget-packages-release
         path: ./packages/*.nupkg
 
-  publish-packages:
-    name: Publish NuGet Packages
+
+  publish-packages-release:
+    name: Publish NuGet Packages (Release)
     runs-on: ubuntu-latest
-    if: github.event_name == 'workflow_dispatch' && inputs.publish_packages == true
-    needs: [package, package-dev]
-    
+    if: github.event_name == 'workflow_dispatch' && inputs.publish_packages == true && github.ref == 'refs/heads/master'
+    needs: package
     steps:
     - name: Download packages
       uses: actions/download-artifact@v4
       with:
-        name: nuget-packages-${{ inputs.package_source }}
+        name: nuget-packages-release
         path: ./packages
-        
     - name: Setup .NET
       uses: actions/setup-dotnet@v4
       with:
         dotnet-version: ${{ env.DOTNET_VERSION }}
-        
     - name: Publish to NuGet
       run: dotnet nuget push ./packages/*.nupkg --api-key ${{ secrets.NUGET_API_KEY }} --source https://api.nuget.org/v3/index.json --skip-duplicate
       env:
         NUGET_API_KEY: ${{ secrets.NUGET_API_KEY }}
-        
     - name: Publish summary
       run: |
         echo "## NuGet Package Publication Summary" >> $GITHUB_STEP_SUMMARY
-        echo "- **Source**: ${{ inputs.package_source }}" >> $GITHUB_STEP_SUMMARY
+        echo "- **Source**: release" >> $GITHUB_STEP_SUMMARY
+        echo "- **Packages**: $(ls -1 ./packages/*.nupkg | wc -l) package(s)" >> $GITHUB_STEP_SUMMARY
+        echo "- **Status**: Published successfully" >> $GITHUB_STEP_SUMMARY
+
+  publish-packages-dev:
+    name: Publish NuGet Packages (Dev)
+    runs-on: ubuntu-latest
+    if: github.event_name == 'workflow_dispatch' && inputs.publish_packages == true && github.ref == 'refs/heads/develop'
+    needs: package-dev
+    steps:
+    - name: Download packages
+      uses: actions/download-artifact@v4
+      with:
+        name: nuget-packages-dev
+        path: ./packages
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: ${{ env.DOTNET_VERSION }}
+    - name: Publish to NuGet
+      run: dotnet nuget push ./packages/*.nupkg --api-key ${{ secrets.NUGET_API_KEY }} --source https://api.nuget.org/v3/index.json --skip-duplicate
+      env:
+        NUGET_API_KEY: ${{ secrets.NUGET_API_KEY }}
+    - name: Publish summary
+      run: |
+        echo "## NuGet Package Publication Summary" >> $GITHUB_STEP_SUMMARY
+        echo "- **Source**: develop" >> $GITHUB_STEP_SUMMARY
         echo "- **Packages**: $(ls -1 ./packages/*.nupkg | wc -l) package(s)" >> $GITHUB_STEP_SUMMARY
         echo "- **Status**: Published successfully" >> $GITHUB_STEP_SUMMARY
 
