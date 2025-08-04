@@ -231,7 +231,7 @@ namespace BlitzCacheCore.Tests
             var initialSemaphoreCount = cache.GetSemaphoreCount();
 
             // Act - Use BlitzCache with many different keys (reduced count for faster execution while maintaining validity)
-            const int memoryTestIterations = 200; // Enough to detect memory leaks
+            const int memoryTestIterations = 50; // Enough to detect memory leaks
             for (int i = 0; i < memoryTestIterations; i++)
             {
                 if (i % 2 == 0)
@@ -250,10 +250,14 @@ namespace BlitzCacheCore.Tests
 
             var semaphoreCountAfterOperations = cache.GetSemaphoreCount();
             Console.WriteLine($"📊 Created {semaphoreCountAfterOperations - initialSemaphoreCount} semaphores for {memoryTestIterations} operations");
-
             // Assert - Should have created semaphores but not leak indefinitely
             Assert.That(semaphoreCountAfterOperations, Is.GreaterThan(initialSemaphoreCount), "Should have created semaphores");
-            
+
+            await TestFactory.WaitForSemaphoreExpiration(); // Wait for cleanup cycle
+
+            var finalSemaphoreCount = cache.GetSemaphoreCount();
+            Console.WriteLine($"📊 Final semaphore count after cleanup: {finalSemaphoreCount}");
+            Assert.That(finalSemaphoreCount, Is.EqualTo(initialSemaphoreCount), "Should have released all semaphores");
             Console.WriteLine("✅ Many different keys handled without apparent memory leaks");
         }
 

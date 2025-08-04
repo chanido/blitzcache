@@ -9,11 +9,12 @@ namespace BlitzCacheCore.LockDictionaries
     /// </summary>
     public class BlitzSemaphore : ICleanupEntry, IDisposable
     {
+        public const int BlitzSemaphoreExpirationSeconds = 1;
         private readonly SemaphoreSlim semaphore;
         private readonly object lockObject = new object();
         private int activeUsers = 0;
         public DateTime LastAccessed { get; private set; } = DateTime.UtcNow;
-        public bool IsInUse => activeUsers > 0 || (DateTime.UtcNow - LastAccessed).TotalSeconds < 1;
+        public bool IsInUse => activeUsers > 0 || (DateTime.UtcNow - LastAccessed).TotalSeconds < BlitzSemaphoreExpirationSeconds;
         public bool IsDisposed { get; private set; } = false;
 
 
