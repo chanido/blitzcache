@@ -129,7 +129,6 @@ public async Task<Weather> GetWeather(string city) =>
 
 **Compatibility:** .NET Standard 2.1+ | .NET Core 3.1+ | .NET 5-8+
 
-> ⚠️ **For Contributors**: Development and CI/CD pipeline requires .NET 8.0 SDK. The library itself targets .NET Standard 2.1 for broad compatibility.
 ## 📚 Learning BlitzCache - Examples & Tutorials
 
 ### **Comprehensive Example Files**
