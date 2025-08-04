@@ -49,12 +49,11 @@ jobs:
         echo "=== Test Results Structure ==="
         find ./TestResults -type f -ls || echo "No files in TestResults"
       
-    - name: Upload coverage to Codecov
-      uses: codecov/codecov-action@v3
+    - name: Upload coverage reports to Codecov
+      uses: codecov/codecov-action@v5
       with:
-        directory: ./TestResults
-        fail_ci_if_error: false
         token: ${{ secrets.CODECOV_TOKEN }}
+        slug: chanido/blitzcache
         
     - name: Upload test results
       uses: actions/upload-artifact@v4
