@@ -6,7 +6,7 @@
 
 [![NuGet](https://img.shields.io/nuget/v/BlitzCache.svg)](https://www.nuget.org/packages/BlitzCache/)
 [![NuGet Downloads](https://img.shields.io/nuget/dt/BlitzCache.svg)](https://www.nuget.org/packages/BlitzCache/)
-[![codecov](https://codecov.io/gh/chanido/blitzcache/branch/develop/graph/badge.svg)](https://codecov.io/gh/chanido/blitzcache)
+[![codecov](https://codecov.io/gh/chanido/blitzcache/branch/master/graph/badge.svg)](https://codecov.io/gh/chanido/blitzcache)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![.NET Standard](https://img.shields.io/badge/.NET%20Standard-2.1-blue.svg)](https://docs.microsoft.com/en-us/dotnet/standard/net-standard)
 
