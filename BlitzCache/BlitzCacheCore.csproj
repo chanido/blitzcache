@@ -7,38 +7,41 @@
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <Authors>Chan (aburrio@gmail.com)</Authors>
     <Company>IntuiChan</Company>
-    <Description>⚡ Ultra-fast, thread-safe caching library for .NET with zero memory leaks and advanced usage-based cleanup. Prevents duplicate execution of expensive operations with 0.03ms per operation performance. Enterprise-grade reliability with comprehensive test coverage.</Description>
+    <Description>⚡ Enterprise-grade caching that's ridiculously simple to use. One line of code prevents duplicate execution of expensive operations. Ultra-fast, thread-safe, and prevents server crashes from concurrent query bursts. Zero configuration required.</Description>
     <Copyright>Copyright (C) IntuiChan 2025</Copyright>
     <PackageProjectUrl>https://github.com/chanido/blitzcache</PackageProjectUrl>
     <RepositoryUrl>https://github.com/chanido/blitzcache</RepositoryUrl>
     <RepositoryType>git</RepositoryType>
-    <PackageTags>Threading, Async, Lock, Semaphore, Synchronization, Threadsafe, Cache, Lambda, Caching, MemoryLeak, Performance, Production, Enterprise, UsageBased, Cleanup, Smart, ZeroLeaks</PackageTags>
+    <PackageTags>Threading, Async, Lock, Semaphore, Synchronization, Threadsafe, Cache, Caching, Performance, ThunderingHerd, SQLServer, Protection, Enterprise, Simple, ZeroConfiguration, DuplicateExecution, Prevention</PackageTags>
     <Version>2.0.0</Version>
     <AssemblyVersion>2.0.0.0</AssemblyVersion>
     <FileVersion>2.0.0.0</FileVersion>
-    <PackageReleaseNotes>🚀 BlitzCache - Production-Ready Caching Solution
+    <PackageReleaseNotes>🚀 BlitzCache - Enterprise-grade caching that's ridiculously simple to use
 
-⚡ HIGH-PERFORMANCE FEATURES:
-• Zero Memory Leaks - Advanced usage-based cleanup system prevents memory bloat
-• Ultra-High Performance - 0.03ms per operation with optimal memory management  
-• Smart Lock Management - Intelligent locking with granular concurrency control
-• Enterprise Reliability - Comprehensive test coverage ensuring production stability
-• Thread-Safe Architecture - Advanced locking with concurrent safety guarantees
+✨ THE SIMPLICITY ADVANTAGE:
+• One line of code prevents duplicate execution of expensive operations
+• Zero configuration required - works out of the box with sensible defaults
+• Ridiculously simple API that "just works" for any .NET application
 
-🔧 TECHNICAL CAPABILITIES:
-• SmartLockDictionary/SmartSemaphoreDictionary with intelligent cleanup
-• SmartLock/SmartSemaphore IDisposable wrappers with automatic resource management
-• Flexible caching options (global shared or instance-based)
-• Full async/await support with proper Task return types
+🛡️ THUNDERING HERD PROTECTION:
+• Prevents SQL server crashes from concurrent query bursts
+• Multiple concurrent calls = Single execution (others wait for result)
+• Protects databases, APIs, and file systems from overload
+• Perfect for high-traffic applications and microservices
+
+⚡ ENTERPRISE PERFORMANCE:
+• Ultra-fast 0.03ms per operation with intelligent memory management
+• Zero memory leaks with advanced usage-based cleanup system
+• Thread-safe by design with granular concurrency control
+• 44 comprehensive tests ensuring production reliability
+
+🔧 ADVANCED FEATURES:
 • Dynamic cache duration with result-based retention control
+• Full async/await support with proper Task handling
+• Automatic cache key generation or manual key management
+• Built-in statistics and monitoring capabilities
 
-� ENTERPRISE BENEFITS:
-• Memory leak prevention for long-running applications
-• Production-tested performance and reliability
-• Comprehensive test suite for stability assurance
-• Optimized for demanding enterprise workloads
-
-BlitzCache delivers enterprise-grade caching with zero configuration complexity!</PackageReleaseNotes>
+Perfect for protecting your backend systems while keeping your code simple!</PackageReleaseNotes>
     <PackageId>BlitzCache</PackageId>
     <PackageIcon>icon.png</PackageIcon>
     <PackageReadmeFile>README.md</PackageReadmeFile>
