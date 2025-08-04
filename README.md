@@ -98,6 +98,10 @@ for (int i = 0; i < 100; i++)
 dotnet add package BlitzCache
 ```
 
+> 📋 **Requirements**: Your project needs .NET Core 3.1+ or .NET 5-8+. No special SDK required for usage.
+> 
+> 👥 **For Contributors**: Development requires .NET 8.0 SDK (see [CONTRIBUTING.md](CONTRIBUTING.md))
+
 **Basic Usage**
 ```csharp
 var cache = new BlitzCache();
@@ -124,6 +128,8 @@ public async Task<Weather> GetWeather(string city) =>
 ```
 
 **Compatibility:** .NET Standard 2.1+ | .NET Core 3.1+ | .NET 5-8+
+
+> ⚠️ **For Contributors**: Development and CI/CD pipeline requires .NET 8.0 SDK. The library itself targets .NET Standard 2.1 for broad compatibility.
 ## 📚 Learning BlitzCache - Examples & Tutorials
 
 ### **Comprehensive Example Files**

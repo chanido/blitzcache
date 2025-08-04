@@ -15,6 +15,19 @@ BlitzCache is a community-driven project, and we welcome contributions of all ki
 7. **Push** to the branch: `git push origin feature/amazing-feature`
 8. **Open** a Pull Request
 
+## ⚙️ Development Requirements
+
+> ⚠️ **Important**: BlitzCache development requires .NET 8.0 SDK, even though the library targets .NET Standard 2.1 for broad compatibility.
+> 
+> **For Library Users**: Only need .NET Core 3.1+ or .NET 5-8+  
+> **For Contributors**: Must have .NET 8.0 SDK installed
+
+**Why .NET 8.0 for Development?**
+- 🔒 **Security**: Latest security updates and vulnerability-free packages
+- ⚡ **Performance**: Superior build and test performance 
+- 🛠️ **Tooling**: Access to modern development tools and features
+- 📊 **CI/CD**: Our pipeline uses .NET 8.0 for consistency
+
 ## 📋 Types of Contributions
 
 ### 🐛 **Bug Reports**
@@ -51,7 +64,7 @@ Help make BlitzCache easier to use:
 ### **Environment Setup**
 ```bash
 # Prerequisites
-- .NET 6.0 SDK or later
+- .NET 8.0 SDK or later
 - Visual Studio 2022 or VS Code
 - Git
 
