@@ -54,6 +54,7 @@ jobs:
       with:
         directory: ./TestResults
         fail_ci_if_error: false
+        token: ${{ secrets.CODECOV_TOKEN }}
         
     - name: Upload test results
       uses: actions/upload-artifact@v4
