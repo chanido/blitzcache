@@ -93,7 +93,7 @@ namespace BlitzCacheCore.Tests
 
                 switch (result)
                 {
-                    case null: n.CacheRetention = TestFactory.StandardTimeoutMs; break; //Zero
+                    case null: n.CacheRetention = 1000; break; //Zero
                     case true: n.CacheRetention = 2000; break; //Even
                     case false: n.CacheRetention = 3000; break;//Odd
                 }
@@ -101,7 +101,7 @@ namespace BlitzCacheCore.Tests
                 return result;
             }
 
-            void WaitAndCheck(int milliseconds, int calls)
+            void WaitAndCheck(int milliseconds, int calls, string message)
             {
                 slowClass.ResetCounter();
                 Thread.Sleep(milliseconds);
@@ -120,21 +120,21 @@ namespace BlitzCacheCore.Tests
                 cache.Remove("Odd");
             }
 
-            WaitAndCheck(0, 3); // First time we will call three times
+            WaitAndCheck(0, 3, "First time we will call three times");
 
-            WaitAndCheck(500, 0); // If we wait only 500ms everything should be cached
+            WaitAndCheck(500, 0, "If we wait only 500ms everything should be cached");
 
-            WaitAndCheck(1100, 1); // If we wait 1100ms only Zero should be recalculated
+            WaitAndCheck(1100, 1, "If we wait 1100ms only Zero should be recalculated");
 
             CleanCache();
 
-            WaitAndCheck(0, 3); // First time we will call three times
+            WaitAndCheck(0, 3, "First time we will call three times");
 
-            WaitAndCheck(2100, 2); // If we wait 2100ms Zero and Even should be recalculated
+            WaitAndCheck(2100, 2, "If we wait 2100ms Zero and Even should be recalculated");
 
-            WaitAndCheck((int)TestFactory.StandardTimeoutMs, 2); // If we wait 1000ms more Odd should be recalculated
+            WaitAndCheck(1000, 2, "If we wait 1000ms more Odd should be recalculated");
 
-            WaitAndCheck(3100, 3); // If we wait 3100ms more everything should be recalculated
+            WaitAndCheck(3100, 3, "If we wait 3100ms more everything should be recalculated");
         }
 
         [Test]
@@ -193,7 +193,7 @@ namespace BlitzCacheCore.Tests
         }
 
         [Test]
-        public void CacheExpiration_ShouldRecalculateAfterTimeout()
+        public async Task CacheExpiration_ShouldRecalculateAfterTimeout()
         {
             // Arrange
             var testCache = TestFactory.CreateBasic();
@@ -205,9 +205,9 @@ namespace BlitzCacheCore.Tests
             }
 
             // Act
-            var result1 = testCache.BlitzGet("expiration_key", TestFunction, TestFactory.ShortExpirationMs); // Short timeout
-            TestFactory.ExtendedSyncWait(); // Wait for expiration (reduced from 150ms)
-            var result2 = testCache.BlitzGet("expiration_key", TestFunction, TestFactory.ShortExpirationMs);
+            var result1 = testCache.BlitzGet("expiration_key", TestFunction, TestFactory.ShortTimeoutMs);
+            await TestFactory.WaitForShortExpiration(); // Wait for expiration
+            var result2 = testCache.BlitzGet("expiration_key", TestFunction, TestFactory.ShortTimeoutMs);
 
             // Assert
             Assert.AreEqual("result_1", result1, "First call should get first result");

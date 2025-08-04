@@ -26,7 +26,7 @@ namespace BlitzCacheCore.Tests
             Console.WriteLine($"After pre-population: {statsAfterPrePopulation.HitCount} hits, {statsAfterPrePopulation.MissCount} misses");
             
             // Warm up (should be all hits)
-            for (int i = 0; i < TestFactory.WarmupIterations; i++)
+            for (int i = 0; i < 1000; i++)
             {
                 cache.BlitzGet("test_key", () => "test_value", TestFactory.LongTimeoutMs);
             }
@@ -64,7 +64,7 @@ namespace BlitzCacheCore.Tests
             
             // We expect: 1 miss (pre-population) + 1000 hits (warmup) + 5000 hits (test) = 6000 hits, 1 miss
             Assert.AreEqual(1, stats.MissCount, "Should have exactly 1 miss from pre-population");
-            Assert.AreEqual(TestFactory.TotalHitsExpected, stats.HitCount, $"Should record {TestFactory.WarmupIterations} warmup + {TestFactory.FastHitIterations} test hits");
+            Assert.AreEqual(6000, stats.HitCount, $"Should record {1000} warmup + {TestFactory.FastHitIterations} test hits");
             
             cache.Dispose();
         }
@@ -88,7 +88,7 @@ namespace BlitzCacheCore.Tests
             
             for (int i = 0; i < iterations; i++)
             {
-                cache.BlitzGet($"key_{i}", () => TestFunction(i), TestFactory.LongTermCacheMs);
+                cache.BlitzGet($"key_{i}", () => TestFunction(i), TestFactory.LongTimeoutMs);
             }
             
             stopwatch.Stop();
@@ -125,9 +125,9 @@ namespace BlitzCacheCore.Tests
             // Pre-populate cache
             await cache.BlitzGet("async_key", async () => 
             {
-                await TestFactory.SmallDelay();
+                await TestFactory.ShortDelay();
                 return "async_value";
-            }, TestFactory.LongTermCacheMs);
+            }, TestFactory.LongTimeoutMs);
             
             var statsAfterPrePopulation = cache.Statistics;
             Console.WriteLine($"After pre-population: {statsAfterPrePopulation.HitCount} hits, {statsAfterPrePopulation.MissCount} misses");
@@ -140,9 +140,9 @@ namespace BlitzCacheCore.Tests
             {
                 tasks[i] = cache.BlitzGet("async_key", async () => 
                 {
-                    await TestFactory.SmallDelay();
+                    await TestFactory.ShortDelay();
                     return "async_value";
-                }, TestFactory.LongTermCacheMs);
+                }, TestFactory.LongTimeoutMs);
             }
             
             await Task.WhenAll(tasks);
@@ -186,21 +186,21 @@ namespace BlitzCacheCore.Tests
             for (int t = 0; t < threadsCount; t++)
             {
                 int threadId = t;
-                tasks[t] = Task.Run(() =>
+                tasks[t] = Task.Run((Action)(() =>
                 {
                     for (int i = 0; i < operationsPerThread; i++)
                     {
-                        var key = $"thread_{threadId}_key_{i % TestFactory.KeyRepetitionModulo}"; // Some repetition for hits
-                        cache.BlitzGet(key, () => $"value_{threadId}_{i}", TestFactory.LongTermCacheMs);
+                        var key = $"thread_{threadId}_key_{i % 10}"; // Some repetition for hits
+                        cache.BlitzGet<string>(key, (Func<string>)(() => $"value_{threadId}_{i}"), TestFactory.LongTimeoutMs);
                         
                         // Also access statistics frequently to test concurrent reads
-                        if (i % TestFactory.BatchModulo == 0)
+                        if (i % TestFactory.ConcurrentOperationsCount == 0)
                         {
                             var stats = cache.Statistics;
                             var hitRatio = stats.HitRatio; // Force calculation
                         }
                     }
-                });
+                }));
             }
             
             Task.WaitAll(tasks);

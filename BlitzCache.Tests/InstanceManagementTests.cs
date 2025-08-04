@@ -52,7 +52,7 @@ namespace BlitzCacheCore.Tests
         public void BlitzCacheConstructor_ShouldValidateParameters()
         {
             // Act & Assert
-            Assert.Throws<ArgumentNullException>(() => new BlitzCache(null, TestFactory.DefaultTimeoutMs));
+            Assert.Throws<ArgumentNullException>(() => new BlitzCache(null, TestFactory.LongTimeoutMs));
         }
 
         [Test]
@@ -79,7 +79,7 @@ namespace BlitzCacheCore.Tests
         {
             // Arrange
             var customMemoryCache = new Microsoft.Extensions.Caching.Memory.MemoryCache(new Microsoft.Extensions.Caching.Memory.MemoryCacheOptions());
-            var testCache = new BlitzCache(customMemoryCache, TestFactory.DefaultTimeoutMs);
+            var testCache = new BlitzCache(customMemoryCache, TestFactory.LongTimeoutMs);
 
             // Act
             var result1 = testCache.BlitzGet("custom_cache_key", () => "custom_value", TestFactory.StandardTimeoutMs);
@@ -131,17 +131,17 @@ namespace BlitzCacheCore.Tests
             // Act - Use AsyncRepeater for concurrent load testing
             var tasks = new Task[]
             {
-                AsyncRepeater.Go(TestFactory.ConcurrentPressureTestIterations, () => cache1.BlitzGet("pressure_test", () => Task.FromResult("cache1_value"), TestFactory.FastTimeoutMs)),
-                AsyncRepeater.Go(TestFactory.ConcurrentPressureTestIterations, () => cache2.BlitzGet("pressure_test", () => Task.FromResult("cache2_value"), TestFactory.FastTimeoutMs)),
-                AsyncRepeater.Go(TestFactory.ConcurrentPressureTestIterations, () => cache3.BlitzGet("pressure_test", () => Task.FromResult("cache3_value"), TestFactory.FastTimeoutMs))
+                AsyncRepeater.Go(50, () => cache1.BlitzGet("pressure_test", () => Task.FromResult("cache1_value"), TestFactory.ShortTimeoutMs)),
+                AsyncRepeater.Go(50, () => cache2.BlitzGet("pressure_test", () => Task.FromResult("cache2_value"), TestFactory.ShortTimeoutMs)),
+                AsyncRepeater.Go(50, () => cache3.BlitzGet("pressure_test", () => Task.FromResult("cache3_value"), TestFactory.ShortTimeoutMs))
             };
 
             await Task.WhenAll(tasks);
 
             // Assert - Verify each cache has its own values
-            Assert.AreEqual("cache1_value", await cache1.BlitzGet("pressure_test", () => Task.FromResult("fallback"), TestFactory.FastTimeoutMs));
-            Assert.AreEqual("cache2_value", await cache2.BlitzGet("pressure_test", () => Task.FromResult("fallback"), TestFactory.FastTimeoutMs));
-            Assert.AreEqual("cache3_value", await cache3.BlitzGet("pressure_test", () => Task.FromResult("fallback"), TestFactory.FastTimeoutMs));
+            Assert.AreEqual("cache1_value", await cache1.BlitzGet("pressure_test", () => Task.FromResult("fallback"), TestFactory.ShortTimeoutMs));
+            Assert.AreEqual("cache2_value", await cache2.BlitzGet("pressure_test", () => Task.FromResult("fallback"), TestFactory.ShortTimeoutMs));
+            Assert.AreEqual("cache3_value", await cache3.BlitzGet("pressure_test", () => Task.FromResult("fallback"), TestFactory.ShortTimeoutMs));
 
             // Cleanup
             cache1.Dispose();

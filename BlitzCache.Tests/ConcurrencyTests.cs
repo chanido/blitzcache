@@ -71,7 +71,7 @@ namespace BlitzCacheCore.Tests
             // Act - Use enhanced AsyncRepeater with staggered calls and existing SlowClassAsync
             var testResult = await AsyncRepeater.GoWithResults(5, 
                 () => cache.BlitzGet(cacheKey, slowClassAsync.ProcessSlowly, 10000), 
-                staggerDelayMs: TestFactory.VeryShortExpirationMs);
+                staggerDelayMs: TestFactory.VeryShortTimeoutMs);
 
             // Assert
             Assert.AreEqual(1, slowClassAsync.Counter, "Only one execution should have occurred");
@@ -124,14 +124,14 @@ namespace BlitzCacheCore.Tests
             string SyncOperation()
             {
                 Interlocked.Increment(ref executionCount);
-                TestFactory.StandardSyncWait();
+                TestFactory.StandardDelay();
                 return "MixedResult";
             }
 
             async Task<string> AsyncOperation()
             {
                 Interlocked.Increment(ref executionCount);
-                await TestFactory.WaitForMixedConcurrency();
+                await TestFactory.StandardDelay();
                 return "MixedResult";
             }
 

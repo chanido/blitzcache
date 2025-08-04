@@ -40,7 +40,7 @@ namespace BlitzCacheCore.Tests.Examples
             string ExpensiveOperation()
             {
                 callCount++;
-                TestFactory.StandardSyncWait(); // Simulate work
+                TestFactory.StandardDelay(); // Simulate work
                 return $"Computed result #{callCount}";
             }
 
@@ -68,7 +68,7 @@ namespace BlitzCacheCore.Tests.Examples
             async Task<string> ExpensiveAsyncOperation()
             {
                 callCount++;
-                await TestFactory.WaitForMixedConcurrency(); // Simulate async work
+                await TestFactory.StandardDelay(); // Simulate async work
                 return $"Async result #{callCount}";
             }
 
@@ -112,7 +112,7 @@ namespace BlitzCacheCore.Tests.Examples
         /// Shows how cached values expire after the specified time
         /// </summary>
         [Test]
-        public void Example4_CacheExpiration()
+        public async Task Example4_CacheExpiration()
         {
             var callCount = 0;
             string GetTimestamp()
@@ -122,17 +122,17 @@ namespace BlitzCacheCore.Tests.Examples
             }
 
             // Cache with very short expiration (100ms) - perfect for testing
-            var result1 = cache.BlitzGet("timestamp", GetTimestamp, TestFactory.ShortExpirationMs);
+            var result1 = cache.BlitzGet("timestamp", GetTimestamp, TestFactory.ShortTimeoutMs);
             
             // Immediate second call - returns cached value (no function execution)
-            var result2 = cache.BlitzGet("timestamp", GetTimestamp, TestFactory.ShortExpirationMs);
+            var result2 = cache.BlitzGet("timestamp", GetTimestamp, TestFactory.ShortTimeoutMs);
             Assert.AreEqual(result1, result2, "Should return cached value immediately");
             
             // Wait for cache to expire
-            TestFactory.LongSyncWait();
+            await TestFactory.WaitForShortExpiration();
             
             // After expiration - BlitzCache automatically calls function again
-            var result3 = cache.BlitzGet("timestamp", GetTimestamp, TestFactory.ShortExpirationMs);
+            var result3 = cache.BlitzGet("timestamp", GetTimestamp, TestFactory.ShortTimeoutMs);
             
             Assert.AreNotEqual(result1, result3, "Should return new value after expiration");
             Assert.AreEqual(2, callCount, "Function should be called twice due to expiration");
@@ -359,7 +359,7 @@ namespace BlitzCacheCore.Tests.Examples
             Console.WriteLine($"Initial state: {initialTotalOperations} operations, {cache.Statistics.HitRatio:P1} hit ratio");
 
             // First access - will be a cache miss
-            var profile1 = cache.BlitzGet("user_123", () => GetUserProfile(123), TestFactory.DefaultTimeoutMs);
+            var profile1 = cache.BlitzGet("user_123", () => GetUserProfile(123), TestFactory.LongTimeoutMs);
             TestFactory.WaitForEvictionCallbacksSync();
             Console.WriteLine($"First access result: {profile1}");
             
@@ -369,7 +369,7 @@ namespace BlitzCacheCore.Tests.Examples
             var hitCountBeforeSecond = cache.Statistics.HitCount;
             var totalOperationsBeforeSecond = cache.Statistics.TotalOperations;
             
-            var profile2 = cache.BlitzGet("user_123", () => GetUserProfile(123), TestFactory.DefaultTimeoutMs);
+            var profile2 = cache.BlitzGet("user_123", () => GetUserProfile(123), TestFactory.LongTimeoutMs);
             TestFactory.WaitForEvictionCallbacksSync();
             Console.WriteLine($"Second access result: {profile2}");
             
@@ -379,7 +379,7 @@ namespace BlitzCacheCore.Tests.Examples
             var missCountBeforeThird = cache.Statistics.MissCount;
             var entryCountBeforeThird = cache.Statistics.EntryCount;
             
-            var profile3 = cache.BlitzGet("user_456", () => GetUserProfile(456), TestFactory.DefaultTimeoutMs);
+            var profile3 = cache.BlitzGet("user_456", () => GetUserProfile(456), TestFactory.LongTimeoutMs);
             TestFactory.WaitForEvictionCallbacksSync();
             Console.WriteLine($"Different key result: {profile3}");
             
@@ -388,7 +388,7 @@ namespace BlitzCacheCore.Tests.Examples
             // Another hit on first key
             var hitCountBeforeFourth = cache.Statistics.HitCount;
             
-            var profile4 = cache.BlitzGet("user_123", () => GetUserProfile(123), TestFactory.DefaultTimeoutMs);
+            var profile4 = cache.BlitzGet("user_123", () => GetUserProfile(123), TestFactory.LongTimeoutMs);
             TestFactory.WaitForEvictionCallbacksSync();
             Console.WriteLine($"Third access to first key: {profile4}");
 
@@ -407,7 +407,7 @@ namespace BlitzCacheCore.Tests.Examples
             Assert.AreEqual(4, finalStats.TotalOperations, "Should have 4 total operations");
             Assert.AreEqual(2, finalStats.HitCount, "Should have 2 cache hits");
             Assert.AreEqual(2, finalStats.MissCount, "Should have 2 cache misses");
-            Assert.AreEqual(TestFactory.TestHitRatio, finalStats.HitRatio, TestFactory.HitRatioTolerance, "Hit ratio should be 50%");
+            Assert.AreEqual(0.5, finalStats.HitRatio, 0.001, "Hit ratio should be 50%");
             Assert.AreEqual(2, finalStats.EntryCount, "Should have 2 cached entries");
             Assert.AreEqual(2, databaseCallCount, "Database should only be called twice (cache working!)");
 

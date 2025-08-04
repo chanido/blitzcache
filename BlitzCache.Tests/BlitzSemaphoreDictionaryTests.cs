@@ -70,7 +70,7 @@ namespace BlitzCacheCore.Tests
                 {
                     var semaphore = semaphoreDictionary.GetSemaphore($"concurrent_key_{index}");
                     using var lockHandle = await semaphore.AcquireAsync();
-                    await TestFactory.SmallDelay();
+                    await TestFactory.ShortDelay();
                 });
             }
 
@@ -89,13 +89,13 @@ namespace BlitzCacheCore.Tests
             {
                 var semaphore = semaphoreDictionary.GetSemaphore(key);
                 using var lockHandle = await semaphore.AcquireAsync();
-                await TestFactory.SmallDelay();
+                await TestFactory.ShortDelay();
             }
 
             var initialCount = semaphoreDictionary.GetNumberOfLocks();
 
             // Wait for cleanup cycles to occur (reduced from 1500ms with faster cleanup interval)
-            await TestFactory.WaitForSemaphoreCleanup();
+            await TestFactory.LongDelay();
 
             var finalCount = semaphoreDictionary.GetNumberOfLocks();
             Assert.That(finalCount, Is.LessThanOrEqualTo(initialCount));
@@ -112,7 +112,7 @@ namespace BlitzCacheCore.Tests
 
             var initialCount = semaphoreDictionary.GetNumberOfLocks();
 
-            await TestFactory.WaitForExtendedSemaphoreCleanup(); // Reduced from 2000ms with faster cleanup interval
+            await TestFactory.LongDelay(); // Reduced from 2000ms with faster cleanup interval
 
             var finalCount = semaphoreDictionary.GetNumberOfLocks();
             Assert.That(finalCount, Is.GreaterThanOrEqualTo(2));

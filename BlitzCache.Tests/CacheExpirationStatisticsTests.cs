@@ -21,7 +21,7 @@ namespace BlitzCacheCore.Tests
             var testId = Guid.NewGuid().ToString("N")[..8]; // Unique test ID
             
             // Act - Add cache entries with short expiration (one at a time)
-            cache.BlitzGet($"key1_{testId}", () => "value1", TestFactory.StandardExpirationMs);
+            cache.BlitzGet($"key1_{testId}", () => "value1", TestFactory.StandardTimeoutMs);
             var statsAfterFirst = cache.Statistics;
             Console.WriteLine($"After first creation: {statsAfterFirst.EntryCount} entries, {statsAfterFirst.EvictionCount} evictions");
             
@@ -98,7 +98,7 @@ namespace BlitzCacheCore.Tests
             var cache = TestFactory.CreateWithStatistics();
             
             // Act - Mix of automatic and manual evictions
-            cache.BlitzGet("auto_expire", () => "value1", TestFactory.ShortExpirationMs);
+            cache.BlitzGet("auto_expire", () => "value1", TestFactory.ShortTimeoutMs);
             cache.BlitzGet("manual_remove", () => "value2", TestFactory.StandardTimeoutMs);
             cache.BlitzGet("keep_alive", () => "value3", TestFactory.StandardTimeoutMs);
             
@@ -109,7 +109,7 @@ namespace BlitzCacheCore.Tests
             cache.Remove("manual_remove");
             
             // Wait for automatic expiration
-            await TestFactory.WaitForShortExpirationShort();
+            await TestFactory.WaitForShortExpiration();
             
             // Access expired key to trigger callback
             cache.BlitzGet("auto_expire", () => "new_value", TestFactory.StandardTimeoutMs);

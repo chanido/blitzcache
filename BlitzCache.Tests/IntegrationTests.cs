@@ -133,13 +133,13 @@ namespace BlitzCacheCore.Tests
         }
 
         [Test]
-        public void Cache_Expiration_Should_Trigger_Semaphore_Cleanup()
+        public async Task Cache_Expiration_Should_Trigger_Semaphore_Cleanup()
         {
             Console.WriteLine("🧪 TESTING CACHE-SYNCHRONIZED SEMAPHORE CLEANUP");
             Console.WriteLine("================================================");
 
             // Create cache entry with very short expiration
-            var result = cache.BlitzGet("short_expiry", () => "expires_soon", TestFactory.VeryShortExpirationMs); // 50ms expiration
+            var result = cache.BlitzGet("short_expiry", () => "expires_soon", TestFactory.VeryShortTimeoutMs); // 50ms expiration
             Assert.That(result, Is.EqualTo("expires_soon"));
 
             var semaphoresAfterCreation = cache.GetSemaphoreCount();
@@ -147,10 +147,10 @@ namespace BlitzCacheCore.Tests
 
             // Wait for cache to expire
             Console.WriteLine("⏱️ Waiting for cache expiration...");
-            TestFactory.ShortSyncWait(); // Reduced from 100ms
+            await TestFactory.WaitForShortExpiration(); // Reduced from 100ms
 
             // Verify cache actually expired by trying to get new value
-            var newResult = cache.BlitzGet("short_expiry", () => "new_value_after_expiry", TestFactory.StandardTimeoutMs);
+            var newResult = cache.BlitzGet("short_expiry", () => "new_value_after_expiry", TestFactory.VeryShortTimeoutMs);
             Assert.That(newResult, Is.EqualTo("new_value_after_expiry"), "Cache should have expired");
 
             Console.WriteLine("✅ Cache-synchronized cleanup working!");
@@ -173,7 +173,7 @@ namespace BlitzCacheCore.Tests
                 if (isAsync)
                 {
                     return await cache.BlitzGet($"async_{index}_{DateTime.UtcNow.Ticks}", async () => {
-                        await TestFactory.SmallDelay();
+                        await TestFactory.ShortDelay();
                         return $"async_value_{index}";
                     }, TestFactory.StandardTimeoutMs);
                 }

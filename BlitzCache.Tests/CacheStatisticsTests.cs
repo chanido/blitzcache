@@ -101,7 +101,7 @@ namespace BlitzCacheCore.Tests
             var stats = cache.Statistics;
             Assert.AreEqual(hitCountBefore + 1, stats.HitCount, "Should have one hit");
             Assert.AreEqual(missCountBefore, stats.MissCount, "Should have one miss");
-            Assert.AreEqual(TestFactory.TestHitRatio, stats.HitRatio, TestFactory.HitRatioTolerance, "Hit ratio should be 50%");
+            Assert.AreEqual(0.5, stats.HitRatio, 0.001, "Hit ratio should be 50%");
             Assert.AreEqual(entryCountBefore, stats.EntryCount, "Should still have one cached entry");
             Assert.AreEqual(totalOperationsBefore + 1, stats.TotalOperations, "Should have two total operations");
             Assert.AreEqual(1, callCount, "Function should only be called once");
@@ -149,7 +149,7 @@ namespace BlitzCacheCore.Tests
             async Task<string> TestFunctionAsync()
             {
                 callCount++;
-                await TestFactory.MediumDelay();
+                await TestFactory.ShortDelay();
                 return "async result";
             }
             var hitCountBefore = cache.Statistics.HitCount;
@@ -172,7 +172,7 @@ namespace BlitzCacheCore.Tests
             var stats = cache.Statistics;
             Assert.AreEqual(hitCountAfterFirst + 1, stats.HitCount, "Should have one hit");
             Assert.AreEqual(missCountBefore + 1, stats.MissCount, "Should have one miss");
-            Assert.AreEqual(TestFactory.TestHitRatio, stats.HitRatio, TestFactory.HitRatioTolerance, "Hit ratio should be 50%");
+            Assert.AreEqual(0.5, stats.HitRatio, 0.001, "Hit ratio should be 50%");
             Assert.AreEqual(entryCountBefore + 1, stats.EntryCount, "Should have one cached entry");
             Assert.AreEqual(totalOperationsBefore + 2, stats.TotalOperations, "Should have two total operations");
             Assert.AreEqual(1, callCount, "Function should only be called once");
@@ -273,14 +273,14 @@ namespace BlitzCacheCore.Tests
             for (int i = 0; i < tasks.Length; i++)
             {
                 int threadId = i;
-                tasks[i] = Task.Run(() =>
+                tasks[i] = Task.Run((Action)(() =>
                 {
                     for (int j = 0; j < totalOperations / tasks.Length; j++)
                     {
                         var key = $"thread_{threadId}_key_{j % 5}"; // Some keys will repeat (hits)
-                        cache.BlitzGet(key, () => $"value_{threadId}_{j}", TestFactory.StandardTimeoutMs);
+                        cache.BlitzGet<string>(key, (Func<string>)(() => $"value_{threadId}_{j}"), TestFactory.StandardTimeoutMs);
                     }
-                });
+                }));
             }
 
             Task.WaitAll(tasks);
@@ -319,7 +319,7 @@ namespace BlitzCacheCore.Tests
             var missCountBefore = cache.Statistics.MissCount;
 
             // Act - Add cache entry with short expiration
-            cache.BlitzGet("expiring_key", () => "value1", TestFactory.StandardExpirationMs);
+            cache.BlitzGet("expiring_key", () => "value1", TestFactory.StandardTimeoutMs);
             await TestFactory.WaitForEvictionCallbacks();
 
             // Wait for automatic expiration
@@ -345,7 +345,7 @@ namespace BlitzCacheCore.Tests
             var entryCountBefore = cache.Statistics.EntryCount;
 
             // Act - Mix of automatic and manual evictions
-            cache.BlitzGet("auto_expire", () => "value1", TestFactory.ShortExpirationMs);
+            cache.BlitzGet("auto_expire", () => "value1", TestFactory.ShortTimeoutMs);
             cache.BlitzGet("manual_remove", () => "value2", TestFactory.StandardTimeoutMs);
             cache.BlitzGet("keep_alive", () => "value3", TestFactory.StandardTimeoutMs);
             await TestFactory.WaitForEvictionCallbacks();
@@ -355,7 +355,7 @@ namespace BlitzCacheCore.Tests
             await TestFactory.WaitForEvictionCallbacks();
 
             // Wait for automatic expiration
-            await TestFactory.WaitForShortExpirationShort();
+            await TestFactory.WaitForShortExpiration();
 
             // Access expired key to trigger callback
             cache.BlitzGet("auto_expire", () => "new_value", TestFactory.StandardTimeoutMs);
@@ -457,7 +457,7 @@ namespace BlitzCacheCore.Tests
             async Task<string> TestFunction()
             {
                 callCount++;
-                await TestFactory.MediumDelay();
+                await TestFactory.ShortDelay();
                 return $"async-result-{callCount}";
             }
 

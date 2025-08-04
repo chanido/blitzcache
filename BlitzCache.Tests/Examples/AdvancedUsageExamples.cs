@@ -48,7 +48,7 @@ namespace BlitzCacheCore.Tests.Examples
                 if (callCount == 1)
                 {
                     // Cache temporary data for a short time (100ms)
-                    nuances.CacheRetention = TestFactory.ShortExpirationMs;
+                    nuances.CacheRetention = TestFactory.ShortTimeoutMs;
                     return "Temporary data";
                 }
                 
@@ -62,7 +62,7 @@ namespace BlitzCacheCore.Tests.Examples
             Assert.AreEqual("Temporary data", result1);
             
             // Wait for short cache to expire
-            TestFactory.LongSyncWait();
+            await TestFactory.StandardDelay();
             
             // Second call - will get new data with longer cache time
             var result2 = await cache.BlitzGet("dynamic_key", GetDataWithDynamicCaching);
@@ -96,7 +96,7 @@ namespace BlitzCacheCore.Tests.Examples
                 }
                 
                 // Simulate expensive database or API call
-                await TestFactory.WaitForShortProtection();
+                await TestFactory.LongDelay();
                 return $"Result from thread {Thread.CurrentThread.ManagedThreadId}";
             }
 
@@ -132,7 +132,7 @@ namespace BlitzCacheCore.Tests.Examples
                 {
                     failureCount++;
                     // Cache failures briefly to avoid hammering the failing service
-                    nuances.CacheRetention = TestFactory.CircuitBreakerCacheMs;
+                    nuances.CacheRetention = TestFactory.LongTimeoutMs;
                     throw new InvalidOperationException($"Service unavailable (failure #{failureCount})");
                 }
                 
@@ -172,7 +172,7 @@ namespace BlitzCacheCore.Tests.Examples
             string GetFromDatabase(string id)
             {
                 databaseCallCount++;
-                TestFactory.StandardSyncWait(); // Simulate DB latency
+                TestFactory.StandardDelay(); // Simulate DB latency
                 return $"DB_Data_{id}";
             }
 
@@ -215,19 +215,19 @@ namespace BlitzCacheCore.Tests.Examples
             // Pre-populate cache with commonly accessed data during app startup
             var commonUsers = new[] { "user_1", "user_2", "user_3" };
             
-                var warmupTasks = commonUsers.Select(userId => 
-                Task.Run(() => 
+                var warmupTasks = commonUsers.Select((Func<string, Task>)(userId =>
+                Task.Run((Action)(() => 
                 {
                     actualCallCount++;
                     // BlitzUpdate forces cache population even if not requested yet
-                    cache.BlitzUpdate($"profile_{userId}", () => GetUserProfile(userId), TestFactory.DefaultTimeoutMs);
-                })
+                    cache.BlitzUpdate($"profile_{userId}", () => GetUserProfile(userId), (long)TestFactory.LongTimeoutMs);
+                })))
             );            await Task.WhenAll(warmupTasks);
             
             // Now when users access their profiles, data is already cached - no wait time!
-            var profile1 = cache.BlitzGet("profile_user_1", () => GetUserProfile("user_1"), TestFactory.DefaultTimeoutMs);
-            var profile2 = cache.BlitzGet("profile_user_2", () => GetUserProfile("user_2"), TestFactory.DefaultTimeoutMs);
-            var profile3 = cache.BlitzGet("profile_user_3", () => GetUserProfile("user_3"), TestFactory.DefaultTimeoutMs);
+            var profile1 = cache.BlitzGet("profile_user_1", () => GetUserProfile("user_1"), TestFactory.LongTimeoutMs);
+            var profile2 = cache.BlitzGet("profile_user_2", () => GetUserProfile("user_2"), TestFactory.LongTimeoutMs);
+            var profile3 = cache.BlitzGet("profile_user_3", () => GetUserProfile("user_3"), TestFactory.LongTimeoutMs);
             
             Assert.AreEqual("Profile for user user_1", profile1);
             Assert.AreEqual("Profile for user user_2", profile2);
@@ -289,8 +289,8 @@ namespace BlitzCacheCore.Tests.Examples
             var globalCache2 = BlitzCache.Global;
             
             // Independent cache instances have completely separate caches
-            var independentCache1 = new BlitzCache(TestFactory.DefaultTimeoutMs);
-            var independentCache2 = new BlitzCache(TestFactory.DefaultTimeoutMs);
+            var independentCache1 = new BlitzCache(TestFactory.LongTimeoutMs);
+            var independentCache2 = new BlitzCache(TestFactory.LongTimeoutMs);
 
             // Global caches are the same instance and share data
             Assert.AreSame(globalCache1, globalCache2, "Global instances should be the same reference");
@@ -322,7 +322,7 @@ namespace BlitzCacheCore.Tests.Examples
             async Task<string> MonitoredOperation(string key)
             {
                 operationCount++;
-                await TestFactory.WaitForVeryShortExpiration(); // Simulate work (50ms)
+                await TestFactory.WaitForShortExpiration(); // Simulate work (50ms)
                 return $"Operation {operationCount} for {key}";
             }
 
@@ -375,8 +375,8 @@ namespace BlitzCacheCore.Tests.Examples
             // For microservices or when you need cache isolation
             // Setup: services.AddBlitzCacheInstance(TestFactory.DefaultTimeoutMs, enableStatistics: true);
             
-            var dedicatedCache1 = new BlitzCache(TestFactory.DefaultTimeoutMs, enableStatistics: true);
-            var dedicatedCache2 = new BlitzCache(TestFactory.DefaultTimeoutMs, enableStatistics: true);
+            var dedicatedCache1 = new BlitzCache(TestFactory.LongTimeoutMs, enableStatistics: true);
+            var dedicatedCache2 = new BlitzCache(TestFactory.LongTimeoutMs, enableStatistics: true);
             
             // These are completely separate instances
             Assert.AreNotSame(dedicatedCache1, dedicatedCache2, "Dedicated instances should be separate");
@@ -389,14 +389,14 @@ namespace BlitzCacheCore.Tests.Examples
             // Global cache for shared data, dedicated cache for sensitive data
             
             // Global cache for reference data (shared across services)
-            BlitzCache.Global.BlitzGet("reference_countries", () => "Country lookup data", TestFactory.LongTermCacheMs); // 1 hour
+            BlitzCache.Global.BlitzGet("reference_countries", () => "Country lookup data", TestFactory.LongTimeoutMs); // 1 hour
             
             // Dedicated cache for user-specific data (isolated per service)
             var userCache = new BlitzCache(TestFactory.StandardTimeoutMs, enableStatistics: true); // 5 minutes
             userCache.BlitzGet("user_session_123", () => "User session data", TestFactory.StandardTimeoutMs);
             
             // === SCENARIO 4: Statistics Monitoring in Production ===
-            var monitoredCache = new BlitzCache(TestFactory.DefaultTimeoutMs, enableStatistics: true);
+            var monitoredCache = new BlitzCache(TestFactory.LongTimeoutMs, enableStatistics: true);
             
             // Simulate production workload
             for (int i = 0; i < TestFactory.SmallLoopCount; i++)
