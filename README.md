@@ -78,26 +78,7 @@ for (int i = 0; i < 100; i++)
 - [Comparison](#-comparison-with-alternatives)
 - [Contributing](#-contributing)
 
-## 🎯 Why BlitzCache?
 
-### The Problem
-```csharp
-// Without BlitzCache: Multiple concurrent calls = Multiple executions
-Task.Run(() => ExpensiveApiCall()); // Executes
-Task.Run(() => ExpensiveApiCall()); // Executes again! 💸
-Task.Run(() => ExpensiveApiCall()); // And again! 💸💸
-```
-
-### The Solution
-```csharp
-// With BlitzCache: Multiple concurrent calls = Single execution
-Task.Run(() => cache.BlitzGet("api-call", ExpensiveApiCall)); // Executes once
-Task.Run(() => cache.BlitzGet("api-call", ExpensiveApiCall)); // Waits for first to complete ⏳
-Task.Run(() => cache.BlitzGet("api-call", ExpensiveApiCall)); // Waits for first to complete ⏳
-// Result: ALL callers get the same result from the single execution!
-```
-
-**🔒 Intelligent Execution Control:** While the first call executes, subsequent calls **wait** for the result instead of executing again. This prevents database overload, API rate limiting, and resource exhaustion.
 
 ## 📊 Real Impact
 
