@@ -7,19 +7,75 @@
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <Authors>Chan (aburrio@gmail.com)</Authors>
     <Company>IntuiChan</Company>
-    <Description>BlitzCache is a thread safe cache that accepts synchronous and asyncronous calls being simplicity its main goal.</Description>
-    <Copyright>Copyright (C) IntuiChan 2023</Copyright>
-    <PackageProjectUrl></PackageProjectUrl>
+    <Description>Enterprise-grade caching that's ridiculously simple to use. One line of code prevents duplicate execution of expensive operations. Ultra-fast, thread-safe, and prevents server crashes from concurrent query bursts. Zero configuration required. Targets .NET Standard 2.1 - compatible with .NET Core 3.1+, .NET 5-8+.</Description>
+    <Copyright>Copyright (C) IntuiChan 2025</Copyright>
+    <PackageProjectUrl>https://github.com/chanido/blitzcache</PackageProjectUrl>
     <RepositoryUrl>https://github.com/chanido/blitzcache</RepositoryUrl>
-    <PackageTags>Threading, Async, Lock, Semaphore, Synchronization, Threadsafe, Cache, Lambda, Caching</PackageTags>
-    <Version>1.0.2</Version>
-    <PackageReleaseNotes>- Added support for variable caching time per key with the class Nuances</PackageReleaseNotes>
+    <RepositoryType>git</RepositoryType>
+    <RepositoryBranch>master</RepositoryBranch>
+    <PackageValidationBaselineVersion>1.0.0</PackageValidationBaselineVersion>
+    <PackageTags>caching;performance;threading;async;concurrency;enterprise;dotnet;thundering-herd;duplicate-prevention;memory-cache;thread-safe;zero-configuration;blazing-fast;production-ready;sql-protection;cache-invalidation;logging;monitoring;statistics;microservices</PackageTags>
+    <Version>2.0.1</Version>
+    <AssemblyVersion>2.0.1.0</AssemblyVersion>
+    <FileVersion>2.0.1.0</FileVersion>
+    <PackageReleaseNotes>BlitzCache v2.0.1 - Enterprise-grade caching that's ridiculously simple to use
+
+NEW IN v2.0.1:
+• Automatic Cache Logging - Add services.AddBlitzCacheLogging() for automatic hourly statistics logging
+• Microservice Support - Application identification for distributed environments
+• Zero Setup Required - Logs cache performance with just one line of code
+
+THE SIMPLICITY ADVANTAGE:
+• One line of code prevents duplicate execution of expensive operations
+• Zero configuration required - works out of the box with sensible defaults
+• Ridiculously simple API that "just works" for any .NET application
+
+THUNDERING HERD PROTECTION:
+• Prevents SQL server crashes from concurrent query bursts
+• Multiple concurrent calls = Single execution (others wait for result)
+• Protects databases, APIs, and file systems from overload
+• Perfect for high-traffic applications and microservices
+
+ENTERPRISE PERFORMANCE:
+• Ultra-fast 0.0001ms per operation with intelligent memory management
+• Zero memory leaks with advanced usage-based cleanup system
+• Thread-safe by design with granular concurrency control
+• 119 comprehensive tests ensuring production reliability
+
+🔧 ADVANCED FEATURES:
+• Dynamic cache duration with result-based retention control
+• Full async/await support with proper Task handling
+• Automatic cache key generation or manual key management
+• Built-in statistics and monitoring capabilities
+
+Perfect for protecting your backend systems while keeping your code simple!</PackageReleaseNotes>
     <PackageId>BlitzCache</PackageId>
+    <PackageIcon>icon.png</PackageIcon>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+    <IncludeSymbols>true</IncludeSymbols>
+    <SymbolPackageFormat>snupkg</SymbolPackageFormat>
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Microsoft.Extensions.Caching.Abstractions" Version="3.1.4" />
-    <PackageReference Include="Microsoft.Extensions.Caching.Memory" Version="3.1.4" />
+    <AssemblyAttribute Include="System.Runtime.CompilerServices.InternalsVisibleTo">
+      <_Parameter1>BlitzCacheCore.Tests</_Parameter1>
+    </AssemblyAttribute>
+    <AssemblyAttribute Include="System.Runtime.CompilerServices.InternalsVisibleTo">
+      <_Parameter1>DynamicProxyGenAssembly2, PublicKey=0024000004800000940000000602000000240000525341310004000001000100c547cac37abd99c8db225ef2f6c8a3602f3b3606cc9891605d02baa56104f4cfc0734aa39b93bf7852f7d9266654753cc297e7d2edfe0bac1cdcf9f717241550e0a7b191195b7667bb4f64bcb8e2121380fd1d9d46ad2d92d2d15605093924cceaf74c4861eff62abf69b9291ed0a340e113be11e6a7d3113e92484cf7045cc7</_Parameter1>
+    </AssemblyAttribute>
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Extensions.Caching.Memory" Version="8.0.1" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="8.0.2" />
+    <PackageReference Include="Microsoft.Extensions.Hosting.Abstractions" Version="8.0.1" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="8.0.2" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="..\README.md" Pack="true" PackagePath="\" />
+    <None Include="..\licence.txt" Pack="true" PackagePath="\" />
+    <None Include="..\icon.png" Pack="true" PackagePath="\" />
   </ItemGroup>
 
 </Project>

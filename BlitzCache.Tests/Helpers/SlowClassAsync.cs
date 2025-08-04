@@ -7,8 +7,8 @@ namespace BlitzCacheCore.Tests.Helpers
         private static readonly object locker = new object();
         public int Counter { get; set; }
 
-        public async Task<int> ProcessQuickly() => await Process(100);
-        public async Task<int> ProcessSlowly() => await Process(1000);
+        public async Task<int> ProcessQuickly() => await Process(10);
+        public async Task<int> ProcessSlowly() => await Process(50);
 
         private async Task<int> Process(int milliseconds)
         {
