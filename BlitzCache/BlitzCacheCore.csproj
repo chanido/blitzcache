@@ -18,25 +18,25 @@
     <Version>2.0.1</Version>
     <AssemblyVersion>2.0.1.0</AssemblyVersion>
     <FileVersion>2.0.1.0</FileVersion>
-    <PackageReleaseNotes>🚀 BlitzCache v2.0.1 - Enterprise-grade caching that's ridiculously simple to use
+    <PackageReleaseNotes>BlitzCache v2.0.1 - Enterprise-grade caching that's ridiculously simple to use
 
-🆕 NEW IN v2.0.1:
-• 📊 Automatic Cache Logging - Add services.AddBlitzCacheLogging() for automatic hourly statistics logging
-• 🏢 Microservice Support - Application identification for distributed environments
-• 🔧 Zero Setup Required - Logs cache performance with just one line of code
+NEW IN v2.0.1:
+• Automatic Cache Logging - Add services.AddBlitzCacheLogging() for automatic hourly statistics logging
+• Microservice Support - Application identification for distributed environments
+• Zero Setup Required - Logs cache performance with just one line of code
 
-✨ THE SIMPLICITY ADVANTAGE:
+THE SIMPLICITY ADVANTAGE:
 • One line of code prevents duplicate execution of expensive operations
 • Zero configuration required - works out of the box with sensible defaults
 • Ridiculously simple API that "just works" for any .NET application
 
-🛡️ THUNDERING HERD PROTECTION:
+THUNDERING HERD PROTECTION:
 • Prevents SQL server crashes from concurrent query bursts
 • Multiple concurrent calls = Single execution (others wait for result)
 • Protects databases, APIs, and file systems from overload
 • Perfect for high-traffic applications and microservices
 
-⚡ ENTERPRISE PERFORMANCE:
+ENTERPRISE PERFORMANCE:
 • Ultra-fast 0.0001ms per operation with intelligent memory management
 • Zero memory leaks with advanced usage-based cleanup system
 • Thread-safe by design with granular concurrency control
