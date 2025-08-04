@@ -7,6 +7,21 @@ on:
     branches: [ master ]
   release:
     types: [ published ]
+  workflow_dispatch:
+    inputs:
+      publish_packages:
+        description: 'Publish packages to NuGet'
+        required: true
+        default: false
+        type: boolean
+      package_source:
+        description: 'Source of packages to publish'
+        required: true
+        default: 'release'
+        type: choice
+        options:
+        - release
+        - develop
 
 env:
   DOTNET_VERSION: 8.0.x
@@ -118,18 +133,12 @@ jobs:
       with:
         name: nuget-packages-dev
         path: ./packages/*.nupkg
-        
-    # Commented out - only publish manually when needed
-    # - name: Publish to NuGet (Pre-release)
-    #   run: dotnet nuget push ./packages/*.nupkg --api-key ${{ secrets.NUGET_API_KEY }} --source https://api.nuget.org/v3/index.json --skip-duplicate
-    #   env:
-    #     NUGET_API_KEY: ${{ secrets.NUGET_API_KEY }}
 
   package:
     name: Create NuGet Package
     runs-on: ubuntu-latest
     needs: test
-    if: github.event_name == 'release'
+    if: github.event_name == 'release' || (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/master')
     
     steps:
     - name: Checkout repository
@@ -152,13 +161,38 @@ jobs:
     - name: Upload package artifacts
       uses: actions/upload-artifact@v4
       with:
-        name: nuget-packages
+        name: nuget-packages-release
         path: ./packages/*.nupkg
+
+  publish-packages:
+    name: Publish NuGet Packages
+    runs-on: ubuntu-latest
+    if: github.event_name == 'workflow_dispatch' && inputs.publish_packages == true
+    needs: [package, package-dev]
+    
+    steps:
+    - name: Download packages
+      uses: actions/download-artifact@v4
+      with:
+        name: nuget-packages-${{ inputs.package_source }}
+        path: ./packages
+        
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: ${{ env.DOTNET_VERSION }}
         
     - name: Publish to NuGet
       run: dotnet nuget push ./packages/*.nupkg --api-key ${{ secrets.NUGET_API_KEY }} --source https://api.nuget.org/v3/index.json --skip-duplicate
       env:
         NUGET_API_KEY: ${{ secrets.NUGET_API_KEY }}
+        
+    - name: Publish summary
+      run: |
+        echo "## NuGet Package Publication Summary" >> $GITHUB_STEP_SUMMARY
+        echo "- **Source**: ${{ inputs.package_source }}" >> $GITHUB_STEP_SUMMARY
+        echo "- **Packages**: $(ls -1 ./packages/*.nupkg | wc -l) package(s)" >> $GITHUB_STEP_SUMMARY
+        echo "- **Status**: Published successfully" >> $GITHUB_STEP_SUMMARY
 
   security-scan:
     name: Security Analysis
