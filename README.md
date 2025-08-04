@@ -144,7 +144,7 @@ public async Task<Weather> GetWeather(string city) =>
 ### **Comprehensive Example Files**
 BlitzCache includes comprehensive example test files that serve as **interactive tutorials** and **real-world usage guides**:
 
-#### 🌱 **[BasicUsageExamples.cs](BlitzCache.Tests/Examples/BasicUsageExamples.cs)**
+#### 🌱 **[BasicUsageExamples.cs](https://github.com/chanido/blitzcache/blob/master/BlitzCache.Tests/Examples/BasicUsageExamples.cs)**
 Perfect for **getting started** - covers essential patterns:
 - ✅ **Basic synchronous caching** - Simple function caching
 - ✅ **Asynchronous operations** - Async/await patterns  
@@ -156,7 +156,7 @@ Perfect for **getting started** - covers essential patterns:
 - ✅ **Cache statistics monitoring** - Performance analytics and hit/miss tracking
 - ✅ **Dependency injection** - ASP.NET Core integration
 
-#### 🚀 **[AdvancedUsageExamples.cs](BlitzCache.Tests/Examples/AdvancedUsageExamples.cs)**
+#### 🚀 **[AdvancedUsageExamples.cs](https://github.com/chanido/blitzcache/blob/master/BlitzCache.Tests/Examples/AdvancedUsageExamples.cs)**
 For **experienced users** - sophisticated scenarios:
 - ✅ **Dynamic cache timeout with Nuances** - Result-based cache duration
 - ✅ **Thread-safe concurrent access** - Multi-threading patterns

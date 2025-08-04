@@ -12,7 +12,9 @@
     <PackageProjectUrl>https://github.com/chanido/blitzcache</PackageProjectUrl>
     <RepositoryUrl>https://github.com/chanido/blitzcache</RepositoryUrl>
     <RepositoryType>git</RepositoryType>
-    <PackageTags>Threading, Async, Lock, Semaphore, Synchronization, Threadsafe, Cache, Caching, Performance, ThunderingHerd, SQLServer, Protection, Enterprise, Simple, ZeroConfiguration, DuplicateExecution, Prevention</PackageTags>
+    <RepositoryBranch>master</RepositoryBranch>
+    <PackageValidationBaselineVersion>1.0.0</PackageValidationBaselineVersion>
+    <PackageTags>caching;performance;threading;async;concurrency;enterprise;dotnet;thundering-herd;duplicate-prevention;memory-cache;thread-safe;zero-configuration;blazing-fast;production-ready;sql-protection;cache-invalidation</PackageTags>
     <Version>2.0.0</Version>
     <AssemblyVersion>2.0.0.0</AssemblyVersion>
     <FileVersion>2.0.0.0</FileVersion>
