@@ -43,9 +43,15 @@ jobs:
     - name: Run tests
       run: |
         dotnet test --configuration ${{ env.CONFIGURATION }} --no-build --verbosity normal --collect:"XPlat Code Coverage" --results-directory ./TestResults
-        echo "Test results directory contents:"
-        find ./TestResults -type f -name "*.xml" -o -name "*.json" -o -name "coverage.*" 2>/dev/null || echo "No coverage files found"
-        ls -la ./TestResults/ || echo "TestResults directory not found"
+        echo "=== Debugging test results ==="
+        echo "Current directory contents:"
+        ls -la
+        echo "Looking for TestResults directory:"
+        ls -la ./TestResults/ 2>/dev/null || echo "TestResults directory not found"
+        echo "Looking for any coverage files recursively:"
+        find . -name "*.coverage" -o -name "coverage.*" -o -name "*.xml" | grep -i coverage || echo "No coverage files found anywhere"
+        echo "All files in current directory:"
+        find . -type f -name "*coverage*" -o -name "*.trx" -o -name "*.xml" | head -10 || echo "No test-related files found"
       
     - name: Upload coverage to Codecov
       uses: codecov/codecov-action@v3
@@ -58,7 +64,11 @@ jobs:
       if: always()
       with:
         name: test-results
-        path: ./TestResults/**/*
+        path: |
+          ./TestResults/
+          ./**/*.trx
+          ./**/*coverage*
+        include-hidden-files: false
 
   package-dev:
     name: Create Development NuGet Package
