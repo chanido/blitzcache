@@ -17,8 +17,8 @@ namespace BlitzCacheCore.Tests
         public void Statistics_PerformanceImpact_CacheHits()
         {
             // Arrange
-            var cache = TestFactory.CreateForPerformanceTests();
-            var iterations = TestFactory.FastHitIterations;
+            var cache = TestFactory.CreateWithStatistics();
+            var iterations = 5000;
             
             // Pre-populate cache (1 miss)
             cache.BlitzGet("test_key", () => "test_value", TestFactory.LongTimeoutMs);
@@ -64,7 +64,7 @@ namespace BlitzCacheCore.Tests
             
             // We expect: 1 miss (pre-population) + 1000 hits (warmup) + 5000 hits (test) = 6000 hits, 1 miss
             Assert.AreEqual(1, stats.MissCount, "Should have exactly 1 miss from pre-population");
-            Assert.AreEqual(6000, stats.HitCount, $"Should record {1000} warmup + {TestFactory.FastHitIterations} test hits");
+            Assert.AreEqual(6000, stats.HitCount, $"Should record {1000} warmup + {5000} test hits");
             
             cache.Dispose();
         }
@@ -73,8 +73,8 @@ namespace BlitzCacheCore.Tests
         public void Statistics_PerformanceImpact_CacheMisses()
         {
             // Arrange
-            var cache = TestFactory.CreateForPerformanceTests();
-            var iterations = TestFactory.StandardMissIterations;
+            var cache = TestFactory.CreateWithStatistics();
+            var iterations = 500;
             var executionCount = 0;
             
             string TestFunction(int id)
@@ -119,8 +119,8 @@ namespace BlitzCacheCore.Tests
         public async Task Statistics_PerformanceImpact_AsyncOperations()
         {
             // Arrange
-            var cache = TestFactory.CreateForPerformanceTests();
-            var iterations = TestFactory.AsyncIterations;
+            var cache = TestFactory.CreateWithStatistics();
+            var iterations = 500;
             
             // Pre-populate cache
             await cache.BlitzGet("async_key", async () => 
@@ -174,9 +174,9 @@ namespace BlitzCacheCore.Tests
         public void Statistics_PerformanceImpact_ConcurrentAccess()
         {
             // Arrange
-            var cache = TestFactory.CreateForPerformanceTests();
-            var threadsCount = TestFactory.ConcurrentThreads;
-            var operationsPerThread = TestFactory.OperationsPerThread;
+            var cache = TestFactory.CreateWithStatistics();
+            var threadsCount = 10;
+            var operationsPerThread = 500;
             var totalOperations = threadsCount * operationsPerThread;
             
             // Act - Multiple threads accessing statistics simultaneously

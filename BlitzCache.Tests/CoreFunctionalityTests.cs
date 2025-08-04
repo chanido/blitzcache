@@ -14,7 +14,7 @@ namespace BlitzCacheCore.Tests
     /// </summary>
     public class CoreFunctionalityTests
     {
-        private const int numberOfTests = TestFactory.FastHitIterations;
+        private const int numberOfTests = 5000;
         private IBlitzCache cache;
         private ServiceProvider serviceProvider;
 
@@ -83,6 +83,11 @@ namespace BlitzCacheCore.Tests
         {
             var slowClass = new SlowClass();
 
+            const int zeroRetention = 50;
+            const int evenRetention = 100;
+            const int oddRetention = 150;
+            const int delta = 25;
+
             static string GetKey(int i) => i == 0 ? "Zero" : i % 2 == 0 ? "Even" : "Odd";
 
             bool? GetValueWithDifferentCacheRetention(Nuances n, int i)
@@ -93,9 +98,9 @@ namespace BlitzCacheCore.Tests
 
                 switch (result)
                 {
-                    case null: n.CacheRetention = 1000; break; //Zero
-                    case true: n.CacheRetention = 2000; break; //Even
-                    case false: n.CacheRetention = 3000; break;//Odd
+                    case null: n.CacheRetention = zeroRetention; break; //Zero
+                    case true: n.CacheRetention = evenRetention; break; //Even
+                    case false: n.CacheRetention = oddRetention; break; //Odd
                 }
 
                 return result;
@@ -110,7 +115,7 @@ namespace BlitzCacheCore.Tests
                     cache.BlitzGet(GetKey(i), (n) => GetValueWithDifferentCacheRetention(n, i));
                 });
 
-                Assert.AreEqual(calls, slowClass.Counter);
+                Assert.AreEqual(calls, slowClass.Counter, $"Failed: {message}");
             }
 
             void CleanCache()
@@ -120,21 +125,21 @@ namespace BlitzCacheCore.Tests
                 cache.Remove("Odd");
             }
 
+            CleanCache();
             WaitAndCheck(0, 3, "First time we will call three times");
-
-            WaitAndCheck(500, 0, "If we wait only 500ms everything should be cached");
-
-            WaitAndCheck(1100, 1, "If we wait 1100ms only Zero should be recalculated");
+            WaitAndCheck(zeroRetention - delta, 0, "If we wait less than zeroRetention everything should be cached");
 
             CleanCache();
-
             WaitAndCheck(0, 3, "First time we will call three times");
+            WaitAndCheck( zeroRetention + delta, 1, "If we wait after zeroRetention only Zero should be recalculated");
 
-            WaitAndCheck(2100, 2, "If we wait 2100ms Zero and Even should be recalculated");
+            CleanCache();
+            WaitAndCheck(0, 3, "First time we will call three times");
+            WaitAndCheck(evenRetention + delta, 2, "If we wait evenRetention Zero and Even should be recalculated");
 
-            WaitAndCheck(1000, 2, "If we wait 1000ms more Odd should be recalculated");
-
-            WaitAndCheck(3100, 3, "If we wait 3100ms more everything should be recalculated");
+            CleanCache();
+            WaitAndCheck(0, 3, "First time we will call three times");
+            WaitAndCheck(oddRetention + delta, 3, "If we wait oddRetention Zero, Even and Odd should be recalculated");
         }
 
         [Test]
