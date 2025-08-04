@@ -14,17 +14,18 @@ namespace BlitzCache.Tests.Examples
     /// </summary>
     public class RealWorldLoggingExample
     {
-        public static async Task Main(string[] args)
+        /// <summary>
+        /// Example showing how to configure BlitzCache with automatic logging
+        /// in a real application (like an ASP.NET Core app or Windows Service)
+        /// </summary>
+        public static IHost ConfigureBlitzCacheWithLoggingExample(string[] args)
         {
-            // This example shows how to configure BlitzCache with automatic logging
-            // in a real application (like an ASP.NET Core app or Windows Service)
-            
             var host = Host.CreateDefaultBuilder(args)
                 .ConfigureServices((context, services) =>
                 {
                     // Configure BlitzCache with statistics enabled and custom settings
                     services.AddBlitzCacheInstance(
-                        defaultMilliseconds: 300000, // 5 minutes default cache duration
+                        defaultMilliseconds: 3600000, // 1 hour default cache duration
                         enableStatistics: true       // Required for logging functionality
                     );
                     
@@ -42,7 +43,7 @@ namespace BlitzCache.Tests.Examples
                 })
                 .Build();
 
-            await host.RunAsync();
+            return host;
         }
     }
 
