@@ -10,8 +10,9 @@ using System.Threading.Tasks;
 namespace BlitzCacheCore.Tests.Examples
 {
     /// <summary>
-    /// Advanced usage examples for BlitzCache demonstrating sophisticated scenarios.
-    /// These tests showcase advanced features and patterns for experienced users.
+    /// Advanced usage examples demonstrating BlitzCache's comprehensive feature set.
+    /// Shows how BlitzCache handles sophisticated scenarios while remaining simple to use.
+    /// Perfect for developers who want to see the full power and flexibility available.
     /// </summary>
     [TestFixture]
     public class AdvancedUsageExamples
@@ -19,65 +20,59 @@ namespace BlitzCacheCore.Tests.Examples
         private IBlitzCache cache;
 
         [SetUp]
-        public void Setup()
-        {
-            cache = new BlitzCache();
-        }
+        public void Setup() => cache = new BlitzCache(enableStatistics: true);
 
         [TearDown]
-        public void TearDown()
-        {
-            cache?.Dispose();
-        }
+        public void TearDown() => cache?.Dispose();
 
         /// <summary>
-        /// Example 1: Dynamic cache timeout using Nuances
-        /// Shows how to dynamically adjust cache timeout based on the result
+        /// Example 1: Dynamic cache timeout with Nuances - intelligent caching decisions
+        /// Shows how BlitzCache adapts cache duration based on your data quality
         /// </summary>
         [Test]
         public async Task Example1_DynamicCacheTimeout()
         {
             var callCount = 0;
 
-            // Function that adjusts cache time based on result quality
-            async Task<string> GetDataWithDynamicCaching(Nuances nuances)
+            // Function that intelligently adjusts cache time based on result quality
+            async Task<string> GetDataWithSmartCaching(Nuances nuances)
             {
                 callCount++;
                 await TestFactory.WaitForEvictionCallbacks();
                 
                 if (callCount == 1)
                 {
-                    // Cache temporary data for a short time (100ms)
-                    nuances.CacheRetention = TestFactory.ShortTimeoutMs;
+                    // Cache temporary/uncertain data for shorter time
+                    nuances.CacheRetention = TestFactory.StandardTimeoutMs;
                     return "Temporary data";
                 }
                 
-                // Cache stable data for much longer (30 seconds)
-                nuances.CacheRetention = TestFactory.StandardTimeoutMs;
+                // Cache verified/stable data much longer
+                nuances.CacheRetention = TestFactory.LongTimeoutMs;
                 return "Stable data";
             }
 
-            // First call - short cache time
-            var result1 = await cache.BlitzGet("dynamic_key", GetDataWithDynamicCaching);
+            // First call - gets temporary data with short cache
+            var result1 = await cache.BlitzGet("smart_key", GetDataWithSmartCaching);
             Assert.AreEqual("Temporary data", result1);
             
             // Wait for short cache to expire
-            await TestFactory.StandardDelay();
+            await TestFactory.WaitForStandardExpiration();
             
-            // Second call - will get new data with longer cache time
-            var result2 = await cache.BlitzGet("dynamic_key", GetDataWithDynamicCaching);
+            // Second call - gets stable data with longer cache
+            var result2 = await cache.BlitzGet("smart_key", GetDataWithSmartCaching);
             Assert.AreEqual("Stable data", result2);
             
-            // Immediate third call - should return cached stable data
-            var result3 = await cache.BlitzGet("dynamic_key", GetDataWithDynamicCaching);
+            // Immediate third call - returns cached stable data
+            var result3 = await cache.BlitzGet("smart_key", GetDataWithSmartCaching);
             Assert.AreEqual("Stable data", result3);
             
-            Assert.AreEqual(2, callCount, "Function should be called twice due to dynamic caching");
+            Assert.AreEqual(2, callCount, "BlitzCache adapts caching strategy automatically");
         }
 
         /// <summary>
-        /// Example 2: Thread-safe concurrent access
-        /// Shows how BlitzCache handles multiple threads accessing the same key
+        /// Example 2: Thread-safe concurrent access - zero configuration required
+        /// Shows how BlitzCache automatically handles multiple threads safely
         /// </summary>
         [Test]
         public async Task Example2_ConcurrentAccess()
@@ -100,25 +95,22 @@ namespace BlitzCacheCore.Tests.Examples
                 return $"Result from thread {Thread.CurrentThread.ManagedThreadId}";
             }
 
-            // Start concurrent operations for the same key - BlitzCache ensures only one executes
+            // Start many concurrent operations for the same key - BlitzCache handles it perfectly
             var tasks = new Task<string>[TestFactory.SmallLoopCount];
             for (int i = 0; i < TestFactory.SmallLoopCount; i++)
-            {
                 tasks[i] = cache.BlitzGet("concurrent_key", ExpensiveOperation, TestFactory.StandardTimeoutMs);
-            }
 
-            // Wait for all to complete
             var results = await Task.WhenAll(tasks);
 
-            // Verify thread safety
-            Assert.AreEqual(1, callCount, "Function should only be called once despite concurrent access");
-            Assert.IsTrue(results.All(r => r == results[0]), "All results should be identical");
-            Assert.AreEqual(1, executionTimes.Count, "Function should only execute once");
+            // Verify BlitzCache's automatic thread safety
+            Assert.AreEqual(1, callCount, "Only one execution despite concurrent access");
+            Assert.IsTrue(results.All(r => r == results[0]), "All threads get identical results");
+            Assert.AreEqual(1, executionTimes.Count, "Function executes only once");
         }
 
         /// <summary>
-        /// Example 3: Circuit breaker pattern
-        /// Shows how to use BlitzCache to implement a circuit breaker for external services
+        /// Example 3: Circuit breaker pattern - resilient service calls made simple
+        /// Shows how BlitzCache can implement sophisticated resilience patterns effortlessly
         /// </summary>
         [Test]
         public async Task Example3_CircuitBreakerPattern()
@@ -136,31 +128,29 @@ namespace BlitzCacheCore.Tests.Examples
                     throw new InvalidOperationException($"Service unavailable (failure #{failureCount})");
                 }
                 
-                // Cache successful responses for longer
+                // Cache successful responses for normal duration
                 nuances.CacheRetention = TestFactory.StandardTimeoutMs;
                 return Task.FromResult("Service response: Success!");
             }
 
-            // First call - service is down, exception is thrown
+            // Service is down - first call throws exception
             Assert.ThrowsAsync<InvalidOperationException>(() => cache.BlitzGet("service_key", CallExternalService));
 
-            // Second call - returns cached exception without calling service again
+            // Second call returns cached exception (no service hammering!)
             Assert.ThrowsAsync<InvalidOperationException>(() => cache.BlitzGet("service_key", CallExternalService));
             
             // Service comes back online
             isServiceHealthy = true;
+            cache.Remove("service_key"); // Clear cached failure
             
-            // Clear the cached failure
-            cache.Remove("service_key");
-            
-            // Now calls should succeed
+            // Now calls succeed normally
             var result = await cache.BlitzGet("service_key", CallExternalService);
             Assert.AreEqual("Service response: Success!", result);
         }
 
         /// <summary>
-        /// Example 4: Multi-level caching strategy
-        /// Shows how to implement different cache strategies for different data types
+        /// Example 4: Multi-level caching strategies - different data, different rules
+        /// Shows how to implement sophisticated caching strategies with ease
         /// </summary>
         [Test]
         public void Example4_MultiLevelCaching()
@@ -168,63 +158,63 @@ namespace BlitzCacheCore.Tests.Examples
             var databaseCallCount = 0;
             var apiCallCount = 0;
 
-            // Simulate expensive database call
+            // Simulate expensive database call (stable data)
             string GetFromDatabase(string id)
             {
                 databaseCallCount++;
-                TestFactory.StandardDelay(); // Simulate DB latency
+                TestFactory.ShortDelay();
                 return $"DB_Data_{id}";
             }
 
-            // Simulate fast but frequently changing API call
+            // Simulate API call (frequently changing data)
             string GetFromApi(string endpoint)
             {
                 apiCallCount++;
-                TestFactory.WaitForEvictionCallbacksSync(); // Simulate API latency (50ms)
+                TestFactory.WaitForEvictionCallbacksSync();
                 return $"API_Data_{endpoint}";
             }
 
-            // Strategy: Database data cached for 5 minutes (stable data)
-            //          API data cached for 30 seconds (frequently changing)
+            // Same cache instance, different strategies automatically applied
             var dbResult1 = cache.BlitzGet("db_user_123", () => GetFromDatabase("123"), TestFactory.StandardTimeoutMs);
             var dbResult2 = cache.BlitzGet("db_user_123", () => GetFromDatabase("123"), TestFactory.StandardTimeoutMs);
             
             var apiResult1 = cache.BlitzGet("api_weather", () => GetFromApi("weather"), TestFactory.StandardTimeoutMs);
             var apiResult2 = cache.BlitzGet("api_weather", () => GetFromApi("weather"), TestFactory.StandardTimeoutMs);
 
+            // Verify caching works perfectly for both data types
             Assert.AreEqual("DB_Data_123", dbResult1);
             Assert.AreEqual("DB_Data_123", dbResult2);
-            Assert.AreEqual(1, databaseCallCount, "Database should only be called once");
+            Assert.AreEqual(1, databaseCallCount, "Database called once, then cached");
 
             Assert.AreEqual("API_Data_weather", apiResult1);
             Assert.AreEqual("API_Data_weather", apiResult2);
-            Assert.AreEqual(1, apiCallCount, "API should only be called once");
+            Assert.AreEqual(1, apiCallCount, "API called once, then cached");
         }
 
         /// <summary>
-        /// Example 5: Cache warming strategy
-        /// Shows how to pre-populate cache with commonly used data
+        /// Example 5: Cache warming strategy - zero-latency user experience
+        /// Shows how to pre-populate cache for instant application performance
         /// </summary>
         [Test]
         public async Task Example5_CacheWarming()
         {
             var actualCallCount = 0;
 
-            string GetUserProfile(string userId) => $"Profile for user {userId}";
+            string GetUserProfile(string userId)
+            {
+                actualCallCount++;
+                return $"Profile for user {userId}";
+            }
 
             // Pre-populate cache with commonly accessed data during app startup
             var commonUsers = new[] { "user_1", "user_2", "user_3" };
             
-                var warmupTasks = commonUsers.Select((Func<string, Task>)(userId =>
-                Task.Run((Action)(() => 
-                {
-                    actualCallCount++;
-                    // BlitzUpdate forces cache population even if not requested yet
-                    cache.BlitzUpdate($"profile_{userId}", () => GetUserProfile(userId), (long)TestFactory.LongTimeoutMs);
-                })))
-            );            await Task.WhenAll(warmupTasks);
+            var warmupTasks = commonUsers.Select(userId =>
+                Task.Run(() => cache.BlitzUpdate($"profile_{userId}", () => GetUserProfile(userId), TestFactory.LongTimeoutMs))
+            );
+            await Task.WhenAll(warmupTasks);
             
-            // Now when users access their profiles, data is already cached - no wait time!
+            // Now when users access their profiles, data is already cached - zero wait time!
             var profile1 = cache.BlitzGet("profile_user_1", () => GetUserProfile("user_1"), TestFactory.LongTimeoutMs);
             var profile2 = cache.BlitzGet("profile_user_2", () => GetUserProfile("user_2"), TestFactory.LongTimeoutMs);
             var profile3 = cache.BlitzGet("profile_user_3", () => GetUserProfile("user_3"), TestFactory.LongTimeoutMs);
@@ -232,12 +222,12 @@ namespace BlitzCacheCore.Tests.Examples
             Assert.AreEqual("Profile for user user_1", profile1);
             Assert.AreEqual("Profile for user user_2", profile2);
             Assert.AreEqual("Profile for user user_3", profile3);
-            Assert.AreEqual(3, actualCallCount, "Should only call during warmup, not during gets");
+            Assert.AreEqual(3, actualCallCount, "Only called during warmup - instant user experience!");
         }
 
         /// <summary>
-        /// Example 6: Conditional caching based on result
-        /// Shows how to cache only successful results and retry failures
+        /// Example 6: Conditional caching - smart error handling
+        /// Shows how to cache successes but retry failures automatically
         /// </summary>
         [Test]
         public async Task Example6_ConditionalCaching()
@@ -250,7 +240,7 @@ namespace BlitzCacheCore.Tests.Examples
                 
                 if (attemptCount <= 2)
                 {
-                    // Don't cache failures - set retention to 0
+                    // Don't cache failures - retry them instead
                     nuances.CacheRetention = 0;
                     throw new InvalidOperationException($"Service error on attempt {attemptCount}");
                 }
@@ -260,59 +250,55 @@ namespace BlitzCacheCore.Tests.Examples
                 return Task.FromResult("Service success!");
             }
 
-            // First call - fails, not cached due to CacheRetention = 0
+            // First call fails - not cached, will retry
             Assert.ThrowsAsync<InvalidOperationException>(() => cache.BlitzGet("unstable_service", UnstableServiceCall));
             
-            // Second call - fails again, still not cached
+            // Second call fails again - still not cached, will retry
             Assert.ThrowsAsync<InvalidOperationException>(() => cache.BlitzGet("unstable_service", UnstableServiceCall));
             
-            // Third call - succeeds and gets cached
+            // Third call succeeds and gets cached
             var result1 = await cache.BlitzGet("unstable_service", UnstableServiceCall);
-            
-            // Fourth call - returns cached success
             var result2 = await cache.BlitzGet("unstable_service", UnstableServiceCall);
             
             Assert.AreEqual("Service success!", result1);
             Assert.AreEqual("Service success!", result2);
-            Assert.AreEqual(3, attemptCount, "Should attempt 3 times, then use cached result");
+            Assert.AreEqual(3, attemptCount, "Retries failures, caches successes - intelligent behavior!");
         }
 
         /// <summary>
-        /// Example 7: Global vs Independent cache instances
-        /// Shows the difference between global singleton and independent cache behavior
+        /// Example 7: Global vs independent caches - flexible architecture
+        /// Shows how BlitzCache adapts to any application architecture
         /// </summary>
         [Test]
         public void Example7_GlobalVsIndependentCaches()
         {
-            // Global cache is a singleton instance shared across the entire application
+            // Global cache - shared across entire application (singleton pattern)
             var globalCache1 = BlitzCache.Global;
             var globalCache2 = BlitzCache.Global;
             
-            // Independent cache instances have completely separate caches
+            // Independent caches - completely isolated instances
             var independentCache1 = new BlitzCache(TestFactory.LongTimeoutMs);
             var independentCache2 = new BlitzCache(TestFactory.LongTimeoutMs);
 
-            // Global caches are the same instance and share data
-            Assert.AreSame(globalCache1, globalCache2, "Global instances should be the same reference");
+            // Global caches share data across your entire application
+            Assert.AreSame(globalCache1, globalCache2, "Global instances are the same singleton");
             globalCache1.BlitzUpdate("global_shared_key", () => "Global data", TestFactory.StandardTimeoutMs);
             var globalResult = globalCache2.BlitzGet("global_shared_key", () => "Should not be called", TestFactory.StandardTimeoutMs);
             Assert.AreEqual("Global data", globalResult);
 
-            // Independent caches don't share data - each has its own cache space
+            // Independent caches maintain complete isolation
             independentCache1.BlitzUpdate("independent_key", () => "Cache1 data", TestFactory.StandardTimeoutMs);
             var independentResult = independentCache2.BlitzGet("independent_key", () => "Cache2 data", TestFactory.StandardTimeoutMs);
             Assert.AreEqual("Cache2 data", independentResult); // Gets its own data, not from cache1
 
-            // Cleanup
-            globalCache1.Dispose();
-            globalCache2.Dispose();
+            // Clean up independent instances
             independentCache1.Dispose();
             independentCache2.Dispose();
         }
 
         /// <summary>
-        /// Example 8: Performance monitoring with cache metrics
-        /// Shows how to monitor cache performance and semaphore usage
+        /// Example 8: Performance monitoring - deep insights made simple
+        /// Shows how to monitor cache performance and internal mechanics
         /// </summary>
         [Test]
         public async Task Example8_PerformanceMonitoring()
@@ -322,100 +308,260 @@ namespace BlitzCacheCore.Tests.Examples
             async Task<string> MonitoredOperation(string key)
             {
                 operationCount++;
-                await TestFactory.WaitForShortExpiration(); // Simulate work (50ms)
+                await TestFactory.MinimumDelay();
                 return $"Operation {operationCount} for {key}";
             }
 
-            // Monitor initial state - should start clean
+            // Monitor initial state - starts clean
             var initialSemaphores = cache.GetSemaphoreCount();
-            Assert.AreEqual(0, initialSemaphores, "Should start with no semaphores");
+            Assert.AreEqual(0, initialSemaphores, "Starts with no semaphores");
 
-            // Perform operations and monitor semaphore creation
-            // Each unique cache key gets its own semaphore for thread safety
-            await cache.BlitzGet("key1", () => MonitoredOperation("key1"), TestFactory.StandardTimeoutMs);
-            await cache.BlitzGet("key2", () => MonitoredOperation("key2"), TestFactory.StandardTimeoutMs);
-            await cache.BlitzGet("key3", () => MonitoredOperation("key3"), TestFactory.StandardTimeoutMs);
+            // Perform operations - watch semaphore creation per unique key
+            await cache.BlitzGet("key1", () => MonitoredOperation("key1"), TestFactory.LongTimeoutMs);
+            await cache.BlitzGet("key2", () => MonitoredOperation("key2"), TestFactory.LongTimeoutMs);
+            await cache.BlitzGet("key3", () => MonitoredOperation("key3"), TestFactory.LongTimeoutMs);
 
             var semaphoresAfterOps = cache.GetSemaphoreCount();
-            Assert.GreaterOrEqual(semaphoresAfterOps, 3, "Should have created semaphores for each key");
+            Assert.GreaterOrEqual(semaphoresAfterOps, 3, "Creates semaphores for thread safety");
 
-            // Repeated calls should reuse existing semaphores, not create new ones
-            await cache.BlitzGet("key1", () => MonitoredOperation("key1"), TestFactory.StandardTimeoutMs);
-            await cache.BlitzGet("key2", () => MonitoredOperation("key2"), TestFactory.StandardTimeoutMs);
+            // Repeated calls reuse existing infrastructure efficiently
+            await cache.BlitzGet("key1", () => MonitoredOperation("key1"), TestFactory.LongTimeoutMs);
+            await cache.BlitzGet("key2", () => MonitoredOperation("key2"), TestFactory.LongTimeoutMs);
 
             var semaphoresAfterRepeats = cache.GetSemaphoreCount();
-            Assert.AreEqual(semaphoresAfterOps, semaphoresAfterRepeats, "Semaphore count should not increase for same keys");
-            Assert.AreEqual(3, operationCount, "Should only execute operations once due to caching");
-
-            // Note: Disposal cleanup testing removed as it's handled by TearDown
+            Assert.AreEqual(semaphoresAfterOps, semaphoresAfterRepeats, "Reuses existing semaphores efficiently");
+            Assert.AreEqual(3, operationCount, "Caching eliminates redundant operations");
         }
 
         /// <summary>
-        /// Example 9: Advanced Dependency Injection patterns
-        /// Shows comprehensive DI integration scenarios with different cache strategies
+        /// Example 9: Advanced dependency injection patterns - enterprise-ready
+        /// Shows comprehensive DI integration for any application architecture
         /// </summary>
         [Test]
         public void Example9_AdvancedDependencyInjection()
         {
-            // === SCENARIO 1: Global Cache for Application-Wide Caching ===
-            // Most common pattern - all services share the same cache
+            // === PATTERN 1: Global Singleton Cache (Most Popular) ===
             // Setup: services.AddBlitzCache(); // Uses BlitzCache.Global
             
             var globalCache1 = BlitzCache.Global;
             var globalCache2 = BlitzCache.Global;
             
-            // Both references point to the same singleton instance
-            Assert.AreSame(globalCache1, globalCache2, "Global instances should be identical");
+            Assert.AreSame(globalCache1, globalCache2, "Global cache is singleton");
             
             globalCache1.BlitzGet("shared_data", () => "Global cached value", TestFactory.StandardTimeoutMs);
-            var sharedResult = globalCache2.BlitzGet("shared_data", () => "This won't be called", TestFactory.StandardTimeoutMs);
+            var sharedResult = globalCache2.BlitzGet("shared_data", () => "Won't be called", TestFactory.StandardTimeoutMs);
             Assert.AreEqual("Global cached value", sharedResult);
 
-            // === SCENARIO 2: Dedicated Cache Instances ===
-            // For microservices or when you need cache isolation
+            // === PATTERN 2: Dedicated Cache Instances (Microservices) ===
             // Setup: services.AddBlitzCacheInstance(TestFactory.DefaultTimeoutMs, enableStatistics: true);
             
             var dedicatedCache1 = new BlitzCache(TestFactory.LongTimeoutMs, enableStatistics: true);
             var dedicatedCache2 = new BlitzCache(TestFactory.LongTimeoutMs, enableStatistics: true);
             
-            // These are completely separate instances
-            Assert.AreNotSame(dedicatedCache1, dedicatedCache2, "Dedicated instances should be separate");
+            Assert.AreNotSame(dedicatedCache1, dedicatedCache2, "Dedicated instances are separate");
             
             dedicatedCache1.BlitzGet("isolated_data", () => "Cache1 data", TestFactory.StandardTimeoutMs);
             var separateResult = dedicatedCache2.BlitzGet("isolated_data", () => "Cache2 data", TestFactory.StandardTimeoutMs);
-            Assert.AreEqual("Cache2 data", separateResult, "Separate caches don't share data");
+            Assert.AreEqual("Cache2 data", separateResult, "Complete cache isolation");
 
-            // === SCENARIO 3: Mixed Strategy ===
-            // Global cache for shared data, dedicated cache for sensitive data
+            // === PATTERN 3: Hybrid Strategy (Best of Both) ===
+            // Global for shared reference data, dedicated for sensitive data
+            BlitzCache.Global.BlitzGet("reference_countries", () => "Global lookup data", TestFactory.LongTimeoutMs);
             
-            // Global cache for reference data (shared across services)
-            BlitzCache.Global.BlitzGet("reference_countries", () => "Country lookup data", TestFactory.LongTimeoutMs); // 1 hour
+            var userCache = new BlitzCache(TestFactory.StandardTimeoutMs, enableStatistics: true);
+            userCache.BlitzGet("user_session_123", () => "Sensitive session data", TestFactory.StandardTimeoutMs);
             
-            // Dedicated cache for user-specific data (isolated per service)
-            var userCache = new BlitzCache(TestFactory.StandardTimeoutMs, enableStatistics: true); // 5 minutes
-            userCache.BlitzGet("user_session_123", () => "User session data", TestFactory.StandardTimeoutMs);
-            
-            // === SCENARIO 4: Statistics Monitoring in Production ===
+            // === PATTERN 4: Production Monitoring ===
             var monitoredCache = new BlitzCache(TestFactory.LongTimeoutMs, enableStatistics: true);
             
-            // Simulate production workload
             for (int i = 0; i < TestFactory.SmallLoopCount; i++)
-            {
                 monitoredCache.BlitzGet($"data_{i % 3}", () => $"Computed value {i % 3}", TestFactory.StandardTimeoutMs);
-            }
             
             var stats = monitoredCache.Statistics;
-            Assert.IsNotNull(stats, "Statistics should be available");
-            Assert.AreEqual(TestFactory.SmallLoopCount, stats.TotalOperations, "Should track all operations");
-            Assert.AreEqual(3, stats.MissCount, "Should have 3 unique misses");
-            Assert.AreEqual(7, stats.HitCount, "Should have 7 cache hits");
-            Assert.That(stats.HitRatio, Is.EqualTo(0.7).Within(0.01), "Hit ratio should be approximately 0.7 (70%)");
+            Assert.IsNotNull(stats, "Statistics available for monitoring");
+            Assert.AreEqual(TestFactory.SmallLoopCount, stats.TotalOperations, "Tracks all operations");
+            Assert.AreEqual(0.7, stats.HitRatio, 0.01, "70% hit ratio achieved");
 
-            // Cleanup dedicated instances
+            // Cleanup
             dedicatedCache1.Dispose();
             dedicatedCache2.Dispose();
             userCache.Dispose();
             monitoredCache.Dispose();
+        }
+
+        /// <summary>
+        /// Example 10: Comprehensive statistics monitoring and analysis
+        /// Shows detailed cache performance tracking and optimization insights
+        /// </summary>
+        [Test]
+        public void Example10_ComprehensiveStatisticsMonitoring()
+        {
+            var cacheWithStats = new BlitzCache(TestFactory.LongTimeoutMs, enableStatistics: true);
+            var databaseCallCount = 0;
+
+            string GetUserProfile(int userId)
+            {
+                databaseCallCount++;
+                TestFactory.WaitForEvictionCallbacksSync(); // Simulate database latency
+                return $"User Profile for ID: {userId}";
+            }
+
+            Console.WriteLine("=== Advanced Cache Statistics Monitoring ===");
+            
+            // Track initial baseline
+            var initialStats = cacheWithStats.Statistics;
+            Console.WriteLine($"Baseline: {initialStats?.TotalOperations ?? 0} operations, {initialStats?.HitRatio ?? 0:P1} hit ratio");
+
+            // Simulate realistic workload with repeated access patterns
+            var profile1 = cacheWithStats.BlitzGet("user_123", () => GetUserProfile(123), TestFactory.LongTimeoutMs);
+            var profile2 = cacheWithStats.BlitzGet("user_123", () => GetUserProfile(123), TestFactory.LongTimeoutMs); // Hit
+            var profile3 = cacheWithStats.BlitzGet("user_456", () => GetUserProfile(456), TestFactory.LongTimeoutMs); // Miss
+            var profile4 = cacheWithStats.BlitzGet("user_123", () => GetUserProfile(123), TestFactory.LongTimeoutMs); // Hit
+            
+            TestFactory.WaitForEvictionCallbacksSync();
+
+            var finalStats = cacheWithStats.Statistics;
+            Assert.IsNotNull(finalStats, "Statistics should be enabled");
+            
+            Console.WriteLine("\n=== Detailed Performance Analysis ===");
+            Console.WriteLine($"Total Operations: {finalStats.TotalOperations}");
+            Console.WriteLine($"Cache Hits: {finalStats.HitCount}");
+            Console.WriteLine($"Cache Misses: {finalStats.MissCount}");
+            Console.WriteLine($"Hit Ratio: {finalStats.HitRatio:P1} (Higher is better)");
+            Console.WriteLine($"Current Cached Entries: {finalStats.EntryCount}");
+            Console.WriteLine($"Total Evictions: {finalStats.EvictionCount}");
+            Console.WriteLine($"Active Semaphores: {finalStats.ActiveSemaphoreCount}");
+            Console.WriteLine($"Actual Database Calls: {databaseCallCount}");
+            
+            // Performance verification
+            Assert.AreEqual(4, finalStats.TotalOperations, "Should track all 4 operations");
+            Assert.AreEqual(2, finalStats.HitCount, "Should have 2 cache hits");
+            Assert.AreEqual(2, finalStats.MissCount, "Should have 2 cache misses");
+            Assert.AreEqual(0.5, finalStats.HitRatio, 0.001, "Hit ratio should be 50%");
+            Assert.AreEqual(2, finalStats.EntryCount, "Should have 2 distinct cached entries");
+            Assert.AreEqual(2, databaseCallCount, "Database calls should match cache misses");
+
+            // Demonstrate cache eviction impact on statistics
+            var evictionsBeforeRemoval = finalStats.EvictionCount;
+            var entriesBeforeRemoval = finalStats.EntryCount;
+            
+            cacheWithStats.Remove("user_123");
+            TestFactory.WaitForEvictionCallbacksSync();
+            
+            var statsAfterRemoval = cacheWithStats.Statistics;
+            Console.WriteLine($"\nAfter manual eviction: {statsAfterRemoval?.EvictionCount} total evictions, {statsAfterRemoval?.EntryCount} active entries");
+            
+            Assert.AreEqual(evictionsBeforeRemoval + 1, statsAfterRemoval?.EvictionCount, "Should increment eviction count");
+            Assert.AreEqual(entriesBeforeRemoval - 1, statsAfterRemoval?.EntryCount, "Should decrease active entries");
+
+            // Statistics reset for monitoring specific time periods
+            cacheWithStats.Statistics?.Reset();
+            TestFactory.WaitForEvictionCallbacksSync();
+            
+            var resetStats = cacheWithStats.Statistics;
+            Console.WriteLine($"After reset: {resetStats?.TotalOperations ?? 0} operations, {resetStats?.HitRatio ?? 0:P1} hit ratio");
+            
+            Assert.AreEqual(0, resetStats?.TotalOperations ?? -1, "Operations should reset to zero");
+            Assert.AreEqual(0.0, resetStats?.HitRatio ?? -1, 0.001, "Hit ratio should reset to zero");
+            
+            cacheWithStats.Dispose();
+        }
+
+        /// <summary>
+        /// Example 11: Complete dependency injection guide - production-ready patterns
+        /// Shows every way to integrate BlitzCache with modern DI containers
+        /// </summary>
+        [Test]
+        public void Example11_ComprehensiveDependencyInjection()
+        {
+            Console.WriteLine("=== Complete Dependency Injection Integration Guide ===");
+            
+            // === PATTERN 1: Global Singleton (Recommended for Most Apps) ===
+            // In Startup.cs: services.AddBlitzCache();
+            // In Startup.cs: services.AddBlitzCache(TimeSpan.FromMinutes(5).TotalMilliseconds);
+            // In Startup.cs: services.AddBlitzCache(300000, enableStatistics: true);
+            
+            var globalCache1 = BlitzCache.Global;
+            var globalCache2 = BlitzCache.Global;
+            
+            Assert.AreSame(globalCache1, globalCache2, "Global cache is singleton");
+            
+            globalCache1.BlitzGet("shared_config", () => "Application configuration", TestFactory.LongTimeoutMs);
+            var sharedResult = globalCache2.BlitzGet("shared_config", () => "Should not be called", TestFactory.LongTimeoutMs);
+            Assert.AreEqual("Application configuration", sharedResult);
+
+            // === PATTERN 2: Dedicated Instances (Microservices/Isolation) ===
+            // In Startup.cs: services.AddBlitzCacheInstance();
+            // In Startup.cs: services.AddBlitzCacheInstance(TimeSpan.FromMinutes(10).TotalMilliseconds, true);
+            
+            var dedicatedCache1 = new BlitzCache(TestFactory.LongTimeoutMs, enableStatistics: true);
+            var dedicatedCache2 = new BlitzCache(TestFactory.LongTimeoutMs, enableStatistics: true);
+            
+            Assert.AreNotSame(dedicatedCache1, dedicatedCache2, "Dedicated instances are separate");
+            
+            dedicatedCache1.BlitzGet("service_data", () => "Service A data", TestFactory.StandardTimeoutMs);
+            var isolatedResult = dedicatedCache2.BlitzGet("service_data", () => "Service B data", TestFactory.StandardTimeoutMs);
+            Assert.AreEqual("Service B data", isolatedResult);
+
+            // === PATTERN 3: Hybrid Strategy (Enterprise) ===
+            BlitzCache.Global.BlitzGet("reference_data", () => "Global reference lookup", TestFactory.LongTimeoutMs);
+            
+            var userServiceCache = new BlitzCache(TestFactory.StandardTimeoutMs, enableStatistics: true);
+            userServiceCache.BlitzGet("user_session_data", () => "Sensitive user session", TestFactory.StandardTimeoutMs);
+            
+            // === PATTERN 4: Production Monitoring ===
+            var productionCache = new BlitzCache(TestFactory.LongTimeoutMs, enableStatistics: true);
+            
+            for (int i = 0; i < 20; i++)
+            {
+                var key = $"production_data_{i % 5}";
+                productionCache.BlitzGet(key, () => $"Production value {i % 5}", TestFactory.StandardTimeoutMs);
+            }
+            
+            var prodStats = productionCache.Statistics;
+            Assert.IsNotNull(prodStats, "Production statistics enabled");
+            Assert.AreEqual(20, prodStats.TotalOperations, "Tracks all operations");
+            Assert.AreEqual(0.75, prodStats.HitRatio, 0.01, "75% hit ratio achieved");
+            
+            Console.WriteLine($"Production Performance: {prodStats.HitRatio:P1} hit ratio");
+
+            // === SERVICE USAGE EXAMPLES ===
+            
+            // Global cache service
+            string SimulateUserService(int userId) =>
+                BlitzCache.Global.BlitzGet($"user_profile_{userId}", 
+                    () => $"Database user profile for {userId}", 
+                    (long)TimeSpan.FromMinutes(5).TotalMilliseconds);
+            
+            // Injected dedicated cache service
+            string SimulateProductService(IBlitzCache injectedCache, int productId) =>
+                injectedCache.BlitzGet($"product_{productId}", 
+                    () => $"Database product data for {productId}", 
+                    (long)TimeSpan.FromMinutes(10).TotalMilliseconds);
+            
+            // Test service simulations
+            var userResult = SimulateUserService(123);
+            var productResult = SimulateProductService(dedicatedCache1, 456);
+            
+            Assert.AreEqual("Database user profile for 123", userResult);
+            Assert.AreEqual("Database product data for 456", productResult);
+            
+            // Verify caching works in service layer
+            var userResult2 = SimulateUserService(123);
+            var productResult2 = SimulateProductService(dedicatedCache1, 456);
+            
+            Assert.AreEqual(userResult, userResult2, "User service returns cached data");
+            Assert.AreEqual(productResult, productResult2, "Product service returns cached data");
+
+            // Clean up for test isolation
+            BlitzCache.Global.Remove("shared_config");
+            BlitzCache.Global.Remove("reference_data");
+            BlitzCache.Global.Remove("user_profile_123");
+            
+            dedicatedCache1.Dispose();
+            dedicatedCache2.Dispose();
+            userServiceCache.Dispose();
+            productionCache.Dispose();
         }
     }
 }

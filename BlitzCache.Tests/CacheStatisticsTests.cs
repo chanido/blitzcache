@@ -345,7 +345,7 @@ namespace BlitzCacheCore.Tests
             var entryCountBefore = cache.Statistics.EntryCount;
 
             // Act - Mix of automatic and manual evictions
-            cache.BlitzGet("auto_expire", () => "value1", TestFactory.ShortTimeoutMs);
+            cache.BlitzGet("auto_expire", () => "value1", TestFactory.StandardTimeoutMs);
             cache.BlitzGet("manual_remove", () => "value2", TestFactory.StandardTimeoutMs);
             cache.BlitzGet("keep_alive", () => "value3", TestFactory.StandardTimeoutMs);
             await TestFactory.WaitForEvictionCallbacks();
@@ -355,7 +355,7 @@ namespace BlitzCacheCore.Tests
             await TestFactory.WaitForEvictionCallbacks();
 
             // Wait for automatic expiration
-            await TestFactory.WaitForShortExpiration();
+            await TestFactory.WaitForStandardExpiration();
 
             // Access expired key to trigger callback
             cache.BlitzGet("auto_expire", () => "new_value", TestFactory.StandardTimeoutMs);

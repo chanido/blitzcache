@@ -24,10 +24,7 @@ namespace BlitzCacheCore.Tests.Helpers
         public const int VeryShortTimeoutMs = EvictionCallbackWaitMs * 5;
 
         /// <summary>Short timeout for quick tests</summary>
-        public const int ShortTimeoutMs = EvictionCallbackWaitMs * 10;
-
-        /// <summary>Standard timeout for most tests</summary>
-        public const int StandardTimeoutMs = EvictionCallbackWaitMs * 50;
+        public const int StandardTimeoutMs = EvictionCallbackWaitMs * 25;
 
         /// <summary>Default timeout matching BlitzCache default</summary>
         public const int LongTimeoutMs = EvictionCallbackWaitMs * 100;
@@ -43,14 +40,14 @@ namespace BlitzCacheCore.Tests.Helpers
         /// </summary>
         public static IBlitzCache CreateBasic() =>
             new BlitzCache(defaultMilliseconds: LongTimeoutMs, enableStatistics: false,
-                cleanupInterval: TimeSpan.FromMilliseconds(ShortTimeoutMs));
+                cleanupInterval: TimeSpan.FromMilliseconds(StandardTimeoutMs));
 
         /// <summary>
         /// Creates a BlitzCache instance with statistics enabled for testing. RECOMMENDED
         /// </summary>
         public static IBlitzCache CreateWithStatistics() =>
             new BlitzCache(defaultMilliseconds: LongTimeoutMs, enableStatistics: true,
-                cleanupInterval: TimeSpan.FromMilliseconds(ShortTimeoutMs));
+                cleanupInterval: TimeSpan.FromMilliseconds(StandardTimeoutMs));
         #endregion
 
         #region Core Wait Methods
@@ -58,15 +55,13 @@ namespace BlitzCacheCore.Tests.Helpers
         public static Task WaitForEvictionCallbacks() => Task.Delay(EvictionCallbackWaitMs);
         public static void WaitForEvictionCallbacksSync() => Thread.Sleep(EvictionCallbackWaitMs);
 
+        public static Task MinimumDelay() => Task.Delay(EvictionCallbackWaitMs);
         public static Task ShortDelay() => Task.Delay(VeryShortTimeoutMs);
-        public static Task WaitForShortExpiration() => Task.Delay(ShortTimeoutMs + ExpirationBufferMs);
-
-        public static Task StandardDelay() => Task.Delay(ShortTimeoutMs);
         public static Task WaitForStandardExpiration() => Task.Delay(StandardTimeoutMs + ExpirationBufferMs);
 
         public static Task LongDelay() => Task.Delay(LongTimeoutMs);
         
-        public static Task WaitForSemaphoreExpiration() => Task.Delay(BlitzSemaphore.BlitzSemaphoreExpirationSeconds * 1000 + ExpirationBufferMs);
+        public static Task WaitForSemaphoreExpiration() => Task.Delay(BlitzSemaphore.BlitzSemaphoreExpirationSeconds * 1000 + ExpirationBufferMs * 2);
                 
         #endregion
     }

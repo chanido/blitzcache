@@ -210,9 +210,9 @@ namespace BlitzCacheCore.Tests
             }
 
             // Act
-            var result1 = testCache.BlitzGet("expiration_key", TestFunction, TestFactory.ShortTimeoutMs);
-            await TestFactory.WaitForShortExpiration(); // Wait for expiration
-            var result2 = testCache.BlitzGet("expiration_key", TestFunction, TestFactory.ShortTimeoutMs);
+            var result1 = testCache.BlitzGet("expiration_key", TestFunction, TestFactory.StandardTimeoutMs);
+            await TestFactory.WaitForStandardExpiration(); // Wait for expiration
+            var result2 = testCache.BlitzGet("expiration_key", TestFunction, TestFactory.StandardTimeoutMs);
 
             // Assert
             Assert.AreEqual("result_1", result1, "First call should get first result");

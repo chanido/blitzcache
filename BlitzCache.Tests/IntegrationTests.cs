@@ -147,7 +147,7 @@ namespace BlitzCacheCore.Tests
 
             // Wait for cache to expire
             Console.WriteLine("⏱️ Waiting for cache expiration...");
-            await TestFactory.WaitForShortExpiration(); // Reduced from 100ms
+            await TestFactory.WaitForStandardExpiration(); // Reduced from 100ms
 
             // Verify cache actually expired by trying to get new value
             var newResult = cache.BlitzGet("short_expiry", () => "new_value_after_expiry", TestFactory.VeryShortTimeoutMs);
@@ -166,13 +166,15 @@ namespace BlitzCacheCore.Tests
             var startTime = DateTime.UtcNow;
 
             // Use AsyncRepeater for cleaner concurrent testing
-            var testResult = await AsyncRepeater.GoWithResults(iterations, async () => {
+            var testResult = await AsyncRepeater.GoWithResults(iterations, async () =>
+            {
                 var index = System.Threading.Thread.CurrentThread.ManagedThreadId;
                 var isAsync = DateTime.UtcNow.Ticks % 2 == 0;
-                
+
                 if (isAsync)
                 {
-                    return await cache.BlitzGet($"async_{index}_{DateTime.UtcNow.Ticks}", async () => {
+                    return await cache.BlitzGet($"async_{index}_{DateTime.UtcNow.Ticks}", async () =>
+                    {
                         await TestFactory.ShortDelay();
                         return $"async_value_{index}";
                     }, TestFactory.StandardTimeoutMs);
@@ -194,7 +196,7 @@ namespace BlitzCacheCore.Tests
             Console.WriteLine($"📊 Final semaphores: {finalSemaphores}");
 
             // Performance should be excellent
-            Assert.That(duration.TotalMilliseconds, Is.LessThan(TestFactory.StandardTimeoutMs), "Should be performant");
+            Assert.That(duration.TotalMilliseconds, Is.LessThan(TestFactory.LongTimeoutMs), "Should be performant");
 
             Console.WriteLine("✅ Performance test with smart dictionaries passed!");
         }

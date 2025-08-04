@@ -124,14 +124,14 @@ namespace BlitzCacheCore.Tests
             string SyncOperation()
             {
                 Interlocked.Increment(ref executionCount);
-                TestFactory.StandardDelay();
+                TestFactory.ShortDelay();
                 return "MixedResult";
             }
 
             async Task<string> AsyncOperation()
             {
                 Interlocked.Increment(ref executionCount);
-                await TestFactory.StandardDelay();
+                await TestFactory.ShortDelay();
                 return "MixedResult";
             }
 

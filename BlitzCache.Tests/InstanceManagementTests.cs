@@ -131,17 +131,17 @@ namespace BlitzCacheCore.Tests
             // Act - Use AsyncRepeater for concurrent load testing
             var tasks = new Task[]
             {
-                AsyncRepeater.Go(50, () => cache1.BlitzGet("pressure_test", () => Task.FromResult("cache1_value"), TestFactory.ShortTimeoutMs)),
-                AsyncRepeater.Go(50, () => cache2.BlitzGet("pressure_test", () => Task.FromResult("cache2_value"), TestFactory.ShortTimeoutMs)),
-                AsyncRepeater.Go(50, () => cache3.BlitzGet("pressure_test", () => Task.FromResult("cache3_value"), TestFactory.ShortTimeoutMs))
+                AsyncRepeater.Go(50, () => cache1.BlitzGet("pressure_test", () => Task.FromResult("cache1_value"), TestFactory.StandardTimeoutMs)),
+                AsyncRepeater.Go(50, () => cache2.BlitzGet("pressure_test", () => Task.FromResult("cache2_value"), TestFactory.StandardTimeoutMs)),
+                AsyncRepeater.Go(50, () => cache3.BlitzGet("pressure_test", () => Task.FromResult("cache3_value"), TestFactory.StandardTimeoutMs))
             };
 
             await Task.WhenAll(tasks);
 
             // Assert - Verify each cache has its own values
-            Assert.AreEqual("cache1_value", await cache1.BlitzGet("pressure_test", () => Task.FromResult("fallback"), TestFactory.ShortTimeoutMs));
-            Assert.AreEqual("cache2_value", await cache2.BlitzGet("pressure_test", () => Task.FromResult("fallback"), TestFactory.ShortTimeoutMs));
-            Assert.AreEqual("cache3_value", await cache3.BlitzGet("pressure_test", () => Task.FromResult("fallback"), TestFactory.ShortTimeoutMs));
+            Assert.AreEqual("cache1_value", await cache1.BlitzGet("pressure_test", () => Task.FromResult("fallback"), TestFactory.StandardTimeoutMs));
+            Assert.AreEqual("cache2_value", await cache2.BlitzGet("pressure_test", () => Task.FromResult("fallback"), TestFactory.StandardTimeoutMs));
+            Assert.AreEqual("cache3_value", await cache3.BlitzGet("pressure_test", () => Task.FromResult("fallback"), TestFactory.StandardTimeoutMs));
 
             // Cleanup
             cache1.Dispose();
