@@ -236,7 +236,7 @@ namespace BlitzCacheCore.Tests
             {
                 if (i % 2 == 0)
                 {
-                    cache.BlitzGet($"sync_key_{i}", () => $"sync_result_{i}", TestHelpers.StandardTimeoutMs);
+                    cache.BlitzGet($"sync_key_{i}", () => $"sync_result_{i}");
                 }
                 else
                 {
@@ -244,7 +244,7 @@ namespace BlitzCacheCore.Tests
                     {
                         await TestHelpers.WaitForEvictionCallbacks(); // Minimal delay
                         return $"async_result_{i}";
-                    }, TestHelpers.StandardTimeoutMs);
+                    });
                 }
             }
 

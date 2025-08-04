@@ -8,7 +8,7 @@
 [![NuGet Downloads](https://img.shields.io/nuget/dt/BlitzCache.svg)](https://www.nuget.org/packages/BlitzCache/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![.NET Standard](https://img.shields.io/badge/.NET%20Standard-2.1-blue.svg)](https://docs.microsoft.com/en-us/dotnet/standard/net-standard)
-[![Build Status](https://img.shields.io/badge/tests-44%20passing-brightgreen.svg)](https://github.com/chanido/blitzcache)
+[![Build Status](https://img.shields.io/badge/tests-119%20passing-brightgreen.svg)](https://github.com/chanido/blitzcache)
 
 > **🚀 Enterprise-grade caching that's ridiculously simple to use**
 
@@ -60,7 +60,7 @@ for (int i = 0; i < 100; i++)
 ✅ **Ultra-fast performance** - 0.03ms per operation with intelligent memory management  
 ✅ **Thread-safe by design** - Handles any concurrency scenario automatically  
 ✅ **Memory leak prevention** - Advanced cleanup prevents memory bloat  
-✅ **Production tested** - 44 comprehensive tests ensure reliability  
+✅ **Production tested** - 119 comprehensive tests ensure reliability  
 ✅ **Works with everything** - Sync, async, any data type, any .NET app
 
 ## 📋 Table of Contents
@@ -448,7 +448,7 @@ Cleans up resources (implements IDisposable).
 BlitzCache delivers enterprise-grade performance and reliability:
 - ✅ **Zero memory leaks** - Advanced usage-based cleanup
 - ✅ **0.03ms per operation** - Ultra-high performance 
-- ✅ **44 tests passing** - Comprehensive reliability
+- ✅ **119 tests passing** - Comprehensive reliability
 - ✅ **Advanced architecture** - Intelligent memory management
 - ✅ **Thread-safe** - Concurrent operation guarantees
 

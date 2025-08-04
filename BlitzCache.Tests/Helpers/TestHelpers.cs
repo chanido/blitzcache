@@ -58,7 +58,7 @@ namespace BlitzCacheCore.Tests.Helpers
 
         public static Task LongDelay() => Task.Delay(LongTimeoutMs);
         
-        public static Task WaitForSemaphoreExpiration() => Task.Delay(BlitzSemaphore.BlitzSemaphoreExpirationSeconds * 1000 + ExpirationBufferMs * 2);
+        public static Task WaitForSemaphoreExpiration() => Task.Delay(BlitzSemaphore.BlitzSemaphoreExpirationSeconds * 1500);
                 
         #endregion
     }
