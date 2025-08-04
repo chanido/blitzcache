@@ -37,21 +37,17 @@ jobs:
     - name: Restore dependencies
       run: dotnet restore
       
+    - name: Install coverage collector
+      run: dotnet add BlitzCache.Tests/BlitzCacheCore.Tests.csproj package coverlet.collector
+      
     - name: Build solution
       run: dotnet build --configuration ${{ env.CONFIGURATION }} --no-restore
       
     - name: Run tests
       run: |
         dotnet test --configuration ${{ env.CONFIGURATION }} --no-build --verbosity normal --collect:"XPlat Code Coverage" --results-directory ./TestResults
-        echo "=== Debugging test results ==="
-        echo "Current directory contents:"
-        ls -la
-        echo "Looking for TestResults directory:"
-        ls -la ./TestResults/ 2>/dev/null || echo "TestResults directory not found"
-        echo "Looking for any coverage files recursively:"
-        find . -name "*.coverage" -o -name "coverage.*" -o -name "*.xml" | grep -i coverage || echo "No coverage files found anywhere"
-        echo "All files in current directory:"
-        find . -type f -name "*coverage*" -o -name "*.trx" -o -name "*.xml" | head -10 || echo "No test-related files found"
+        echo "=== Test Results Structure ==="
+        find ./TestResults -type f -ls || echo "No files in TestResults"
       
     - name: Upload coverage to Codecov
       uses: codecov/codecov-action@v3
@@ -64,11 +60,7 @@ jobs:
       if: always()
       with:
         name: test-results
-        path: |
-          ./TestResults/
-          ./**/*.trx
-          ./**/*coverage*
-        include-hidden-files: false
+        path: ./TestResults/
 
   package-dev:
     name: Create Development NuGet Package
