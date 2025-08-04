@@ -40,10 +40,10 @@ namespace BlitzCacheCore.Tests
             var cacheKey = GetUniqueCacheKey();
             
             // Act - Use AsyncRepeater for cleaner test like existing UnitTests
-            await AsyncRepeater.Go(100, () => cache.BlitzGet(cacheKey, slowClassAsync.ProcessQuickly, 10000));
+            await AsyncRepeater.Go(TestFactory.ConcurrentOperationsCount, () => cache.BlitzGet(cacheKey, slowClassAsync.ProcessQuickly, 10000));
 
             // Assert
-            Assert.AreEqual(1, slowClassAsync.Counter, "Expensive async operation should only execute once despite 100 concurrent calls");
+            Assert.AreEqual(1, slowClassAsync.Counter, $"Expensive async operation should only execute once despite {TestFactory.ConcurrentOperationsCount} concurrent calls");
         }
 
         [Test]
@@ -53,11 +53,11 @@ namespace BlitzCacheCore.Tests
             var cacheKey = GetUniqueCacheKey();
 
             // Act - Use enhanced AsyncRepeater with existing SlowClassAsync
-            var testResult = await AsyncRepeater.GoWithResults(10, () => cache.BlitzGet(cacheKey, slowClassAsync.ProcessSlowly, 10000));
+            var testResult = await AsyncRepeater.GoWithResults(TestFactory.SmallLoopCount, () => cache.BlitzGet(cacheKey, slowClassAsync.ProcessSlowly, TestFactory.LongTimeoutMs));
 
             // Assert
             Assert.AreEqual(1, slowClassAsync.Counter, "Expensive operation should only execute once");
-            Assert.AreEqual(10, testResult.ResultCount, "Should have 10 results (one per concurrent call)");
+            Assert.AreEqual(TestFactory.SmallLoopCount, testResult.ResultCount, $"Should have {TestFactory.SmallLoopCount} results (one per concurrent call)");
             Assert.AreEqual(1, testResult.UniqueResultCount, "All calls should receive the same result");
             Assert.IsTrue(testResult.AllResultsIdentical, "All results should be identical");
         }
@@ -71,7 +71,7 @@ namespace BlitzCacheCore.Tests
             // Act - Use enhanced AsyncRepeater with staggered calls and existing SlowClassAsync
             var testResult = await AsyncRepeater.GoWithResults(5, 
                 () => cache.BlitzGet(cacheKey, slowClassAsync.ProcessSlowly, 10000), 
-                staggerDelayMs: 50);
+                staggerDelayMs: TestFactory.VeryShortExpirationMs);
 
             // Assert
             Assert.AreEqual(1, slowClassAsync.Counter, "Only one execution should have occurred");
@@ -87,13 +87,13 @@ namespace BlitzCacheCore.Tests
             var cacheKey = GetUniqueCacheKey();
             
             // Act - Use Parallel.For for sync operations like existing UnitTests
-            Parallel.For(0, 100, (i) =>
+            Parallel.For(0, TestFactory.ConcurrentOperationsCount, (i) =>
             {
                 cache.BlitzGet(cacheKey, slowClass.ProcessQuickly, 10000);
             });
 
             // Assert
-            Assert.AreEqual(1, slowClass.Counter, "Expensive sync operation should only execute once despite 100 concurrent calls");
+            Assert.AreEqual(1, slowClass.Counter, $"Expensive sync operation should only execute once despite {TestFactory.ConcurrentOperationsCount} concurrent calls");
         }
 
         [Test]
@@ -124,14 +124,14 @@ namespace BlitzCacheCore.Tests
             string SyncOperation()
             {
                 Interlocked.Increment(ref executionCount);
-                System.Threading.Thread.Sleep(100);
+                TestFactory.StandardSyncWait();
                 return "MixedResult";
             }
 
             async Task<string> AsyncOperation()
             {
                 Interlocked.Increment(ref executionCount);
-                await Task.Delay(100);
+                await TestFactory.WaitForMixedConcurrency();
                 return "MixedResult";
             }
 

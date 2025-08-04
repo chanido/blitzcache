@@ -15,8 +15,8 @@ namespace BlitzCacheCore.LockDictionaries
         private readonly SmartCleanupManager<string, BlitzSemaphore> cleanupManager;
         private bool disposed = false;
 
-        public BlitzSemaphoreDictionary() =>
-            cleanupManager = new SmartCleanupManager<string, BlitzSemaphore>(semaphores, cleanupInterval: TimeSpan.FromSeconds(10));
+        public BlitzSemaphoreDictionary(TimeSpan? cleanupInterval = null) =>
+            cleanupManager = new SmartCleanupManager<string, BlitzSemaphore>(semaphores, cleanupInterval: cleanupInterval ?? TimeSpan.FromSeconds(10));
 
         /// <summary>
         /// Gets or creates a BlitzSemaphore for the specified key.

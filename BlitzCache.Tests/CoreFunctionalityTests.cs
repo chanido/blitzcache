@@ -14,7 +14,7 @@ namespace BlitzCacheCore.Tests
     /// </summary>
     public class CoreFunctionalityTests
     {
-        private const int numberOfTests = 5000;
+        private const int numberOfTests = TestFactory.FastHitIterations;
         private IBlitzCache cache;
         private ServiceProvider serviceProvider;
 
@@ -93,7 +93,7 @@ namespace BlitzCacheCore.Tests
 
                 switch (result)
                 {
-                    case null: n.CacheRetention = 1000; break; //Zero
+                    case null: n.CacheRetention = TestFactory.StandardTimeoutMs; break; //Zero
                     case true: n.CacheRetention = 2000; break; //Even
                     case false: n.CacheRetention = 3000; break;//Odd
                 }
@@ -132,7 +132,7 @@ namespace BlitzCacheCore.Tests
 
             WaitAndCheck(2100, 2); // If we wait 2100ms Zero and Even should be recalculated
 
-            WaitAndCheck(1000, 2); // If we wait 1000ms more Odd should be recalculated
+            WaitAndCheck((int)TestFactory.StandardTimeoutMs, 2); // If we wait 1000ms more Odd should be recalculated
 
             WaitAndCheck(3100, 3); // If we wait 3100ms more everything should be recalculated
         }
@@ -141,20 +141,20 @@ namespace BlitzCacheCore.Tests
         public async Task AsyncBlitzUpdate_ShouldReturnTaskAndCacheValue()
         {
             // Arrange
-            var testCache = new BlitzCache(60000);
+            var testCache = TestFactory.CreateBasic();
 
             // Act - Use AsyncRepeater to test async BlitzUpdate
             var updateTask = testCache.BlitzUpdate("async_update_key", async () => {
-                await Task.Delay(10);
+                await TestFactory.WaitForEvictionCallbacks();
                 return "async_update_value";
-            }, 10000);
+            }, TestFactory.StandardTimeoutMs);
 
             // Assert - Should return Task and complete successfully
             Assert.IsInstanceOf<Task>(updateTask, "BlitzUpdate should return Task");
             await updateTask; // Should complete without error
 
             // Verify the value was cached using AsyncRepeater
-            var testResult = await AsyncRepeater.GoWithResults(5, () => testCache.BlitzGet("async_update_key", () => Task.FromResult("fallback"), 10000));
+            var testResult = await AsyncRepeater.GoWithResults(5, () => testCache.BlitzGet("async_update_key", () => Task.FromResult("fallback"), TestFactory.StandardTimeoutMs));
             
             Assert.IsTrue(testResult.AllResultsIdentical, "All calls should get same cached value");
             Assert.AreEqual("async_update_value", testResult.FirstResult, "Should return cached async value");
@@ -175,10 +175,10 @@ namespace BlitzCacheCore.Tests
             }
 
             // Act
-            var result1 = cache.BlitzGet("isolation_key1", TestFunction, 10000);
-            var result2 = cache.BlitzGet("isolation_key2", TestFunction, 10000);
-            var result1_cached = cache.BlitzGet("isolation_key1", TestFunction, 10000);
-            var result2_cached = cache.BlitzGet("isolation_key2", TestFunction, 10000);
+            var result1 = cache.BlitzGet("isolation_key1", TestFunction, TestFactory.StandardTimeoutMs);
+            var result2 = cache.BlitzGet("isolation_key2", TestFunction, TestFactory.StandardTimeoutMs);
+            var result1_cached = cache.BlitzGet("isolation_key1", TestFunction, TestFactory.StandardTimeoutMs);
+            var result2_cached = cache.BlitzGet("isolation_key2", TestFunction, TestFactory.StandardTimeoutMs);
 
             // Assert
             Assert.AreEqual("result_1", result1, "First key should get first result");
@@ -196,7 +196,7 @@ namespace BlitzCacheCore.Tests
         public void CacheExpiration_ShouldRecalculateAfterTimeout()
         {
             // Arrange
-            var testCache = new BlitzCache(60000);
+            var testCache = TestFactory.CreateBasic();
             var counter = 0;
             string TestFunction()
             {
@@ -205,9 +205,9 @@ namespace BlitzCacheCore.Tests
             }
 
             // Act
-            var result1 = testCache.BlitzGet("expiration_key", TestFunction, 100); // Short timeout
-            Thread.Sleep(150); // Wait for expiration
-            var result2 = testCache.BlitzGet("expiration_key", TestFunction, 100);
+            var result1 = testCache.BlitzGet("expiration_key", TestFunction, TestFactory.ShortExpirationMs); // Short timeout
+            TestFactory.ExtendedSyncWait(); // Wait for expiration (reduced from 150ms)
+            var result2 = testCache.BlitzGet("expiration_key", TestFunction, TestFactory.ShortExpirationMs);
 
             // Assert
             Assert.AreEqual("result_1", result1, "First call should get first result");
@@ -230,9 +230,9 @@ namespace BlitzCacheCore.Tests
             }
 
             // Act
-            var result1 = cache.BlitzGet("remove_key", TestFunction, 10000);
+            var result1 = cache.BlitzGet("remove_key", TestFunction, TestFactory.StandardTimeoutMs);
             cache.Remove("remove_key");
-            var result2 = cache.BlitzGet("remove_key", TestFunction, 10000);
+            var result2 = cache.BlitzGet("remove_key", TestFunction, TestFactory.StandardTimeoutMs);
 
             // Assert
             Assert.AreEqual("result_1", result1, "First call should get first result");
@@ -247,19 +247,19 @@ namespace BlitzCacheCore.Tests
         public async Task AsyncCacheOperations_ShouldWorkCorrectly()
         {
             // Arrange
-            var testCache = new BlitzCache(60000);
+            var testCache = TestFactory.CreateBasic();
             var counter = 0;
 
             async Task<string> AsyncTestFunction()
             {
                 Interlocked.Increment(ref counter);
-                await Task.Delay(10);
+                await TestFactory.WaitForEvictionCallbacks();
                 return $"async_result_{counter}";
             }
 
             // Act
-            var result1 = await testCache.BlitzGet("async_core_key", AsyncTestFunction, 10000);
-            var result2 = await testCache.BlitzGet("async_core_key", AsyncTestFunction, 10000);
+            var result1 = await testCache.BlitzGet("async_core_key", AsyncTestFunction, TestFactory.StandardTimeoutMs);
+            var result2 = await testCache.BlitzGet("async_core_key", AsyncTestFunction, TestFactory.StandardTimeoutMs);
 
             // Assert
             Assert.AreEqual("async_result_1", result1, "First async call should get first result");

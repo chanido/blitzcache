@@ -7,8 +7,8 @@ namespace BlitzCacheCore.Tests.Helpers
         private static readonly object locker = new object();
         public int Counter { get; set; }
 
-        public int ProcessQuickly() => Process(100);
-        public int ProcessSlowly() => Process(1000);
+        public int ProcessQuickly() => Process(10);
+        public int ProcessSlowly() => Process(50);
         public bool FailIfZeroTrueIfEven(int number)
         {
             Process(0);

@@ -28,14 +28,15 @@ namespace BlitzCacheCore
         /// </summary>
         /// <param name="defaultMilliseconds">Default cache duration in milliseconds</param>
         /// <param name="enableStatistics">Whether to enable statistics tracking (default: false for better performance)</param>
-        public BlitzCache(long defaultMilliseconds = 60000, bool enableStatistics = false)
+        /// <param name="cleanupInterval">Interval for automatic cleanup of unused semaphores (default: 10 seconds)</param>
+        public BlitzCache(long defaultMilliseconds = 60000, bool enableStatistics = false, TimeSpan? cleanupInterval = null)
         {
             if (defaultMilliseconds < 0) 
                 throw new ArgumentOutOfRangeException(nameof(defaultMilliseconds), "Default milliseconds must be non-negative");
             
             this.defaultMilliseconds = defaultMilliseconds;
             memoryCache = new MemoryCache(new MemoryCacheOptions());
-            semaphoreDictionary = new BlitzSemaphoreDictionary();
+            semaphoreDictionary = new BlitzSemaphoreDictionary(cleanupInterval);
             statistics = enableStatistics ? new CacheStatistics(() => semaphoreDictionary.GetNumberOfLocks()) : null;
         }
 
@@ -45,14 +46,15 @@ namespace BlitzCacheCore
         /// <param name="memoryCache">The memory cache implementation to use</param>
         /// <param name="defaultMilliseconds">Default cache duration in milliseconds</param>
         /// <param name="enableStatistics">Whether to enable statistics tracking (default: false for better performance)</param>
-        public BlitzCache(IMemoryCache memoryCache, long defaultMilliseconds = 60000, bool enableStatistics = false)
+        /// <param name="cleanupInterval">Interval for automatic cleanup of unused semaphores (default: 10 seconds)</param>
+        public BlitzCache(IMemoryCache memoryCache, long defaultMilliseconds = 60000, bool enableStatistics = false, TimeSpan? cleanupInterval = null)
         {
             this.memoryCache = memoryCache ?? throw new ArgumentNullException(nameof(memoryCache));
             if (defaultMilliseconds < 0) 
                 throw new ArgumentOutOfRangeException(nameof(defaultMilliseconds), "Default milliseconds must be non-negative");
             
             this.defaultMilliseconds = defaultMilliseconds;
-            semaphoreDictionary = new BlitzSemaphoreDictionary();
+            semaphoreDictionary = new BlitzSemaphoreDictionary(cleanupInterval);
             statistics = enableStatistics ? new CacheStatistics(() => semaphoreDictionary.GetNumberOfLocks()) : null;
         }
 
@@ -205,11 +207,12 @@ namespace BlitzCacheCore
         public void Remove(string cacheKey)
         {
             // Early return if key doesn't exist to avoid unnecessary locking
-            if (!memoryCache.TryGetValue(cacheKey, out _)) 
+            if (!memoryCache.TryGetValue(cacheKey, out _))
                 return;
 
             using var lockHandle = semaphoreDictionary.Wait(cacheKey);
             memoryCache.Remove(cacheKey);
+            // There is no need to decrement entry count or record eviction here because that is handled by the memory cache PostEvictionCallbacks
         }
         
         public void Dispose()

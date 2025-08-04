@@ -1,4 +1,5 @@
 using BlitzCacheCore;
+using BlitzCacheCore.Tests.Helpers;
 using NUnit.Framework;
 using System;
 using System.Threading.Tasks;
@@ -200,7 +201,7 @@ namespace BlitzCacheCore.Tests
         {
             // Act & Assert - BlitzCache accepts negative timeouts without throwing
             Assert.DoesNotThrow(() => 
-                cache.BlitzGet("key", () => "value", -1000));
+                cache.BlitzGet("key", () => "value", TestFactory.InvalidNegativeTimeout));
         }
 
         [Test]
@@ -208,7 +209,7 @@ namespace BlitzCacheCore.Tests
         {
             // Act & Assert - BlitzCache accepts negative timeouts without throwing
             Assert.DoesNotThrow(() => 
-                cache.BlitzUpdate("key", () => "value", -1000));
+                cache.BlitzUpdate("key", () => "value", TestFactory.InvalidNegativeTimeout));
         }
 
         [Test]

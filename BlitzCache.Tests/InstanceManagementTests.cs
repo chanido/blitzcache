@@ -19,8 +19,8 @@ namespace BlitzCacheCore.Tests
             var global2 = BlitzCache.Global;
 
             // Act - Store value using first reference
-            var result1 = global1.BlitzGet("shared_key", () => "shared_value", 10000);
-            var result2 = global2.BlitzGet("shared_key", () => "different_value", 10000);
+            var result1 = global1.BlitzGet("shared_key", () => "shared_value", TestFactory.StandardTimeoutMs);
+            var result2 = global2.BlitzGet("shared_key", () => "different_value", TestFactory.StandardTimeoutMs);
 
             // Assert - Both should return the same cached value and be the same instance
             Assert.AreSame(global1, global2, "Global instances should be the same reference");
@@ -32,12 +32,12 @@ namespace BlitzCacheCore.Tests
         public void IndependentBlitzCacheInstances_ShouldHaveSeparateCaches()
         {
             // Arrange
-            var cache1 = new BlitzCache(60000);
-            var cache2 = new BlitzCache(60000);
+            var cache1 = TestFactory.CreateBasic();
+            var cache2 = TestFactory.CreateBasic();
 
             // Act - Store different values with same key in each cache
-            var result1 = cache1.BlitzGet("same_key", () => "value_from_cache1", 10000);
-            var result2 = cache2.BlitzGet("same_key", () => "value_from_cache2", 10000);
+            var result1 = cache1.BlitzGet("same_key", () => "value_from_cache1", TestFactory.StandardTimeoutMs);
+            var result2 = cache2.BlitzGet("same_key", () => "value_from_cache2", TestFactory.StandardTimeoutMs);
 
             // Assert - Each cache should have its own value
             Assert.AreEqual("value_from_cache1", result1);
@@ -52,7 +52,7 @@ namespace BlitzCacheCore.Tests
         public void BlitzCacheConstructor_ShouldValidateParameters()
         {
             // Act & Assert
-            Assert.Throws<ArgumentNullException>(() => new BlitzCache(null, 60000));
+            Assert.Throws<ArgumentNullException>(() => new BlitzCache(null, TestFactory.DefaultTimeoutMs));
         }
 
         [Test]
@@ -63,13 +63,13 @@ namespace BlitzCacheCore.Tests
             var global2 = BlitzCache.Global;
 
             // Store value in global cache
-            global1.BlitzGet("global_disposal_key", () => "global_value", 10000);
+            global1.BlitzGet("global_disposal_key", () => "global_value", TestFactory.StandardTimeoutMs);
 
             // Note: You cannot dispose the global singleton (it would throw an exception in production)
             // The global cache persists for the entire application lifetime
 
             // Assert - Both references should work and share the same data
-            var result = global2.BlitzGet("global_disposal_key", () => "different_value", 10000);
+            var result = global2.BlitzGet("global_disposal_key", () => "different_value", TestFactory.StandardTimeoutMs);
             Assert.AreEqual("global_value", result, "Global cache should still be accessible");
             Assert.AreSame(global1, global2, "Global instances should be the same reference");
         }
@@ -79,11 +79,11 @@ namespace BlitzCacheCore.Tests
         {
             // Arrange
             var customMemoryCache = new Microsoft.Extensions.Caching.Memory.MemoryCache(new Microsoft.Extensions.Caching.Memory.MemoryCacheOptions());
-            var testCache = new BlitzCache(customMemoryCache, 60000);
+            var testCache = new BlitzCache(customMemoryCache, TestFactory.DefaultTimeoutMs);
 
             // Act
-            var result1 = testCache.BlitzGet("custom_cache_key", () => "custom_value", 10000);
-            var result2 = testCache.BlitzGet("custom_cache_key", () => "different_value", 10000);
+            var result1 = testCache.BlitzGet("custom_cache_key", () => "custom_value", TestFactory.StandardTimeoutMs);
+            var result2 = testCache.BlitzGet("custom_cache_key", () => "different_value", TestFactory.StandardTimeoutMs);
 
             // Assert
             Assert.AreEqual("custom_value", result1);
@@ -98,22 +98,22 @@ namespace BlitzCacheCore.Tests
         public void DisposingIndependentCache_ShouldNotAffectOtherCaches()
         {
             // Arrange
-            var cache1 = new BlitzCache(60000);
-            var cache2 = new BlitzCache(60000);
+            var cache1 = TestFactory.CreateBasic();
+            var cache2 = TestFactory.CreateBasic();
 
             // Store values in both caches
-            cache1.BlitzGet("independent_test_key", () => "value1", 10000);
-            cache2.BlitzGet("independent_test_key", () => "value2", 10000);
+            cache1.BlitzGet("independent_test_key", () => "value1", TestFactory.StandardTimeoutMs);
+            cache2.BlitzGet("independent_test_key", () => "value2", TestFactory.StandardTimeoutMs);
 
             // Act - Dispose cache1
             cache1.Dispose();
 
             // Assert - cache2 should still work
-            var result = cache2.BlitzGet("independent_test_key", () => "new_value", 10000);
+            var result = cache2.BlitzGet("independent_test_key", () => "new_value", TestFactory.StandardTimeoutMs);
             Assert.AreEqual("value2", result, "Cache2 should still have its cached value");
 
             // Should be able to store new values in cache2
-            var newResult = cache2.BlitzGet("new_independent_key", () => "new_value", 10000);
+            var newResult = cache2.BlitzGet("new_independent_key", () => "new_value", TestFactory.StandardTimeoutMs);
             Assert.AreEqual("new_value", newResult);
 
             // Cleanup
@@ -124,24 +124,24 @@ namespace BlitzCacheCore.Tests
         public async Task MultipleIndependentCaches_ShouldWorkUnderPressure()
         {
             // Arrange
-            var cache1 = new BlitzCache(60000);
-            var cache2 = new BlitzCache(60000);
-            var cache3 = new BlitzCache(60000);
+            var cache1 = TestFactory.CreateBasic();
+            var cache2 = TestFactory.CreateBasic();
+            var cache3 = TestFactory.CreateBasic();
 
             // Act - Use AsyncRepeater for concurrent load testing
             var tasks = new Task[]
             {
-                AsyncRepeater.Go(50, () => cache1.BlitzGet("pressure_test", () => Task.FromResult("cache1_value"), 5000)),
-                AsyncRepeater.Go(50, () => cache2.BlitzGet("pressure_test", () => Task.FromResult("cache2_value"), 5000)),
-                AsyncRepeater.Go(50, () => cache3.BlitzGet("pressure_test", () => Task.FromResult("cache3_value"), 5000))
+                AsyncRepeater.Go(TestFactory.ConcurrentPressureTestIterations, () => cache1.BlitzGet("pressure_test", () => Task.FromResult("cache1_value"), TestFactory.FastTimeoutMs)),
+                AsyncRepeater.Go(TestFactory.ConcurrentPressureTestIterations, () => cache2.BlitzGet("pressure_test", () => Task.FromResult("cache2_value"), TestFactory.FastTimeoutMs)),
+                AsyncRepeater.Go(TestFactory.ConcurrentPressureTestIterations, () => cache3.BlitzGet("pressure_test", () => Task.FromResult("cache3_value"), TestFactory.FastTimeoutMs))
             };
 
             await Task.WhenAll(tasks);
 
             // Assert - Verify each cache has its own values
-            Assert.AreEqual("cache1_value", await cache1.BlitzGet("pressure_test", () => Task.FromResult("fallback"), 5000));
-            Assert.AreEqual("cache2_value", await cache2.BlitzGet("pressure_test", () => Task.FromResult("fallback"), 5000));
-            Assert.AreEqual("cache3_value", await cache3.BlitzGet("pressure_test", () => Task.FromResult("fallback"), 5000));
+            Assert.AreEqual("cache1_value", await cache1.BlitzGet("pressure_test", () => Task.FromResult("fallback"), TestFactory.FastTimeoutMs));
+            Assert.AreEqual("cache2_value", await cache2.BlitzGet("pressure_test", () => Task.FromResult("fallback"), TestFactory.FastTimeoutMs));
+            Assert.AreEqual("cache3_value", await cache3.BlitzGet("pressure_test", () => Task.FromResult("fallback"), TestFactory.FastTimeoutMs));
 
             // Cleanup
             cache1.Dispose();
@@ -153,10 +153,10 @@ namespace BlitzCacheCore.Tests
         public void MultipleDisposalCalls_ShouldBeSafe()
         {
             // Arrange
-            var testCache = new BlitzCache(60000);
+            var testCache = TestFactory.CreateBasic();
 
             // Store a value to ensure cache is working
-            var result = testCache.BlitzGet("disposal_safety_key", () => "test_value", 10000);
+            var result = testCache.BlitzGet("disposal_safety_key", () => "test_value", TestFactory.StandardTimeoutMs);
             Assert.AreEqual("test_value", result);
 
             // Act & Assert - Multiple disposal calls should not throw
@@ -169,26 +169,26 @@ namespace BlitzCacheCore.Tests
         public void DisposedCache_ShouldThrowObjectDisposedException()
         {
             // Arrange
-            var testCache = new BlitzCache(60000);
+            var testCache = TestFactory.CreateBasic();
             testCache.Dispose();
 
             // Act & Assert
             Assert.Throws<ObjectDisposedException>(() => 
-                testCache.BlitzGet("disposed_key", () => "value", 1000));
+                testCache.BlitzGet("disposed_key", () => "value", TestFactory.StandardTimeoutMs));
         }
 
         [Test]
         public async Task DisposedCache_AsyncOperations_ShouldThrowObjectDisposedException()
         {
             // Arrange
-            var testCache = new BlitzCache(60000);
+            var testCache = TestFactory.CreateBasic();
             testCache.Dispose();
 
             // Act & Assert - Use try/catch pattern to properly test async exceptions
             var exceptionThrown = false;
             try
             {
-                await testCache.BlitzGet("disposed_async_key", () => Task.FromResult("value"), 1000);
+                await testCache.BlitzGet("disposed_async_key", () => Task.FromResult("value"), TestFactory.StandardTimeoutMs);
             }
             catch (ObjectDisposedException)
             {
@@ -202,11 +202,11 @@ namespace BlitzCacheCore.Tests
         public void ResourceCleanup_ShouldClearSemaphores()
         {
             // Arrange
-            var testCache = new BlitzCache(60000);
+            var testCache = TestFactory.CreateBasic();
             
             // Create some cached values to ensure semaphores are created
-            testCache.BlitzGet("cleanup_key1", () => "value1", 10000);
-            testCache.BlitzGet("cleanup_key2", () => "value2", 10000);
+            testCache.BlitzGet("cleanup_key1", () => "value1", TestFactory.StandardTimeoutMs);
+            testCache.BlitzGet("cleanup_key2", () => "value2", TestFactory.StandardTimeoutMs);
             
             var semaphoreCountBefore = testCache.GetSemaphoreCount();
             Assert.Greater(semaphoreCountBefore, 0, "Should have semaphores before disposal");

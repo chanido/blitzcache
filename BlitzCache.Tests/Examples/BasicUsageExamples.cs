@@ -1,4 +1,5 @@
 using BlitzCacheCore;
+using BlitzCacheCore.Tests.Helpers;
 using NUnit.Framework;
 using System;
 using System.Threading.Tasks;
@@ -39,15 +40,15 @@ namespace BlitzCacheCore.Tests.Examples
             string ExpensiveOperation()
             {
                 callCount++;
-                System.Threading.Thread.Sleep(100); // Simulate work
+                TestFactory.StandardSyncWait(); // Simulate work
                 return $"Computed result #{callCount}";
             }
 
             // First call - BlitzCache will execute the function and cache the result
-            var result1 = cache.BlitzGet("my_key", ExpensiveOperation, 30000); // Cache for 30 seconds
+            var result1 = cache.BlitzGet("my_key", ExpensiveOperation, TestFactory.StandardTimeoutMs); // Cache for 30 seconds
             
             // Second call - BlitzCache returns cached value instantly, no function execution!
-            var result2 = cache.BlitzGet("my_key", ExpensiveOperation, 30000);
+            var result2 = cache.BlitzGet("my_key", ExpensiveOperation, TestFactory.StandardTimeoutMs);
             
             // Verify caching worked - both results are identical, function only called once
             Assert.AreEqual("Computed result #1", result1);
@@ -67,15 +68,15 @@ namespace BlitzCacheCore.Tests.Examples
             async Task<string> ExpensiveAsyncOperation()
             {
                 callCount++;
-                await Task.Delay(100); // Simulate async work
+                await TestFactory.WaitForMixedConcurrency(); // Simulate async work
                 return $"Async result #{callCount}";
             }
 
             // BlitzCache works seamlessly with async/await - just use await!
-            var result1 = await cache.BlitzGet("async_key", ExpensiveAsyncOperation, 30000);
+            var result1 = await cache.BlitzGet("async_key", ExpensiveAsyncOperation, TestFactory.StandardTimeoutMs);
             
             // Second call returns cached result, no async operation needed
-            var result2 = await cache.BlitzGet("async_key", ExpensiveAsyncOperation, 30000);
+            var result2 = await cache.BlitzGet("async_key", ExpensiveAsyncOperation, TestFactory.StandardTimeoutMs);
             
             // Verify async caching worked perfectly
             Assert.AreEqual("Async result #1", result1);
@@ -97,8 +98,8 @@ namespace BlitzCacheCore.Tests.Examples
 
             // Different cache keys = different cached values
             // Perfect for user-specific data, API endpoints, etc.
-            var user1Data = cache.BlitzGet("user_123", () => GetUserData("123"), 30000);
-            var user2Data = cache.BlitzGet("user_456", () => GetUserData("456"), 30000);
+            var user1Data = cache.BlitzGet("user_123", () => GetUserData("123"), TestFactory.StandardTimeoutMs);
+            var user2Data = cache.BlitzGet("user_456", () => GetUserData("456"), TestFactory.StandardTimeoutMs);
             
             // Each key maintains its own separate cached value
             Assert.AreEqual("User data for 123", user1Data);
@@ -121,17 +122,17 @@ namespace BlitzCacheCore.Tests.Examples
             }
 
             // Cache with very short expiration (100ms) - perfect for testing
-            var result1 = cache.BlitzGet("timestamp", GetTimestamp, 100);
+            var result1 = cache.BlitzGet("timestamp", GetTimestamp, TestFactory.ShortExpirationMs);
             
             // Immediate second call - returns cached value (no function execution)
-            var result2 = cache.BlitzGet("timestamp", GetTimestamp, 100);
+            var result2 = cache.BlitzGet("timestamp", GetTimestamp, TestFactory.ShortExpirationMs);
             Assert.AreEqual(result1, result2, "Should return cached value immediately");
             
             // Wait for cache to expire
-            System.Threading.Thread.Sleep(150);
+            TestFactory.LongSyncWait();
             
             // After expiration - BlitzCache automatically calls function again
-            var result3 = cache.BlitzGet("timestamp", GetTimestamp, 100);
+            var result3 = cache.BlitzGet("timestamp", GetTimestamp, TestFactory.ShortExpirationMs);
             
             Assert.AreNotEqual(result1, result3, "Should return new value after expiration");
             Assert.AreEqual(2, callCount, "Function should be called twice due to expiration");
@@ -152,11 +153,11 @@ namespace BlitzCacheCore.Tests.Examples
             }
 
             // Cache some data normally
-            var result1 = cache.BlitzGet("removable_key", GetData, 30000);
+            var result1 = cache.BlitzGet("removable_key", GetData, TestFactory.StandardTimeoutMs);
             Assert.AreEqual("Data #1", result1);
             
             // Verify it's cached (no function call)
-            var result2 = cache.BlitzGet("removable_key", GetData, 30000);
+            var result2 = cache.BlitzGet("removable_key", GetData, TestFactory.StandardTimeoutMs);
             Assert.AreEqual("Data #1", result2);
             Assert.AreEqual(1, callCount, "Should still be only one call");
             
@@ -164,7 +165,7 @@ namespace BlitzCacheCore.Tests.Examples
             cache.Remove("removable_key");
             
             // Next call executes function again (cache was cleared)
-            var result3 = cache.BlitzGet("removable_key", GetData, 30000);
+            var result3 = cache.BlitzGet("removable_key", GetData, TestFactory.StandardTimeoutMs);
             Assert.AreEqual("Data #2", result3);
             Assert.AreEqual(2, callCount, "Function should be called again after removal");
         }
@@ -177,7 +178,7 @@ namespace BlitzCacheCore.Tests.Examples
         public void Example6_BlitzUpdate()
         {
             // Pre-populate cache with BlitzUpdate - great for cache warming!
-            cache.BlitzUpdate("preloaded_key", () => "Preloaded value", 30000);
+            cache.BlitzUpdate("preloaded_key", () => "Preloaded value", TestFactory.StandardTimeoutMs);
             
             // When we request it, the value is already there - zero wait time!
             var callCount = 0;
@@ -187,7 +188,7 @@ namespace BlitzCacheCore.Tests.Examples
                 return "This should not be called";
             }
             
-            var result = cache.BlitzGet("preloaded_key", FallbackFunction, 30000);
+            var result = cache.BlitzGet("preloaded_key", FallbackFunction, TestFactory.StandardTimeoutMs);
             
             Assert.AreEqual("Preloaded value", result);
             Assert.AreEqual(0, callCount, "Fallback function should not be called");
@@ -203,16 +204,16 @@ namespace BlitzCacheCore.Tests.Examples
             // BlitzCache works with ANY data type - no configuration needed!
             
             // Cache a number
-            var number = cache.BlitzGet("number_key", () => 42, 30000);
+            var number = cache.BlitzGet("number_key", () => 42, TestFactory.StandardTimeoutMs);
             Assert.AreEqual(42, number);
             
             // Cache a complex object (automatically serialized)
-            var person = cache.BlitzGet("person_key", () => new { Name = "John", Age = 30 }, 30000);
+            var person = cache.BlitzGet("person_key", () => new { Name = "John", Age = 30 }, TestFactory.StandardTimeoutMs);
             Assert.AreEqual("John", person.Name);
             Assert.AreEqual(30, person.Age);
             
             // Cache collections - arrays, lists, etc.
-            var list = cache.BlitzGet("list_key", () => new[] { "a", "b", "c" }, 30000);
+            var list = cache.BlitzGet("list_key", () => new[] { "a", "b", "c" }, TestFactory.StandardTimeoutMs);
             Assert.AreEqual(3, list.Length);
             Assert.AreEqual("a", list[0]);
         }
@@ -230,8 +231,8 @@ namespace BlitzCacheCore.Tests.Examples
             // === OPTION 1: Global Shared Cache (Recommended for most scenarios) ===
             // In your Startup.cs or Program.cs:
             // services.AddBlitzCache(); // Uses global singleton with default 60-second timeout
-            // services.AddBlitzCache(30000); // Customize default timeout
-            // services.AddBlitzCache(60000, enableStatistics: true); // Enable performance monitoring
+            // services.AddBlitzCache(TestFactory.StandardTimeoutMs); // Customize default timeout
+            // services.AddBlitzCache(TestFactory.DefaultTimeoutMs, enableStatistics: true); // Enable performance monitoring
             
             // === OPTION 2: Dedicated Cache Instance ===
             // For scenarios where you need isolated caching:
@@ -257,21 +258,21 @@ namespace BlitzCacheCore.Tests.Examples
             
             // === Direct Global Access (Alternative Pattern) ===
             // You can also access the global cache directly without DI:
-            // var globalResult = BlitzCache.Global.BlitzGet("global_key", () => "Global Data", 30000);
+            // var globalResult = BlitzCache.Global.BlitzGet("global_key", () => "Global Data", TestFactory.StandardTimeoutMs);
             
             // Simulation for this test
             IBlitzCache injectedCache = new BlitzCache();
             
             string SimulateServiceMethod(string key)
             {
-                return injectedCache.BlitzGet(key, () => $"Service data for {key}", 30000);
+                return injectedCache.BlitzGet(key, () => $"Service data for {key}", TestFactory.StandardTimeoutMs);
             }
             
             var result = SimulateServiceMethod("test");
             Assert.AreEqual("Service data for test", result);
             
             // Test global access pattern
-            var globalResult = BlitzCache.Global.BlitzGet("global_example", () => "Global cached data", 30000);
+            var globalResult = BlitzCache.Global.BlitzGet("global_example", () => "Global cached data", TestFactory.StandardTimeoutMs);
             Assert.AreEqual("Global cached data", globalResult);
             
             injectedCache.Dispose();
@@ -341,7 +342,7 @@ namespace BlitzCacheCore.Tests.Examples
             string GetUserProfile(int userId)
             {
                 databaseCallCount++; // Track actual database calls
-                System.Threading.Thread.Sleep(50); // Simulate database latency
+                TestFactory.WaitForEvictionCallbacksSync(); // Simulate database latency (50ms via EvictionCallbackWaitMs but using sync version)
                 return $"User Profile for ID: {userId}";
             }
 
@@ -358,8 +359,8 @@ namespace BlitzCacheCore.Tests.Examples
             Console.WriteLine($"Initial state: {initialTotalOperations} operations, {cache.Statistics.HitRatio:P1} hit ratio");
 
             // First access - will be a cache miss
-            var profile1 = cache.BlitzGet("user_123", () => GetUserProfile(123), 60000);
-            System.Threading.Thread.Sleep(10); // Ensure eviction callback has time to execute
+            var profile1 = cache.BlitzGet("user_123", () => GetUserProfile(123), TestFactory.DefaultTimeoutMs);
+            TestFactory.WaitForEvictionCallbacksSync();
             Console.WriteLine($"First access result: {profile1}");
             
             var statsAfterFirst = cache.Statistics;
@@ -368,8 +369,8 @@ namespace BlitzCacheCore.Tests.Examples
             var hitCountBeforeSecond = cache.Statistics.HitCount;
             var totalOperationsBeforeSecond = cache.Statistics.TotalOperations;
             
-            var profile2 = cache.BlitzGet("user_123", () => GetUserProfile(123), 60000);
-            System.Threading.Thread.Sleep(10); // Ensure eviction callback has time to execute
+            var profile2 = cache.BlitzGet("user_123", () => GetUserProfile(123), TestFactory.DefaultTimeoutMs);
+            TestFactory.WaitForEvictionCallbacksSync();
             Console.WriteLine($"Second access result: {profile2}");
             
             var statsAfterSecond = cache.Statistics;
@@ -378,8 +379,8 @@ namespace BlitzCacheCore.Tests.Examples
             var missCountBeforeThird = cache.Statistics.MissCount;
             var entryCountBeforeThird = cache.Statistics.EntryCount;
             
-            var profile3 = cache.BlitzGet("user_456", () => GetUserProfile(456), 60000);
-            System.Threading.Thread.Sleep(10); // Ensure eviction callback has time to execute
+            var profile3 = cache.BlitzGet("user_456", () => GetUserProfile(456), TestFactory.DefaultTimeoutMs);
+            TestFactory.WaitForEvictionCallbacksSync();
             Console.WriteLine($"Different key result: {profile3}");
             
             var statsAfterThird = cache.Statistics;
@@ -387,8 +388,8 @@ namespace BlitzCacheCore.Tests.Examples
             // Another hit on first key
             var hitCountBeforeFourth = cache.Statistics.HitCount;
             
-            var profile4 = cache.BlitzGet("user_123", () => GetUserProfile(123), 60000);
-            System.Threading.Thread.Sleep(10); // Ensure eviction callback has time to execute
+            var profile4 = cache.BlitzGet("user_123", () => GetUserProfile(123), TestFactory.DefaultTimeoutMs);
+            TestFactory.WaitForEvictionCallbacksSync();
             Console.WriteLine($"Third access to first key: {profile4}");
 
             // Check final statistics
@@ -406,7 +407,7 @@ namespace BlitzCacheCore.Tests.Examples
             Assert.AreEqual(4, finalStats.TotalOperations, "Should have 4 total operations");
             Assert.AreEqual(2, finalStats.HitCount, "Should have 2 cache hits");
             Assert.AreEqual(2, finalStats.MissCount, "Should have 2 cache misses");
-            Assert.AreEqual(0.5, finalStats.HitRatio, 0.001, "Hit ratio should be 50%");
+            Assert.AreEqual(TestFactory.TestHitRatio, finalStats.HitRatio, TestFactory.HitRatioTolerance, "Hit ratio should be 50%");
             Assert.AreEqual(2, finalStats.EntryCount, "Should have 2 cached entries");
             Assert.AreEqual(2, databaseCallCount, "Database should only be called twice (cache working!)");
 
@@ -415,7 +416,7 @@ namespace BlitzCacheCore.Tests.Examples
             var entryCountBeforeRemoval = cache.Statistics.EntryCount;
             
             cache.Remove("user_123");
-            System.Threading.Thread.Sleep(10); // Ensure eviction callback has time to execute
+            TestFactory.WaitForEvictionCallbacksSync();
             
             var statsAfterRemoval = cache.Statistics;
             Console.WriteLine($"\nAfter removing user_123: {statsAfterRemoval.EvictionCount} evictions, {statsAfterRemoval.EntryCount} entries");
@@ -425,7 +426,7 @@ namespace BlitzCacheCore.Tests.Examples
 
             // Reset statistics for monitoring specific time periods
             cache.Statistics.Reset();
-            System.Threading.Thread.Sleep(10); // Ensure eviction callback has time to execute
+            TestFactory.WaitForEvictionCallbacksSync();
             
             var resetStats = cache.Statistics;
             Console.WriteLine($"After reset: {resetStats.TotalOperations} operations, {resetStats.HitRatio:P1} hit ratio");
@@ -435,3 +436,4 @@ namespace BlitzCacheCore.Tests.Examples
         }
     }
 }
+

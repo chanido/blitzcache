@@ -18,7 +18,7 @@ namespace BlitzCacheCore.Tests
         [SetUp]
         public void Setup()
         {
-            cache = new BlitzCache();
+            cache = TestFactory.CreateBasic();
         }
 
         [TearDown]
@@ -37,7 +37,7 @@ namespace BlitzCacheCore.Tests
             Console.WriteLine($"📊 Initial semaphores: {initialSemaphores}");
 
             // Perform sync operations
-            var result1 = cache.BlitzGet("sync_key", () => "sync_value", 10000);
+            var result1 = cache.BlitzGet("sync_key", () => "sync_value", TestFactory.StandardTimeoutMs);
             var semaphoresDuringOperation = cache.GetSemaphoreCount();
             
             Console.WriteLine($"📊 Semaphores during operation: {semaphoresDuringOperation}");
@@ -45,7 +45,7 @@ namespace BlitzCacheCore.Tests
             Assert.That(semaphoresDuringOperation, Is.GreaterThan(initialSemaphores), "Should create semaphores for sync operations");
 
             // Cache should work correctly with semaphore management
-            var result2 = cache.BlitzGet("sync_key", () => "new_value", 10000);
+            var result2 = cache.BlitzGet("sync_key", () => "new_value", TestFactory.StandardTimeoutMs);
             Assert.That(result2, Is.EqualTo("sync_value"), "Should return cached value");
 
             Console.WriteLine("✅ SmartSemaphoreDictionary integration working!");
@@ -62,9 +62,9 @@ namespace BlitzCacheCore.Tests
 
             // Perform async operations
             var result1 = await cache.BlitzGet("async_key", async () => {
-                await Task.Delay(10);
+                await TestFactory.WaitForEvictionCallbacks();
                 return "async_value";
-            }, 10000);
+            }, TestFactory.StandardTimeoutMs);
 
             var semaphoresDuringOperation = cache.GetSemaphoreCount();
             Console.WriteLine($"📊 Semaphores during operation: {semaphoresDuringOperation}");
@@ -74,9 +74,9 @@ namespace BlitzCacheCore.Tests
 
             // Cache should work correctly with semaphore management
             var result2 = await cache.BlitzGet("async_key", async () => {
-                await Task.Delay(10);
+                await TestFactory.WaitForEvictionCallbacks();
                 return "new_async_value";
-            }, 10000);
+            }, TestFactory.StandardTimeoutMs);
             
             Assert.That(result2, Is.EqualTo("async_value"), "Should return cached value");
 
@@ -92,13 +92,13 @@ namespace BlitzCacheCore.Tests
             var initialSemaphores = cache.GetSemaphoreCount();
             
             // Update cache
-            cache.BlitzUpdate("update_key", () => "updated_value", 10000);
+            cache.BlitzUpdate("update_key", () => "updated_value", TestFactory.StandardTimeoutMs);
             
             var semaphoresAfterUpdate = cache.GetSemaphoreCount();
             Console.WriteLine($"📊 Semaphores after update: {semaphoresAfterUpdate}");
 
             // Verify the update worked
-            var result = cache.BlitzGet("update_key", () => "fallback", 10000);
+            var result = cache.BlitzGet("update_key", () => "fallback", TestFactory.StandardTimeoutMs);
             Assert.That(result, Is.EqualTo("updated_value"), "BlitzUpdate should cache the value");
 
             Console.WriteLine("✅ BlitzUpdate with SmartSemaphoreDictionary working!");
@@ -114,18 +114,18 @@ namespace BlitzCacheCore.Tests
             
             // Update cache asynchronously
             await cache.BlitzUpdate("async_update_key", async () => {
-                await Task.Delay(10);
+                await TestFactory.WaitForEvictionCallbacks();
                 return "async_updated_value";
-            }, 10000);
+            }, TestFactory.StandardTimeoutMs);
             
             var semaphoresAfterUpdate = cache.GetSemaphoreCount();
             Console.WriteLine($"📊 Semaphores after async update: {semaphoresAfterUpdate}");
 
             // Verify the update worked
             var result = await cache.BlitzGet("async_update_key", async () => {
-                await Task.Delay(10);
+                await TestFactory.WaitForEvictionCallbacks();
                 return "async_fallback";
-            }, 10000);
+            }, TestFactory.StandardTimeoutMs);
             
             Assert.That(result, Is.EqualTo("async_updated_value"), "Async BlitzUpdate should cache the value");
 
@@ -139,7 +139,7 @@ namespace BlitzCacheCore.Tests
             Console.WriteLine("================================================");
 
             // Create cache entry with very short expiration
-            var result = cache.BlitzGet("short_expiry", () => "expires_soon", 50); // 50ms expiration
+            var result = cache.BlitzGet("short_expiry", () => "expires_soon", TestFactory.VeryShortExpirationMs); // 50ms expiration
             Assert.That(result, Is.EqualTo("expires_soon"));
 
             var semaphoresAfterCreation = cache.GetSemaphoreCount();
@@ -147,10 +147,10 @@ namespace BlitzCacheCore.Tests
 
             // Wait for cache to expire
             Console.WriteLine("⏱️ Waiting for cache expiration...");
-            System.Threading.Thread.Sleep(100);
+            TestFactory.ShortSyncWait(); // Reduced from 100ms
 
             // Verify cache actually expired by trying to get new value
-            var newResult = cache.BlitzGet("short_expiry", () => "new_value_after_expiry", 10000);
+            var newResult = cache.BlitzGet("short_expiry", () => "new_value_after_expiry", TestFactory.StandardTimeoutMs);
             Assert.That(newResult, Is.EqualTo("new_value_after_expiry"), "Cache should have expired");
 
             Console.WriteLine("✅ Cache-synchronized cleanup working!");
@@ -162,7 +162,7 @@ namespace BlitzCacheCore.Tests
             Console.WriteLine("🧪 PERFORMANCE TEST WITH SMART DICTIONARIES");
             Console.WriteLine("============================================");
 
-            var iterations = 1000;
+            var iterations = (int)TestFactory.StandardTimeoutMs;
             var startTime = DateTime.UtcNow;
 
             // Use AsyncRepeater for cleaner concurrent testing
@@ -173,13 +173,13 @@ namespace BlitzCacheCore.Tests
                 if (isAsync)
                 {
                     return await cache.BlitzGet($"async_{index}_{DateTime.UtcNow.Ticks}", async () => {
-                        await Task.Delay(1);
+                        await TestFactory.SmallDelay();
                         return $"async_value_{index}";
-                    }, 10000);
+                    }, TestFactory.StandardTimeoutMs);
                 }
                 else
                 {
-                    return cache.BlitzGet($"sync_{index}_{DateTime.UtcNow.Ticks}", () => $"sync_value_{index}", 10000);
+                    return cache.BlitzGet($"sync_{index}_{DateTime.UtcNow.Ticks}", () => $"sync_value_{index}", TestFactory.StandardTimeoutMs);
                 }
             });
 
@@ -194,7 +194,7 @@ namespace BlitzCacheCore.Tests
             Console.WriteLine($"📊 Final semaphores: {finalSemaphores}");
 
             // Performance should be excellent
-            Assert.That(duration.TotalMilliseconds, Is.LessThan(10000), "Should be performant");
+            Assert.That(duration.TotalMilliseconds, Is.LessThan(TestFactory.StandardTimeoutMs), "Should be performant");
 
             Console.WriteLine("✅ Performance test with smart dictionaries passed!");
         }
