@@ -57,7 +57,7 @@ namespace BlitzCacheCore.Extensions
         {
             if (services == null) throw new ArgumentNullException(nameof(services));
 
-            services.AddHostedService<Logging.BlitzCacheLoggingService>(provider => 
+            services.AddHostedService(provider => 
                 new Logging.BlitzCacheLoggingService(
                     provider.GetRequiredService<IBlitzCache>(),
                     provider.GetRequiredService<ILogger<Logging.BlitzCacheLoggingService>>(),

@@ -16,6 +16,8 @@ jobs:
   test:
     name: Test & Build
     runs-on: ubuntu-latest
+    permissions:
+      contents: write  # Allow pushing changes back to repository
     
     steps:
     - name: Checkout repository
@@ -54,6 +56,26 @@ jobs:
       with:
         token: ${{ secrets.CODECOV_TOKEN }}
         slug: chanido/blitzcache
+        
+    - name: Update README codecov badge for current branch
+      run: |
+        CURRENT_BRANCH=${GITHUB_REF#refs/heads/}
+        echo "Updating codecov badge for branch: $CURRENT_BRANCH"
+        
+        # Update the codecov badge URL to point to current branch
+        sed -i "s|https://codecov.io/gh/chanido/blitzcache/branch/[^/]*/graph/badge.svg|https://codecov.io/gh/chanido/blitzcache/branch/$CURRENT_BRANCH/graph/badge.svg|g" README.md
+        
+        # Check if there are any changes
+        if git diff --quiet README.md; then
+          echo "No changes needed to README.md"
+        else
+          echo "README.md updated with codecov badge for branch: $CURRENT_BRANCH"
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          git add README.md
+          git commit -m "Update codecov badge to point to $CURRENT_BRANCH branch [skip ci]"
+          git push
+        fi
         
     - name: Upload test results
       uses: actions/upload-artifact@v4
