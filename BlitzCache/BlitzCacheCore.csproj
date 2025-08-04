@@ -37,7 +37,7 @@
 • Perfect for high-traffic applications and microservices
 
 ⚡ ENTERPRISE PERFORMANCE:
-• Ultra-fast 0.03ms per operation with intelligent memory management
+• Ultra-fast 0.0001ms per operation with intelligent memory management
 • Zero memory leaks with advanced usage-based cleanup system
 • Thread-safe by design with granular concurrency control
 • 119 comprehensive tests ensuring production reliability

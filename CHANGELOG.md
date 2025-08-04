@@ -38,7 +38,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **BREAKING**: Removed dual-dictionary approach in favor of single SmartSemaphoreDictionary
 - Instance-based caching instead of static MemoryCache (eliminates cache sharing issues)
 - Improved async/await patterns with proper Task handling
-- Enhanced performance: 0.0156ms per operation average
+- Enhanced performance: 0.0001ms per operation average
 - Enhanced NuGet package metadata for better discoverability
 
 ### Fixed

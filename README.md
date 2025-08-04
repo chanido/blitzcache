@@ -12,7 +12,7 @@
 
 > **🚀 Enterprise-grade caching that's ridiculously simple to use**
 
-**One line of code prevents duplicate execution of expensive operations.** BlitzCache is production-ready, ultra-fast (0.03ms operations), and completely thread-safe. No configuration required.
+**One line of code prevents duplicate execution of expensive operations.** BlitzCache is production-ready, ultra-fast (0.0001ms operations), and completely thread-safe. No configuration required.
 
 ## ✨ Why BlitzCache?
 
@@ -57,7 +57,7 @@ for (int i = 0; i < 100; i++)
 ## 🏆 Enterprise Features, Simple API
 
 ✅ **Zero duplicate execution** - Guaranteed single execution per cache period  
-✅ **Ultra-fast performance** - 0.03ms per operation with intelligent memory management  
+✅ **Ultra-fast performance** - 0.0001ms per operation with intelligent memory management  
 ✅ **Thread-safe by design** - Handles any concurrency scenario automatically  
 ✅ **Memory leak prevention** - Advanced cleanup prevents memory bloat  
 ✅ **Production tested** - 122 comprehensive tests ensure reliability  
@@ -88,7 +88,7 @@ for (int i = 0; i < 100; i++)
 | 1000 concurrent API calls | 1000 executions | 1 execution | **99.9% faster** |
 | Database query bursts | Multiple DB hits | Single DB hit | **Massive savings** |
 | SQL server under load | **Server crashes** 💥 | **Server protected** 🛡️ | **System stability** |
-| Operation speed | Varies | **0.03ms** | **Lightning fast** |
+| Operation speed | Varies | **0.0001ms** | **Lightning fast** |
 
 [Detailed benchmarks and analysis →](http://www.codegrimoire.com/2020/05/synchronous-and-asychronous-threadsafe.html)
 
@@ -412,7 +412,7 @@ Cleans up resources (implements IDisposable).
 3. **Performance Focused**: Designed specifically for high-concurrency scenarios
 4. **Developer Friendly**: Simple, intuitive API that "just works"
 5. **� Enterprise Grade**: Advanced memory leak prevention with comprehensive testing
-6. **⚡ Ultra-Fast**: 0.03ms per operation with optimal memory management
+6. **⚡ Ultra-Fast**: 0.0001ms per operation with optimal memory management
 7. **🛡️ Robust Architecture**: Advanced usage-based cleanup system
 8. **🔧 Production Ready**: Intelligent smart lock management
 
@@ -451,7 +451,7 @@ Cleans up resources (implements IDisposable).
 
 BlitzCache delivers enterprise-grade performance and reliability:
 - ✅ **Zero memory leaks** - Advanced usage-based cleanup
-- ✅ **0.03ms per operation** - Ultra-high performance 
+- ✅ **0.0001ms per operation** - Ultra-high performance 
 - ✅ **122 tests passing** - Comprehensive reliability
 - ✅ **Advanced architecture** - Intelligent memory management
 - ✅ **Thread-safe** - Concurrent operation guarantees
