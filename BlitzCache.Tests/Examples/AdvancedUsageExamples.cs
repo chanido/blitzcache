@@ -20,7 +20,7 @@ namespace BlitzCacheCore.Tests.Examples
         [SetUp]
         public void Setup()
         {
-            cache = new BlitzCache(useGlobalCache: false);
+            cache = new BlitzCache();
         }
 
         [TearDown]
@@ -280,20 +280,21 @@ namespace BlitzCacheCore.Tests.Examples
 
         /// <summary>
         /// Example 7: Global vs Independent cache instances
-        /// Shows the difference between global and independent cache behavior
+        /// Shows the difference between global singleton and independent cache behavior
         /// </summary>
         [Test]
         public void Example7_GlobalVsIndependentCaches()
         {
-            // Global cache instances share the same underlying cache across all instances
-            var globalCache1 = new BlitzCache(60000, useGlobalCache: true);
-            var globalCache2 = new BlitzCache(60000, useGlobalCache: true);
+            // Global cache is a singleton instance shared across the entire application
+            var globalCache1 = BlitzCache.Global;
+            var globalCache2 = BlitzCache.Global;
             
             // Independent cache instances have completely separate caches
-            var independentCache1 = new BlitzCache(60000, useGlobalCache: false);
-            var independentCache2 = new BlitzCache(60000, useGlobalCache: false);
+            var independentCache1 = new BlitzCache(60000);
+            var independentCache2 = new BlitzCache(60000);
 
-            // Global caches share data - cache1 stores, cache2 retrieves the same data
+            // Global caches are the same instance and share data
+            Assert.AreSame(globalCache1, globalCache2, "Global instances should be the same reference");
             globalCache1.BlitzUpdate("global_shared_key", () => "Global data", 30000);
             var globalResult = globalCache2.BlitzGet("global_shared_key", () => "Should not be called", 30000);
             Assert.AreEqual("Global data", globalResult);
@@ -348,6 +349,74 @@ namespace BlitzCacheCore.Tests.Examples
             Assert.AreEqual(3, operationCount, "Should only execute operations once due to caching");
 
             // Note: Disposal cleanup testing removed as it's handled by TearDown
+        }
+
+        /// <summary>
+        /// Example 9: Advanced Dependency Injection patterns
+        /// Shows comprehensive DI integration scenarios with different cache strategies
+        /// </summary>
+        [Test]
+        public void Example9_AdvancedDependencyInjection()
+        {
+            // === SCENARIO 1: Global Cache for Application-Wide Caching ===
+            // Most common pattern - all services share the same cache
+            // Setup: services.AddBlitzCache(); // Uses BlitzCache.Global
+            
+            var globalCache1 = BlitzCache.Global;
+            var globalCache2 = BlitzCache.Global;
+            
+            // Both references point to the same singleton instance
+            Assert.AreSame(globalCache1, globalCache2, "Global instances should be identical");
+            
+            globalCache1.BlitzGet("shared_data", () => "Global cached value", 30000);
+            var sharedResult = globalCache2.BlitzGet("shared_data", () => "This won't be called", 30000);
+            Assert.AreEqual("Global cached value", sharedResult);
+
+            // === SCENARIO 2: Dedicated Cache Instances ===
+            // For microservices or when you need cache isolation
+            // Setup: services.AddBlitzCacheInstance(60000, enableStatistics: true);
+            
+            var dedicatedCache1 = new BlitzCache(60000, enableStatistics: true);
+            var dedicatedCache2 = new BlitzCache(60000, enableStatistics: true);
+            
+            // These are completely separate instances
+            Assert.AreNotSame(dedicatedCache1, dedicatedCache2, "Dedicated instances should be separate");
+            
+            dedicatedCache1.BlitzGet("isolated_data", () => "Cache1 data", 30000);
+            var separateResult = dedicatedCache2.BlitzGet("isolated_data", () => "Cache2 data", 30000);
+            Assert.AreEqual("Cache2 data", separateResult, "Separate caches don't share data");
+
+            // === SCENARIO 3: Mixed Strategy ===
+            // Global cache for shared data, dedicated cache for sensitive data
+            
+            // Global cache for reference data (shared across services)
+            BlitzCache.Global.BlitzGet("reference_countries", () => "Country lookup data", 3600000); // 1 hour
+            
+            // Dedicated cache for user-specific data (isolated per service)
+            var userCache = new BlitzCache(300000, enableStatistics: true); // 5 minutes
+            userCache.BlitzGet("user_session_123", () => "User session data", 300000);
+            
+            // === SCENARIO 4: Statistics Monitoring in Production ===
+            var monitoredCache = new BlitzCache(60000, enableStatistics: true);
+            
+            // Simulate production workload
+            for (int i = 0; i < 10; i++)
+            {
+                monitoredCache.BlitzGet($"data_{i % 3}", () => $"Computed value {i % 3}", 30000);
+            }
+            
+            var stats = monitoredCache.Statistics;
+            Assert.IsNotNull(stats, "Statistics should be available");
+            Assert.AreEqual(10, stats.TotalOperations, "Should track all operations");
+            Assert.AreEqual(3, stats.MissCount, "Should have 3 unique misses");
+            Assert.AreEqual(7, stats.HitCount, "Should have 7 cache hits");
+            Assert.That(stats.HitRatio, Is.EqualTo(0.7).Within(0.01), "Hit ratio should be approximately 0.7 (70%)");
+
+            // Cleanup dedicated instances
+            dedicatedCache1.Dispose();
+            dedicatedCache2.Dispose();
+            userCache.Dispose();
+            monitoredCache.Dispose();
         }
     }
 }

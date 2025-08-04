@@ -12,31 +12,28 @@ namespace BlitzCacheCore.Tests
     public class InstanceManagementTests
     {
         [Test]
-        public void MultipleBlitzCacheInstances_ShouldUseGlobalCacheByDefault()
+        public void GlobalBlitzCacheInstance_ShouldShareAcrossAccess()
         {
-            // Arrange
-            var cache1 = new BlitzCache(60000, useGlobalCache: true);
-            var cache2 = new BlitzCache(60000, useGlobalCache: true);
+            // Arrange - Use the global instance
+            var global1 = BlitzCache.Global;
+            var global2 = BlitzCache.Global;
 
-            // Act - Store value in cache1
-            var result1 = cache1.BlitzGet("shared_key", () => "shared_value", 10000);
-            var result2 = cache2.BlitzGet("shared_key", () => "different_value", 10000);
+            // Act - Store value using first reference
+            var result1 = global1.BlitzGet("shared_key", () => "shared_value", 10000);
+            var result2 = global2.BlitzGet("shared_key", () => "different_value", 10000);
 
-            // Assert - Both should return the same cached value
+            // Assert - Both should return the same cached value and be the same instance
+            Assert.AreSame(global1, global2, "Global instances should be the same reference");
             Assert.AreEqual("shared_value", result1);
             Assert.AreEqual("shared_value", result2, "Should get cached value from global cache");
-
-            // Cleanup
-            cache1.Dispose();
-            cache2.Dispose();
         }
 
         [Test]
         public void IndependentBlitzCacheInstances_ShouldHaveSeparateCaches()
         {
             // Arrange
-            var cache1 = new BlitzCache(60000, useGlobalCache: false);
-            var cache2 = new BlitzCache(60000, useGlobalCache: false);
+            var cache1 = new BlitzCache(60000);
+            var cache2 = new BlitzCache(60000);
 
             // Act - Store different values with same key in each cache
             var result1 = cache1.BlitzGet("same_key", () => "value_from_cache1", 10000);
@@ -61,22 +58,20 @@ namespace BlitzCacheCore.Tests
         [Test]
         public void DisposingGlobalCacheInstance_ShouldNotDisposeGlobalCache()
         {
-            // Arrange
-            var cache1 = new BlitzCache(60000, useGlobalCache: true);
-            var cache2 = new BlitzCache(60000, useGlobalCache: true);
+            // Arrange - Use the global singleton
+            var global1 = BlitzCache.Global;
+            var global2 = BlitzCache.Global;
 
             // Store value in global cache
-            cache1.BlitzGet("global_disposal_key", () => "global_value", 10000);
+            global1.BlitzGet("global_disposal_key", () => "global_value", 10000);
 
-            // Act - Dispose cache1 (should not dispose global cache)
-            cache1.Dispose();
+            // Note: You cannot dispose the global singleton (it would throw an exception in production)
+            // The global cache persists for the entire application lifetime
 
-            // Assert - cache2 should still work and have the cached value
-            var result = cache2.BlitzGet("global_disposal_key", () => "different_value", 10000);
+            // Assert - Both references should work and share the same data
+            var result = global2.BlitzGet("global_disposal_key", () => "different_value", 10000);
             Assert.AreEqual("global_value", result, "Global cache should still be accessible");
-
-            // Cleanup
-            cache2.Dispose();
+            Assert.AreSame(global1, global2, "Global instances should be the same reference");
         }
 
         [Test]
@@ -103,8 +98,8 @@ namespace BlitzCacheCore.Tests
         public void DisposingIndependentCache_ShouldNotAffectOtherCaches()
         {
             // Arrange
-            var cache1 = new BlitzCache(60000, useGlobalCache: false);
-            var cache2 = new BlitzCache(60000, useGlobalCache: false);
+            var cache1 = new BlitzCache(60000);
+            var cache2 = new BlitzCache(60000);
 
             // Store values in both caches
             cache1.BlitzGet("independent_test_key", () => "value1", 10000);
@@ -129,9 +124,9 @@ namespace BlitzCacheCore.Tests
         public async Task MultipleIndependentCaches_ShouldWorkUnderPressure()
         {
             // Arrange
-            var cache1 = new BlitzCache(60000, useGlobalCache: false);
-            var cache2 = new BlitzCache(60000, useGlobalCache: false);
-            var cache3 = new BlitzCache(60000, useGlobalCache: false);
+            var cache1 = new BlitzCache(60000);
+            var cache2 = new BlitzCache(60000);
+            var cache3 = new BlitzCache(60000);
 
             // Act - Use AsyncRepeater for concurrent load testing
             var tasks = new Task[]
@@ -158,7 +153,7 @@ namespace BlitzCacheCore.Tests
         public void MultipleDisposalCalls_ShouldBeSafe()
         {
             // Arrange
-            var testCache = new BlitzCache(60000, useGlobalCache: false);
+            var testCache = new BlitzCache(60000);
 
             // Store a value to ensure cache is working
             var result = testCache.BlitzGet("disposal_safety_key", () => "test_value", 10000);
@@ -174,7 +169,7 @@ namespace BlitzCacheCore.Tests
         public void DisposedCache_ShouldThrowObjectDisposedException()
         {
             // Arrange
-            var testCache = new BlitzCache(60000, useGlobalCache: false);
+            var testCache = new BlitzCache(60000);
             testCache.Dispose();
 
             // Act & Assert
@@ -186,7 +181,7 @@ namespace BlitzCacheCore.Tests
         public async Task DisposedCache_AsyncOperations_ShouldThrowObjectDisposedException()
         {
             // Arrange
-            var testCache = new BlitzCache(60000, useGlobalCache: false);
+            var testCache = new BlitzCache(60000);
             testCache.Dispose();
 
             // Act & Assert - Use try/catch pattern to properly test async exceptions
@@ -207,7 +202,7 @@ namespace BlitzCacheCore.Tests
         public void ResourceCleanup_ShouldClearSemaphores()
         {
             // Arrange
-            var testCache = new BlitzCache(60000, useGlobalCache: false);
+            var testCache = new BlitzCache(60000);
             
             // Create some cached values to ensure semaphores are created
             testCache.BlitzGet("cleanup_key1", () => "value1", 10000);

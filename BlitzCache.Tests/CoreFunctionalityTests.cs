@@ -141,7 +141,7 @@ namespace BlitzCacheCore.Tests
         public async Task AsyncBlitzUpdate_ShouldReturnTaskAndCacheValue()
         {
             // Arrange
-            var testCache = new BlitzCache(60000, useGlobalCache: false);
+            var testCache = new BlitzCache(60000);
 
             // Act - Use AsyncRepeater to test async BlitzUpdate
             var updateTask = testCache.BlitzUpdate("async_update_key", async () => {
@@ -196,7 +196,7 @@ namespace BlitzCacheCore.Tests
         public void CacheExpiration_ShouldRecalculateAfterTimeout()
         {
             // Arrange
-            var testCache = new BlitzCache(60000, useGlobalCache: false);
+            var testCache = new BlitzCache(60000);
             var counter = 0;
             string TestFunction()
             {
@@ -247,7 +247,7 @@ namespace BlitzCacheCore.Tests
         public async Task AsyncCacheOperations_ShouldWorkCorrectly()
         {
             // Arrange
-            var testCache = new BlitzCache(60000, useGlobalCache: false);
+            var testCache = new BlitzCache(60000);
             var counter = 0;
 
             async Task<string> AsyncTestFunction()

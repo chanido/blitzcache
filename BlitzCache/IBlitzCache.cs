@@ -3,6 +3,8 @@ using System.Runtime.CompilerServices;
 using System.Threading.Tasks;
 using BlitzCacheCore.Statistics;
 
+#nullable enable
+
 namespace BlitzCacheCore
 {
     public interface IBlitzCache
@@ -23,8 +25,9 @@ namespace BlitzCacheCore
         /// <summary>
         /// Gets cache performance statistics and monitoring information.
         /// Use these metrics to understand cache effectiveness and optimize cache configuration.
+        /// Returns null if statistics are disabled for better performance.
         /// </summary>
-        ICacheStatistics Statistics { get; }
+        ICacheStatistics? Statistics { get; }
         
         void Dispose();
     }

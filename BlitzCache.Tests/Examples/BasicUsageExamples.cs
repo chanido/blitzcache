@@ -18,7 +18,7 @@ namespace BlitzCacheCore.Tests.Examples
         public void Setup()
         {
             // Create a new cache instance for each test
-            cache = new BlitzCache(useGlobalCache: false);
+            cache = new BlitzCache(enableStatistics: true);
         }
 
         [TearDown]
@@ -227,11 +227,18 @@ namespace BlitzCacheCore.Tests.Examples
             // BlitzCache integrates perfectly with Dependency Injection!
             // Setup is incredibly simple - just one line in your DI container:
             
+            // === OPTION 1: Global Shared Cache (Recommended for most scenarios) ===
             // In your Startup.cs or Program.cs:
-            // services.AddBlitzCache(); // Uses default 60-second timeout
-            // or customize:
-            // services.AddBlitzCache(30000); // Specify default timeout in milliseconds
+            // services.AddBlitzCache(); // Uses global singleton with default 60-second timeout
+            // services.AddBlitzCache(30000); // Customize default timeout
+            // services.AddBlitzCache(60000, enableStatistics: true); // Enable performance monitoring
             
+            // === OPTION 2: Dedicated Cache Instance ===
+            // For scenarios where you need isolated caching:
+            // services.AddBlitzCacheInstance(); // Creates a dedicated instance
+            // services.AddBlitzCacheInstance(45000, enableStatistics: true); // With custom settings
+            
+            // === Usage in Your Services ===
             // Then inject IBlitzCache anywhere you need caching:
             // public class UserService
             // {
@@ -248,6 +255,10 @@ namespace BlitzCacheCore.Tests.Examples
             //     }
             // }
             
+            // === Direct Global Access (Alternative Pattern) ===
+            // You can also access the global cache directly without DI:
+            // var globalResult = BlitzCache.Global.BlitzGet("global_key", () => "Global Data", 30000);
+            
             // Simulation for this test
             IBlitzCache injectedCache = new BlitzCache();
             
@@ -259,7 +270,63 @@ namespace BlitzCacheCore.Tests.Examples
             var result = SimulateServiceMethod("test");
             Assert.AreEqual("Service data for test", result);
             
+            // Test global access pattern
+            var globalResult = BlitzCache.Global.BlitzGet("global_example", () => "Global cached data", 30000);
+            Assert.AreEqual("Global cached data", globalResult);
+            
             injectedCache.Dispose();
+        }
+
+        /// <summary>
+        /// Example 9: Simple Dependency Injection with Defaults
+        /// Shows the most basic DI setup - just add one line to get started!
+        /// </summary>
+        [Test]
+        public void Example9_SimpleDependencyInjection()
+        {
+            // === Quick Start Guide ===
+            // Add this ONE line to your DI container and you're ready to go:
+            // services.AddBlitzCache();
+            
+            // That's it! BlitzCache will:
+            // ✓ Use the global singleton (shared across your entire app)
+            // ✓ Default to 60-second cache timeout
+            // ✓ Be available as IBlitzCache in all your services
+            
+            // === In your service classes ===
+            // public class ProductService
+            // {
+            //     private readonly IBlitzCache _cache;
+            //     
+            //     public ProductService(IBlitzCache cache) => _cache = cache;
+            //     
+            //     public Product GetProduct(int id) =>
+            //         _cache.BlitzGet($"product_{id}", () => LoadFromDatabase(id));
+            //         // Uses default 60-second timeout - perfect for most scenarios!
+            // }
+            
+            // Demo: Simulate the injected cache behavior
+            var simulatedDICache = BlitzCache.Global; // This is what DI would inject
+            
+            var callCount = 0;
+            string LoadExpensiveData()
+            {
+                callCount++;
+                return $"Loaded data (call #{callCount})";
+            }
+            
+            // First call - loads and caches data
+            var result1 = simulatedDICache.BlitzGet("simple_key", LoadExpensiveData);
+            
+            // Second call - returns cached data instantly
+            var result2 = simulatedDICache.BlitzGet("simple_key", LoadExpensiveData);
+            
+            Assert.AreEqual("Loaded data (call #1)", result1);
+            Assert.AreEqual("Loaded data (call #1)", result2); // Same cached result
+            Assert.AreEqual(1, callCount, "Function should only be called once due to caching");
+            
+            // Note: Global cache persists across tests, so we clean up for this demo
+            simulatedDICache.Remove("simple_key");
         }
 
         /// <summary>

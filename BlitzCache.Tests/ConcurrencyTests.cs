@@ -19,7 +19,7 @@ namespace BlitzCacheCore.Tests
         [SetUp]
         public void Setup()
         {
-            cache = new BlitzCache(useGlobalCache: false);
+            cache = new BlitzCache();
             slowClass = new SlowClass();
             slowClassAsync = new SlowClassAsync();
         }

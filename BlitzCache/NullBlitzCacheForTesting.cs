@@ -3,18 +3,20 @@ using System.Runtime.CompilerServices;
 using System.Threading.Tasks;
 using BlitzCacheCore.Statistics;
 
+#nullable enable
+
 namespace BlitzCacheCore
 {
     public class NullBlitzCacheForTesting : IBlitzCache
     {
-        private readonly ICacheStatistics nullStatistics;
+        private readonly ICacheStatistics? nullStatistics;
 
-        public NullBlitzCacheForTesting() 
+        public NullBlitzCacheForTesting(bool enableStatistics = false) 
         { 
-            nullStatistics = new NullCacheStatistics();
+            nullStatistics = enableStatistics ? new NullCacheStatistics() : null;
         }
 
-        public ICacheStatistics Statistics => nullStatistics;
+        public ICacheStatistics? Statistics => nullStatistics;
 
         public T BlitzGet<T>(Func<T> function, long? milliseconds = null, [CallerMemberName] string callerMemberName = "", [CallerFilePath] string sourceFilePath = "") =>
             BlitzGet(callerMemberName + sourceFilePath, function, milliseconds);

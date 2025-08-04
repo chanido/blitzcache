@@ -17,7 +17,7 @@ namespace BlitzCacheCore.Tests
         [SetUp]
         public void Setup()
         {
-            cache = new BlitzCache(useGlobalCache: false);
+            cache = new BlitzCache(enableStatistics: true);
         }
 
         [TearDown]
@@ -400,6 +400,110 @@ namespace BlitzCacheCore.Tests
             Assert.AreEqual(evictionCountBefore + 1, evictionCountAfterRemoval, "Should have 1 eviction after removal");
             Assert.AreEqual(entryCountBefore + 3, cache.Statistics.EntryCount, "Should have 3 entries again after final addition");
             Assert.AreEqual(evictionCountBefore + 1, cache.Statistics.EvictionCount, "Eviction count should remain at 1");
+        }
+
+        [Test]
+        public void Statistics_WhenDisabled_ReturnsNull()
+        {
+            // Arrange
+            var cacheWithoutStats = new BlitzCache(enableStatistics: false);
+
+            try
+            {
+                // Act & Assert
+                Assert.IsNull(cacheWithoutStats.Statistics, "Statistics should be null when disabled");
+            }
+            finally
+            {
+                cacheWithoutStats.Dispose();
+            }
+        }
+
+        [Test]
+        public void Statistics_WhenDisabled_CacheStillWorks()
+        {
+            // Arrange
+            var cacheWithoutStats = new BlitzCache();
+            var callCount = 0;
+            string TestFunction()
+            {
+                callCount++;
+                return $"result-{callCount}";
+            }
+
+            try
+            {
+                // Act
+                var result1 = cacheWithoutStats.BlitzGet("test-key", TestFunction, 1000);
+                var result2 = cacheWithoutStats.BlitzGet("test-key", TestFunction, 1000);
+
+                // Assert
+                Assert.AreEqual("result-1", result1, "First call should return computed result");
+                Assert.AreEqual("result-1", result2, "Second call should return cached result");
+                Assert.AreEqual(1, callCount, "Function should only be called once (cached on second call)");
+                Assert.IsNull(cacheWithoutStats.Statistics, "Statistics should remain null");
+            }
+            finally
+            {
+                cacheWithoutStats.Dispose();
+            }
+        }
+
+        [Test]
+        public async Task Statistics_WhenDisabled_AsyncCacheStillWorks()
+        {
+            // Arrange
+            var cacheWithoutStats = new BlitzCache();
+            var callCount = 0;
+            async Task<string> TestFunction()
+            {
+                callCount++;
+                await Task.Delay(10);
+                return $"async-result-{callCount}";
+            }
+
+            try
+            {
+                // Act
+                var result1 = await cacheWithoutStats.BlitzGet("async-test-key", TestFunction, 1000);
+                var result2 = await cacheWithoutStats.BlitzGet("async-test-key", TestFunction, 1000);
+
+                // Assert
+                Assert.AreEqual("async-result-1", result1, "First async call should return computed result");
+                Assert.AreEqual("async-result-1", result2, "Second async call should return cached result");
+                Assert.AreEqual(1, callCount, "Async function should only be called once (cached on second call)");
+                Assert.IsNull(cacheWithoutStats.Statistics, "Statistics should remain null");
+            }
+            finally
+            {
+                cacheWithoutStats.Dispose();
+            }
+        }
+
+        [Test]
+        public void Statistics_WhenDisabled_UpdateOperationsWork()
+        {
+            // Arrange
+            var cacheWithoutStats = new BlitzCache();
+
+            try
+            {
+                // Act
+                cacheWithoutStats.BlitzUpdate("update-key", () => "initial-value", 1000);
+                var result1 = cacheWithoutStats.BlitzGet("update-key", () => "fallback-value", 1000);
+                
+                cacheWithoutStats.BlitzUpdate("update-key", () => "updated-value", 1000);
+                var result2 = cacheWithoutStats.BlitzGet("update-key", () => "fallback-value", 1000);
+
+                // Assert
+                Assert.AreEqual("initial-value", result1, "Should get initial updated value");
+                Assert.AreEqual("updated-value", result2, "Should get updated value after second update");
+                Assert.IsNull(cacheWithoutStats.Statistics, "Statistics should remain null");
+            }
+            finally
+            {
+                cacheWithoutStats.Dispose();
+            }
         }
     }
 }

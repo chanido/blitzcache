@@ -13,7 +13,7 @@ namespace BlitzCacheCore.Tests
         [SetUp]
         public void Setup()
         {
-            cache = new BlitzCache(useGlobalCache: false);
+            cache = new BlitzCache();
         }
 
         [TearDown]

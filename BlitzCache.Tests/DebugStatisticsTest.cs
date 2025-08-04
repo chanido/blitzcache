@@ -10,7 +10,7 @@ namespace BlitzCacheCore.Tests
         [Test]
         public void Debug_EvictionCount()
         {
-            var cache = new BlitzCache(useGlobalCache: false);
+            var cache = new BlitzCache(enableStatistics: true);
             
             Console.WriteLine("=== Debug Eviction Count ===");
             

@@ -16,7 +16,7 @@ namespace BlitzCacheCore.Tests
         public void Statistics_PerformanceImpact_CacheHits()
         {
             // Arrange
-            var cache = new BlitzCache(useGlobalCache: false);
+            var cache = new BlitzCache(enableStatistics: true);
             var iterations = 100000;
             
             // Pre-populate cache (1 miss)
@@ -72,7 +72,7 @@ namespace BlitzCacheCore.Tests
         public void Statistics_PerformanceImpact_CacheMisses()
         {
             // Arrange
-            var cache = new BlitzCache(useGlobalCache: false);
+            var cache = new BlitzCache(enableStatistics: true);
             var iterations = 1000; // Fewer iterations for misses since they're more expensive
             var executionCount = 0;
             
@@ -118,7 +118,7 @@ namespace BlitzCacheCore.Tests
         public async Task Statistics_PerformanceImpact_AsyncOperations()
         {
             // Arrange
-            var cache = new BlitzCache(useGlobalCache: false);
+            var cache = new BlitzCache(enableStatistics: true);
             var iterations = 10000;
             
             // Pre-populate cache
@@ -173,7 +173,7 @@ namespace BlitzCacheCore.Tests
         public void Statistics_PerformanceImpact_ConcurrentAccess()
         {
             // Arrange
-            var cache = new BlitzCache(useGlobalCache: false);
+            var cache = new BlitzCache(enableStatistics: true);
             var threadsCount = 10;
             var operationsPerThread = 1000;
             var totalOperations = threadsCount * operationsPerThread;
@@ -233,8 +233,8 @@ namespace BlitzCacheCore.Tests
         public void Statistics_MemoryOverhead_Comparison()
         {
             // This test demonstrates that statistics add minimal memory overhead
-            var cacheWithStats = new BlitzCache(useGlobalCache: false);
-            var nullCache = new NullBlitzCacheForTesting();
+            var cacheWithStats = new BlitzCache(enableStatistics: true);
+            var nullCache = new NullBlitzCacheForTesting(enableStatistics: true);
             
             Console.WriteLine($"=== Memory Overhead Analysis ===");
             Console.WriteLine($"BlitzCache with statistics: Available");
