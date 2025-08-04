@@ -168,6 +168,7 @@ jobs:
     name: Publish NuGet Packages
     runs-on: ubuntu-latest
     if: github.event_name == 'workflow_dispatch' && inputs.publish_packages == true
+    needs: [package, package-dev]
     
     steps:
     - name: Download packages
