@@ -60,9 +60,10 @@ for (int i = 0; i < 100; i++)
 ✅ **Ultra-fast performance** - 0.0001ms per operation with intelligent memory management  
 ✅ **Thread-safe by design** - Handles any concurrency scenario automatically  
 ✅ **Memory leak prevention** - Advanced cleanup prevents memory bloat  
-✅ **Production tested** - 128 comprehensive tests ensure reliability  
+✅ **Production tested** - 141 comprehensive tests ensure reliability  
 ✅ **Works with everything** - Sync, async, any data type, any .NET app  
 ✅ **Automatic logging** - Built-in statistics monitoring with one line setup (v2.0.1+)
+✅ **Global statistics always enabled** - As of v2.0.2, the global singleton always provides statistics for monitoring
 
 ## 📋 Table of Contents
 
@@ -117,6 +118,9 @@ services.AddBlitzCache();
 
 // Optional: Add automatic logging of cache statistics (v2.0.1+)
 services.AddBlitzCacheLogging(); // Logs cache performance hourly
+
+// As of v2.0.2, statistics are always available on the global singleton
+var stats = cache.Statistics; // Never null for BlitzCache.Global
 
 // Usage anywhere
 public WeatherService(IBlitzCache cache) => _cache = cache;
@@ -293,11 +297,15 @@ cache.Remove("user_123");
 await cache.BlitzUpdate("weather_data", async () => await GetWeatherAsync(), 300000);
 ```
 
+
 ### Cache Statistics and Monitoring
-BlitzCache provides built-in performance statistics to help you monitor cache effectiveness and optimize your application:
+BlitzCache provides built-in performance statistics to help you monitor cache effectiveness and optimize your application.
+
+**As of v2.0.2, statistics are always enabled on the global singleton.**
 
 ```csharp
-// Access cache statistics
+
+// Access cache statistics (never null for BlitzCache.Global as of v2.0.2)
 var stats = cache.Statistics;
 
 Console.WriteLine($"Cache Hit Ratio: {stats.HitRatio:P1}"); // e.g., "75.5%"
@@ -457,7 +465,7 @@ Cleans up resources (implements IDisposable).
 BlitzCache delivers enterprise-grade performance and reliability:
 - ✅ **Zero memory leaks** - Advanced usage-based cleanup
 - ✅ **0.0001ms per operation** - Ultra-high performance 
-- ✅ **128 tests passing** - Comprehensive reliability
+- ✅ **141 tests passing** - Comprehensive reliability
 - ✅ **Advanced architecture** - Intelligent memory management
 - ✅ **Thread-safe** - Concurrent operation guarantees
 

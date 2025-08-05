@@ -1,3 +1,13 @@
+# [2.0.2] - 2025-08-05
+
+### Changed
+- **Global statistics always enabled**: The global singleton (`BlitzCache.Global`) now always has statistics enabled. `cache.Statistics` is never null for the global instance, making monitoring and logging predictable in all scenarios.
+- Improved documentation to clarify statistics availability on the global instance.
+- Test suite and examples updated to reflect this change.
+
+### Fixed
+- Minor documentation and test improvements for statistics monitoring.
+
 # Changelog
 
 All notable changes to BlitzCache will be documented in this file.
@@ -18,7 +28,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 - Enhanced `IServiceCollectionExtensions` with logging configuration options
 - Improved test coverage with logging functionality examples
-- Updated comprehensive test suite to 128 tests
+- Updated comprehensive test suite to 141 tests
 - **Updated CI/CD pipeline to .NET 8.0** - No longer supports .NET 6.0 in build pipeline for better security and performance
 
 ### Fixed

@@ -15,15 +15,15 @@
     <RepositoryBranch>master</RepositoryBranch>
     <PackageValidationBaselineVersion>1.0.0</PackageValidationBaselineVersion>
     <PackageTags>caching;performance;threading;async;concurrency;enterprise;dotnet;thundering-herd;duplicate-prevention;memory-cache;thread-safe;zero-configuration;blazing-fast;production-ready;sql-protection;cache-invalidation;logging;monitoring;statistics;microservices</PackageTags>
-    <Version>2.0.1</Version>
-    <AssemblyVersion>2.0.1.0</AssemblyVersion>
-    <FileVersion>2.0.1.0</FileVersion>
-    <PackageReleaseNotes>BlitzCache v2.0.1 - Enterprise-grade caching that's ridiculously simple to use
+    <Version>2.0.2</Version>
+    <AssemblyVersion>2.0.2.0</AssemblyVersion>
+    <FileVersion>2.0.2.0</FileVersion>
+    <PackageReleaseNotes>BlitzCache v2.0.2 - Global statistics always enabled
 
-NEW IN v2.0.1:
-• Automatic Cache Logging - Add services.AddBlitzCacheLogging() for automatic hourly statistics logging
-• Microservice Support - Application identification for distributed environments
-• Zero Setup Required - Logs cache performance with just one line of code
+NEW IN v2.0.2:
+• Global singleton now always has statistics enabled (cache.Statistics is never null)
+• Predictable monitoring and logging for all usages of BlitzCache.Global
+• Fully backward compatible for all other APIs
 
 THE SIMPLICITY ADVANTAGE:
 • One line of code prevents duplicate execution of expensive operations
@@ -40,7 +40,7 @@ ENTERPRISE PERFORMANCE:
 • Ultra-fast 0.0001ms per operation with intelligent memory management
 • Zero memory leaks with advanced usage-based cleanup system
 • Thread-safe by design with granular concurrency control
-• 119 comprehensive tests ensuring production reliability
+• 141 comprehensive tests ensuring production reliability
 
 🔧 ADVANCED FEATURES:
 • Dynamic cache duration with result-based retention control
