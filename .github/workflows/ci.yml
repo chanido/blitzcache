@@ -119,8 +119,8 @@ jobs:
     - name: Restore dependencies
       run: dotnet restore
       
-    - name: Build solution
-      run: dotnet build --configuration ${{ env.CONFIGURATION }} --no-restore
+    - name: Build BlitzCacheCore (Release for packaging)
+      run: dotnet build BlitzCache/BlitzCacheCore.csproj --configuration ${{ env.CONFIGURATION }} --no-restore
       
     - name: Get short SHA
       id: vars
@@ -153,8 +153,8 @@ jobs:
     - name: Restore dependencies
       run: dotnet restore
 
-    - name: Build solution (Release for packaging)
-      run: dotnet build --configuration ${{ env.CONFIGURATION }} --no-restore
+    - name: Build BlitzCacheCore (Release for packaging)
+      run: dotnet build BlitzCache/BlitzCacheCore.csproj --configuration ${{ env.CONFIGURATION }} --no-restore
 
     - name: Create NuGet package
       run: dotnet pack BlitzCache/BlitzCacheCore.csproj --configuration ${{ env.CONFIGURATION }} --no-build --include-symbols --output ./packages
