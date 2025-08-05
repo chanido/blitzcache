@@ -1,9 +1,7 @@
 
 # ⚡ BlitzCache
 
-<div align="center">
-  <img src="https://github.com/chanido/blitzcache/raw/develop/BlitzCache.png" alt="BlitzCache" width="300"/>
-</div>
+![BlitzCache](https://github.com/chanido/blitzcache/raw/develop/BlitzCache.png)
 
 [![NuGet](https://img.shields.io/nuget/v/BlitzCache.svg)](https://www.nuget.org/packages/BlitzCache/)
 [![NuGet Downloads](https://img.shields.io/nuget/dt/BlitzCache.svg)](https://www.nuget.org/packages/BlitzCache/)
@@ -551,13 +549,8 @@ This project is licensed under the MIT License - see the [LICENSE](licence.txt) 
 - Inspired by the need for simple, high-performance caching solutions
 
 ---
-
-<div align="center">
-
 **⭐ If BlitzCache helped you, please consider giving it a star! ⭐**
 
 [![GitHub stars](https://img.shields.io/github/stars/chanido/blitzcache.svg?style=social&label=Star)](https://github.com/chanido/blitzcache)
 
 Made with ⚡ by the BlitzCache team
-
-</div>
