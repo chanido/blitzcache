@@ -12,25 +12,22 @@ namespace BlitzCacheCore.Tests
     [TestFixture]
     public class ConcurrencyTests
     {
-        private IBlitzCache cache;
+        private IBlitzCacheInstance cache;
         private SlowClass slowClass;
         private SlowClassAsync slowClassAsync;
 
         [SetUp]
         public void Setup()
         {
-            cache = new BlitzCache();
+            cache = TestHelpers.CreateBlitzCacheInstance();
             slowClass = new SlowClass();
             slowClassAsync = new SlowClassAsync();
         }
 
         [TearDown]
-        public void Cleanup()
-        {
-            cache?.Dispose();
-        }
+        public void Cleanup() => cache?.Dispose();
 
-        private string GetUniqueCacheKey([System.Runtime.CompilerServices.CallerMemberName] string testName = "") 
+        private string GetUniqueCacheKey([System.Runtime.CompilerServices.CallerMemberName] string testName = "")
             => $"{testName}-{Guid.NewGuid()}";
 
         [Test]
@@ -38,7 +35,7 @@ namespace BlitzCacheCore.Tests
         {
             // Arrange
             var cacheKey = GetUniqueCacheKey();
-            
+
             // Act - Use AsyncRepeater for cleaner test like existing UnitTests
             await AsyncRepeater.Go(TestHelpers.ConcurrentOperationsCount, () => cache.BlitzGet(cacheKey, slowClassAsync.ProcessQuickly, 10000));
 
@@ -69,14 +66,14 @@ namespace BlitzCacheCore.Tests
             var cacheKey = GetUniqueCacheKey();
 
             // Act - Use enhanced AsyncRepeater with staggered calls and existing SlowClassAsync
-            var testResult = await AsyncRepeater.GoWithResults(5, 
-                () => cache.BlitzGet(cacheKey, slowClassAsync.ProcessSlowly, 10000), 
+            var testResult = await AsyncRepeater.GoWithResults(5,
+                () => cache.BlitzGet(cacheKey, slowClassAsync.ProcessSlowly, 10000),
                 staggerDelayMs: TestHelpers.VeryShortTimeoutMs);
 
             // Assert
             Assert.AreEqual(1, slowClassAsync.Counter, "Only one execution should have occurred");
             Assert.IsTrue(testResult.AllResultsIdentical, "All results should be identical");
-            Assert.That(testResult.ElapsedMilliseconds, Is.LessThan(1300), 
+            Assert.That(testResult.ElapsedMilliseconds, Is.LessThan(1300),
                 "Total time should be close to single execution time, indicating queuing worked");
         }
 
@@ -85,7 +82,7 @@ namespace BlitzCacheCore.Tests
         {
             // Arrange
             var cacheKey = GetUniqueCacheKey();
-            
+
             // Act - Use Parallel.For for sync operations like existing UnitTests
             Parallel.For(0, TestHelpers.ConcurrentOperationsCount, (i) =>
             {
@@ -117,10 +114,10 @@ namespace BlitzCacheCore.Tests
         {
             // This test verifies edge case behavior when mixing sync and async calls
             // Note: This is an edge case and the behavior might depend on implementation details
-            
+
             var executionCount = 0;
             var cacheKey = GetUniqueCacheKey();
-            
+
             string SyncOperation()
             {
                 Interlocked.Increment(ref executionCount);
@@ -143,7 +140,7 @@ namespace BlitzCacheCore.Tests
 
             // Assert - At minimum, we shouldn't have more executions than cache misses
             // Implementation detail: sync and async may use different locks
-            Assert.That(executionCount, Is.LessThanOrEqualTo(2), 
+            Assert.That(executionCount, Is.LessThanOrEqualTo(2),
                 "Should not have excessive executions even with mixed sync/async calls");
         }
     }

@@ -2,7 +2,7 @@ using Microsoft.Extensions.Logging;
 using NUnit.Framework;
 using System;
 
-namespace BlitzCache.Tests.Helpers
+namespace BlitzCacheCore.Tests.Helpers
 {
     /// <summary>
     /// Simple test logger provider that outputs to NUnit test context
@@ -18,7 +18,10 @@ namespace BlitzCache.Tests.Helpers
     {
         private readonly string categoryName;
 
-        public TestLogger(string categoryName) => this.categoryName = categoryName;
+        public TestLogger(string categoryName)
+        {
+            this.categoryName = categoryName;
+        }
 
         public IDisposable BeginScope<TState>(TState state) => null;
 

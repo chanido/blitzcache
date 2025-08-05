@@ -24,7 +24,7 @@ namespace BlitzCacheCore.Tests
         [SetUp]
         public void Setup()
         {
-            testCache = TestHelpers.CreateWithStatistics();
+            testCache = TestHelpers.CreateBlitzCacheInstanceWithStatistics();
             testLogger = new TestLoggerForBlitzCache();
             testInterval = TimeSpan.FromMilliseconds(TestHelpers.VeryShortTimeoutMs);
         }
@@ -33,17 +33,18 @@ namespace BlitzCacheCore.Tests
         public void TearDown()
         {
             loggingService?.Dispose();
+            BlitzCache.ClearGlobalForTesting();
         }
 
         [Test]
         public void Constructor_ValidatesArguments()
         {
-            Assert.Throws<ArgumentNullException>(() => 
+            Assert.Throws<ArgumentNullException>(() =>
                 new BlitzCacheLoggingService(null, testLogger, testInterval));
-            
-            Assert.Throws<ArgumentNullException>(() => 
+
+            Assert.Throws<ArgumentNullException>(() =>
                 new BlitzCacheLoggingService(testCache, null, testInterval));
-            
+
             var service = new BlitzCacheLoggingService(testCache, testLogger, testInterval);
             Assert.That(service, Is.Not.Null);
         }
@@ -51,7 +52,7 @@ namespace BlitzCacheCore.Tests
         [Test]
         public async Task ExecuteAsync_WithNullStatistics_LogsWarningAndReturns()
         {
-            loggingService = new BlitzCacheLoggingService(TestHelpers.CreateBasic(), testLogger, testInterval);
+            loggingService = new BlitzCacheLoggingService(TestHelpers.CreateBlitzCacheGlobal(), testLogger, testInterval);
             var cancellationToken = new CancellationTokenSource(TimeSpan.FromMilliseconds(TestHelpers.StandardTimeoutMs)).Token;
 
             await loggingService.StartAsync(cancellationToken);
@@ -192,7 +193,7 @@ namespace BlitzCacheCore.Tests
     {
         private int accessCount = 0;
 
-        public long HitCount 
+        public long HitCount
         {
             get
             {
@@ -202,7 +203,7 @@ namespace BlitzCacheCore.Tests
                 return 10;
             }
         }
-        
+
         public long MissCount => 5;
         public double HitRatio => 0.667;
         public long EntryCount => 8;

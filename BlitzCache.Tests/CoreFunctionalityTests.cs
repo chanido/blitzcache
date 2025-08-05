@@ -18,7 +18,7 @@ namespace BlitzCacheCore.Tests
         private IBlitzCache cache;
         private ServiceProvider serviceProvider;
 
-        [OneTimeSetUp]
+        [SetUp]
         public void BeforeAll()
         {
             serviceProvider = new ServiceCollection()
@@ -26,6 +26,13 @@ namespace BlitzCacheCore.Tests
                 .BuildServiceProvider();
 
             cache = serviceProvider.GetService<IBlitzCache>();
+        }
+
+        [TearDown]
+        public void AfterAll()
+        {
+            BlitzCache.ClearGlobalForTesting();
+            serviceProvider.Dispose();
         }
 
         [Test]
@@ -88,7 +95,10 @@ namespace BlitzCacheCore.Tests
             const int oddRetention = 150;
             const int delta = 25;
 
-            static string GetKey(int i) => i == 0 ? "Zero" : i % 2 == 0 ? "Even" : "Odd";
+            static string GetKey(int i)
+            {
+                return i == 0 ? "Zero" : i % 2 == 0 ? "Even" : "Odd";
+            }
 
             bool? GetValueWithDifferentCacheRetention(Nuances n, int i)
             {
@@ -131,7 +141,7 @@ namespace BlitzCacheCore.Tests
 
             CleanCache();
             WaitAndCheck(0, 3, "First time we will call three times");
-            WaitAndCheck( zeroRetention + delta, 1, "If we wait after zeroRetention only Zero should be recalculated");
+            WaitAndCheck(zeroRetention + delta, 1, "If we wait after zeroRetention only Zero should be recalculated");
 
             CleanCache();
             WaitAndCheck(0, 3, "First time we will call three times");
@@ -145,11 +155,9 @@ namespace BlitzCacheCore.Tests
         [Test]
         public async Task AsyncBlitzUpdate_ShouldReturnTaskAndCacheValue()
         {
-            // Arrange
-            var testCache = TestHelpers.CreateBasic();
-
             // Act - Use AsyncRepeater to test async BlitzUpdate
-            var updateTask = testCache.BlitzUpdate("async_update_key", async () => {
+            var updateTask = cache.BlitzUpdate("async_update_key", async () =>
+            {
                 await TestHelpers.WaitForEvictionCallbacks();
                 return "async_update_value";
             }, TestHelpers.StandardTimeoutMs);
@@ -159,13 +167,10 @@ namespace BlitzCacheCore.Tests
             await updateTask; // Should complete without error
 
             // Verify the value was cached using AsyncRepeater
-            var testResult = await AsyncRepeater.GoWithResults(5, () => testCache.BlitzGet("async_update_key", () => Task.FromResult("fallback"), TestHelpers.StandardTimeoutMs));
-            
+            var testResult = await AsyncRepeater.GoWithResults(5, () => cache.BlitzGet("async_update_key", () => Task.FromResult("fallback"), TestHelpers.StandardTimeoutMs));
+
             Assert.IsTrue(testResult.AllResultsIdentical, "All calls should get same cached value");
             Assert.AreEqual("async_update_value", testResult.FirstResult, "Should return cached async value");
-
-            // Cleanup
-            testCache.Dispose();
         }
 
         [Test]
@@ -201,7 +206,6 @@ namespace BlitzCacheCore.Tests
         public async Task CacheExpiration_ShouldRecalculateAfterTimeout()
         {
             // Arrange
-            var testCache = TestHelpers.CreateBasic();
             var counter = 0;
             string TestFunction()
             {
@@ -210,17 +214,14 @@ namespace BlitzCacheCore.Tests
             }
 
             // Act
-            var result1 = testCache.BlitzGet("expiration_key", TestFunction, TestHelpers.StandardTimeoutMs);
+            var result1 = cache.BlitzGet("expiration_key", TestFunction, TestHelpers.StandardTimeoutMs);
             await TestHelpers.WaitForStandardExpiration(); // Wait for expiration
-            var result2 = testCache.BlitzGet("expiration_key", TestFunction, TestHelpers.StandardTimeoutMs);
+            var result2 = cache.BlitzGet("expiration_key", TestFunction, TestHelpers.StandardTimeoutMs);
 
             // Assert
             Assert.AreEqual("result_1", result1, "First call should get first result");
             Assert.AreEqual("result_2", result2, "Second call after expiration should get new result");
             Assert.AreEqual(2, counter, "Function should be called twice due to expiration");
-
-            // Cleanup
-            testCache.Dispose();
         }
 
         [Test]
@@ -252,7 +253,6 @@ namespace BlitzCacheCore.Tests
         public async Task AsyncCacheOperations_ShouldWorkCorrectly()
         {
             // Arrange
-            var testCache = TestHelpers.CreateBasic();
             var counter = 0;
 
             async Task<string> AsyncTestFunction()
@@ -263,23 +263,13 @@ namespace BlitzCacheCore.Tests
             }
 
             // Act
-            var result1 = await testCache.BlitzGet("async_core_key", AsyncTestFunction, TestHelpers.StandardTimeoutMs);
-            var result2 = await testCache.BlitzGet("async_core_key", AsyncTestFunction, TestHelpers.StandardTimeoutMs);
+            var result1 = await cache.BlitzGet("async_core_key", AsyncTestFunction, TestHelpers.StandardTimeoutMs);
+            var result2 = await cache.BlitzGet("async_core_key", AsyncTestFunction, TestHelpers.StandardTimeoutMs);
 
             // Assert
             Assert.AreEqual("async_result_1", result1, "First async call should get first result");
             Assert.AreEqual("async_result_1", result2, "Second async call should get cached result");
             Assert.AreEqual(1, counter, "Async function should only be called once");
-
-            // Cleanup
-            testCache.Dispose();
-        }
-
-        [OneTimeTearDown]
-        public void AfterAll()
-        {
-            cache.Dispose();
-            serviceProvider.Dispose();
         }
     }
 }

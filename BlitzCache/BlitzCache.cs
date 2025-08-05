@@ -1,6 +1,4 @@
-﻿using BlitzCacheCore.LockDictionaries;
-using BlitzCacheCore.Statistics;
-using Microsoft.Extensions.Caching.Memory;
+﻿using BlitzCacheCore.Statistics;
 using System;
 using System.Runtime.CompilerServices;
 using System.Threading.Tasks;
@@ -11,17 +9,9 @@ namespace BlitzCacheCore
 {
     public class BlitzCache : IBlitzCache
     {
-        private static Lazy<BlitzCache> globalInstance = new Lazy<BlitzCache>(() => new BlitzCache(60000, true));
+        private static IBlitzCacheInstance? globalInstance;
 
-        private readonly IMemoryCache memoryCache;
-        private readonly long defaultMilliseconds;
-        private readonly BlitzSemaphoreDictionary semaphoreDictionary;
-        private readonly CacheStatistics? statistics;
-
-        /// <summary>
-        /// Gets the global singleton BlitzCache instance for application-wide caching.
-        /// </summary>
-        internal static IBlitzCache Global => globalInstance.Value;
+        private static readonly object globalLock = new object();
 
         /// <summary>
         /// Creates a new BlitzCache instance.
@@ -29,216 +19,72 @@ namespace BlitzCacheCore
         /// <param name="defaultMilliseconds">Default cache duration in milliseconds</param>
         /// <param name="enableStatistics">Whether to enable statistics tracking (default: false for better performance)</param>
         /// <param name="cleanupInterval">Interval for automatic cleanup of unused semaphores (default: 10 seconds)</param>
-        public BlitzCache(long defaultMilliseconds = 60000, bool enableStatistics = false, TimeSpan? cleanupInterval = null)
+        public BlitzCache(long? defaultMilliseconds = 60000, bool? enableStatistics = false, TimeSpan? cleanupInterval = null)
         {
-            if (defaultMilliseconds < 0)
-                throw new ArgumentOutOfRangeException(nameof(defaultMilliseconds), "Default milliseconds must be non-negative");
+            if (defaultMilliseconds < 1) throw new ArgumentOutOfRangeException(nameof(defaultMilliseconds), "Default milliseconds must be non-negative");
 
-            this.defaultMilliseconds = defaultMilliseconds;
-            memoryCache = new MemoryCache(new MemoryCacheOptions());
-            semaphoreDictionary = new BlitzSemaphoreDictionary(cleanupInterval);
-            statistics = enableStatistics ? new CacheStatistics(() => semaphoreDictionary.GetNumberOfLocks()) : null;
-        }
-
-        /// <summary>
-        /// Creates a new BlitzCache instance with a custom IMemoryCache implementation.
-        /// </summary>
-        /// <param name="memoryCache">The memory cache implementation to use</param>
-        /// <param name="defaultMilliseconds">Default cache duration in milliseconds</param>
-        /// <param name="enableStatistics">Whether to enable statistics tracking (default: false for better performance)</param>
-        /// <param name="cleanupInterval">Interval for automatic cleanup of unused semaphores (default: 10 seconds)</param>
-        public BlitzCache(IMemoryCache memoryCache, long defaultMilliseconds = 60000, bool enableStatistics = false, TimeSpan? cleanupInterval = null)
-        {
-            this.memoryCache = memoryCache ?? throw new ArgumentNullException(nameof(memoryCache));
-            if (defaultMilliseconds < 0)
-                throw new ArgumentOutOfRangeException(nameof(defaultMilliseconds), "Default milliseconds must be non-negative");
-
-            this.defaultMilliseconds = defaultMilliseconds;
-            semaphoreDictionary = new BlitzSemaphoreDictionary(cleanupInterval);
-            statistics = enableStatistics ? new CacheStatistics(() => semaphoreDictionary.GetNumberOfLocks()) : null;
+            if (globalInstance is null)
+            {
+                lock (globalLock)
+                {
+                    if (globalInstance is null)
+                    {
+                        globalInstance = new BlitzCacheInstance(defaultMilliseconds, enableStatistics, cleanupInterval);
+                    }
+                }
+            }
         }
 
         /// <summary>
         /// Gets the current number of semaphores for testing and monitoring purposes.
         /// </summary>
-        public int GetSemaphoreCount() => semaphoreDictionary.GetNumberOfLocks();
+        public int GetSemaphoreCount() => globalInstance!.GetSemaphoreCount();
 
         /// <summary>
         /// Gets cache performance statistics and monitoring information.
         /// Use these metrics to understand cache effectiveness and optimize cache configuration.
         /// Returns null if statistics are disabled for better performance.
         /// </summary>
-        public ICacheStatistics? Statistics => statistics;
+        public ICacheStatistics? Statistics => globalInstance?.Statistics;
 
-        private T ExecuteWithCache<T>(string cacheKey, Func<Nuances, T> function, long? milliseconds)
-        {
-            if (TryGetFromCache<T>(cacheKey, out var cachedResult))
-                return cachedResult;
-
-            return ExecuteAndCache(cacheKey, function, milliseconds);
-        }
-
-        private bool TryGetFromCache<T>(string cacheKey, out T result)
-        {
-            if (memoryCache.TryGetValue(cacheKey, out var cachedValue))
-            {
-                statistics?.RecordHit();
-                result = (T)cachedValue!;
-                return true;
-            }
-
-            result = default!;
-            return false;
-        }
-
-        private T ExecuteAndCache<T>(string cacheKey, Func<Nuances, T> function, long? milliseconds)
-        {
-            using var lockHandle = semaphoreDictionary.Wait(cacheKey);
-
-            if (TryGetFromCache<T>(cacheKey, out var cachedResult))
-                return cachedResult;
-
-            return ComputeAndStoreResult(cacheKey, function, milliseconds);
-        }
-
-        private T ComputeAndStoreResult<T>(string cacheKey, Func<Nuances, T> function, long? milliseconds)
-        {
-            statistics?.RecordMiss();
-            var nuances = new Nuances();
-            var computedResult = function.Invoke(nuances);
-
-            var expirationTime = DateTime.UtcNow.AddMilliseconds(nuances.CacheRetention ?? milliseconds ?? defaultMilliseconds);
-            var cacheEntryOptions = statistics?.CreateEntryOptions(expirationTime) ??
-                new MemoryCacheEntryOptions { AbsoluteExpiration = expirationTime };
-
-            memoryCache.Set(cacheKey, computedResult, cacheEntryOptions);
-            statistics?.TrackEntry();
-            return computedResult;
-        }
-
-        private async Task<T> ExecuteWithCacheAsync<T>(string cacheKey, Func<Nuances, Task<T>> function, long? milliseconds)
-        {
-            if (TryGetFromCache<T>(cacheKey, out var cachedResult))
-                return cachedResult;
-
-            return await ExecuteAndCacheAsync(cacheKey, function, milliseconds);
-        }
-
-        private async Task<T> ExecuteAndCacheAsync<T>(string cacheKey, Func<Nuances, Task<T>> function, long? milliseconds)
-        {
-            using var lockHandle = await semaphoreDictionary.WaitAsync(cacheKey);
-
-            if (TryGetFromCache<T>(cacheKey, out var cachedResult))
-                return cachedResult;
-
-            return await ComputeAndStoreResultAsync(cacheKey, function, milliseconds);
-        }
-
-        private async Task<T> ComputeAndStoreResultAsync<T>(string cacheKey, Func<Nuances, Task<T>> function, long? milliseconds)
-        {
-            statistics?.RecordMiss();
-            var nuances = new Nuances();
-            var computedResult = await function.Invoke(nuances);
-
-            var expirationTime = DateTime.UtcNow.AddMilliseconds(nuances.CacheRetention ?? milliseconds ?? defaultMilliseconds);
-            var cacheEntryOptions = statistics?.CreateEntryOptions(expirationTime) ??
-                new MemoryCacheEntryOptions { AbsoluteExpiration = expirationTime };
-
-            memoryCache.Set(cacheKey, computedResult, cacheEntryOptions);
-            statistics?.TrackEntry();
-            return computedResult;
-        }
 
         public T BlitzGet<T>(Func<T> function, long? milliseconds = null, [CallerMemberName] string callerMemberName = "", [CallerFilePath] string sourceFilePath = "") =>
-            BlitzGet(callerMemberName + sourceFilePath, nuances => function(), milliseconds);
+            globalInstance!.BlitzGet(callerMemberName + sourceFilePath, nuances => function(), milliseconds);
 
         public T BlitzGet<T>(Func<Nuances, T> function, long? milliseconds = null, [CallerMemberName] string callerMemberName = "", [CallerFilePath] string sourceFilePath = "") =>
-            BlitzGet(callerMemberName + sourceFilePath, function, milliseconds);
+            globalInstance!.BlitzGet(callerMemberName + sourceFilePath, function, milliseconds);
 
-        public T BlitzGet<T>(string cacheKey, Func<T> function, long? milliseconds = null) =>
-            BlitzGet(cacheKey, nuances => function(), milliseconds);
+        public T BlitzGet<T>(string cacheKey, Func<T> function, long? milliseconds = null) => globalInstance!.BlitzGet(cacheKey, nuances => function(), milliseconds);
 
-        public T BlitzGet<T>(string cacheKey, Func<Nuances, T> function, long? milliseconds = null) =>
-            ExecuteWithCache(cacheKey, function, milliseconds);
+        public T BlitzGet<T>(string cacheKey, Func<Nuances, T> function, long? milliseconds = null) => globalInstance!.BlitzGet(cacheKey, function, milliseconds);
 
         public Task<T> BlitzGet<T>(Func<Task<T>> function, long? milliseconds = null, [CallerMemberName] string callerMemberName = "", [CallerFilePath] string sourceFilePath = "") =>
-            BlitzGet(callerMemberName + sourceFilePath, nuances => function(), milliseconds);
+            globalInstance!.BlitzGet(callerMemberName + sourceFilePath, nuances => function(), milliseconds);
 
         public Task<T> BlitzGet<T>(Func<Nuances, Task<T>> function, long? milliseconds = null, [CallerMemberName] string callerMemberName = "", [CallerFilePath] string sourceFilePath = "") =>
-            BlitzGet(callerMemberName + sourceFilePath, function, milliseconds);
+            globalInstance!.BlitzGet(callerMemberName + sourceFilePath, function, milliseconds);
 
         public Task<T> BlitzGet<T>(string cacheKey, Func<Task<T>> function, long? milliseconds = null) =>
-            BlitzGet(cacheKey, nuances => function(), milliseconds);
+            globalInstance!.BlitzGet(cacheKey, nuances => function(), milliseconds);
 
         public Task<T> BlitzGet<T>(string cacheKey, Func<Nuances, Task<T>> function, long? milliseconds = null) =>
-            ExecuteWithCacheAsync(cacheKey, function, milliseconds);
+            globalInstance!.BlitzGet(cacheKey, function, milliseconds);
 
-        private void UpdateCacheEntry<T>(string cacheKey, T value, long milliseconds)
-        {
-            using var lockHandle = semaphoreDictionary.Wait(cacheKey);
-            SetCacheValue(cacheKey, value, milliseconds);
-        }
+        public void BlitzUpdate<T>(string cacheKey, Func<T> function, long milliseconds) => globalInstance!.BlitzUpdate<T>(cacheKey, function, milliseconds);
 
-        private async Task UpdateCacheEntryAsync<T>(string cacheKey, T value, long milliseconds)
-        {
-            using var lockHandle = await semaphoreDictionary.WaitAsync(cacheKey);
-            SetCacheValue(cacheKey, value, milliseconds);
-        }
+        public Task BlitzUpdate<T>(string cacheKey, Func<Task<T>> function, long milliseconds) => globalInstance!.BlitzUpdate<T>(cacheKey, function, milliseconds);
 
-        private void SetCacheValue<T>(string cacheKey, T value, long milliseconds)
-        {
-            var existsInCache = memoryCache.TryGetValue(cacheKey, out _);
-            var expirationTime = DateTime.UtcNow.AddMilliseconds(milliseconds);
-            var cacheEntryOptions = statistics?.CreateEntryOptions(expirationTime) ??
-                new MemoryCacheEntryOptions { AbsoluteExpiration = expirationTime };
-
-            memoryCache.Set(cacheKey, value, cacheEntryOptions);
-
-            if (!existsInCache)
-                statistics?.TrackEntry();
-        }
-
-        public void BlitzUpdate<T>(string cacheKey, Func<T> function, long milliseconds) =>
-            UpdateCacheEntry(cacheKey, function(), milliseconds);
-
-        public async Task BlitzUpdate<T>(string cacheKey, Func<Task<T>> function, long milliseconds) =>
-            await UpdateCacheEntryAsync(cacheKey, await function.Invoke(), milliseconds);
-
-        public void Remove(string cacheKey)
-        {
-            // Early return if key doesn't exist to avoid unnecessary locking
-            if (!memoryCache.TryGetValue(cacheKey, out _))
-                return;
-
-            using var lockHandle = semaphoreDictionary.Wait(cacheKey);
-            memoryCache.Remove(cacheKey);
-            // There is no need to decrement entry count or record eviction here because that is handled by the memory cache PostEvictionCallbacks
-        }
-
-        public void Dispose()
-        {
-            // Don't dispose if this is the global singleton instance
-            if (this == globalInstance.Value)
-            {
-                // Global instance should not be disposed to maintain application-wide caching
-                return;
-            }
-
-            semaphoreDictionary?.Dispose();
-            memoryCache?.Dispose();
-            statistics?.Reset();
-        }
+        public void Remove(string cacheKey) => globalInstance!.Remove(cacheKey);
 
 #if DEBUG
+        internal IBlitzCacheInstance? GetInternalInstance() => globalInstance;
+
         internal static void ClearGlobalForTesting()
         {
-            if (globalInstance.IsValueCreated)
-            {
-                (globalInstance.Value.memoryCache as MemoryCache)?.Compact(1.0); // Clear all entries
-                globalInstance.Value.semaphoreDictionary?.Dispose(); // Dispose all semaphores
-                                                       
-                globalInstance = new Lazy<BlitzCache>(() => new BlitzCache(60000, true)); 
-            }
+            if (globalInstance is null) return;
+
+            globalInstance.Dispose();
+            globalInstance = null;
         }
 #endif
     }

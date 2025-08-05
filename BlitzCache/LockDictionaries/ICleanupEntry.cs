@@ -1,6 +1,3 @@
-
-using System;
-
 namespace BlitzCacheCore.LockDictionaries
 {
     /// <summary>

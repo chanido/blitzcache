@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Concurrent;
-using System.Threading;
 using System.Threading.Tasks;
 
 namespace BlitzCacheCore.LockDictionaries
@@ -15,8 +14,10 @@ namespace BlitzCacheCore.LockDictionaries
         private readonly SmartCleanupManager<string, BlitzSemaphore> cleanupManager;
         private bool disposed = false;
 
-        public BlitzSemaphoreDictionary(TimeSpan? cleanupInterval = null) =>
+        public BlitzSemaphoreDictionary(TimeSpan? cleanupInterval = null)
+        {
             cleanupManager = new SmartCleanupManager<string, BlitzSemaphore>(semaphores, cleanupInterval: cleanupInterval ?? TimeSpan.FromSeconds(10));
+        }
 
         /// <summary>
         /// Gets or creates a BlitzSemaphore for the specified key.
@@ -26,7 +27,7 @@ namespace BlitzCacheCore.LockDictionaries
         public BlitzSemaphore GetSemaphore(string key)
         {
             if (disposed) throw new ObjectDisposedException(nameof(BlitzSemaphoreDictionary));
-            
+
             var semaphore = semaphores.GetOrAdd(key, _ => new BlitzSemaphore());
             semaphore.MarkAsAccessed();
             return semaphore;
@@ -53,7 +54,7 @@ namespace BlitzCacheCore.LockDictionaries
         public void Dispose()
         {
             if (disposed) return;
-            
+
             disposed = true;
             cleanupManager?.Dispose();
 

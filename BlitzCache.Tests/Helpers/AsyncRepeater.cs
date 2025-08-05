@@ -32,7 +32,7 @@ namespace BlitzCacheCore.Tests.Helpers
             {
                 if (i > 0 && staggerDelayMs > 0)
                     await Task.Delay(staggerDelayMs);
-                
+
                 tasks.Add(function());
             }
 
@@ -82,7 +82,7 @@ namespace BlitzCacheCore.Tests.Helpers
         public long ElapsedMilliseconds { get; set; }
         public T[] UniqueResults { get; set; }
         public bool AllResultsIdentical { get; set; }
-        
+
         public int ResultCount => Results?.Length ?? 0;
         public int UniqueResultCount => UniqueResults?.Length ?? 0;
         public T FirstResult => Results != null && Results.Length > 0 ? Results[0] : default(T);

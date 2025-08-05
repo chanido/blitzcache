@@ -1,8 +1,10 @@
 using BlitzCacheCore.Extensions;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using NUnit.Framework;
 using System;
+using System.Linq;
 using System.Threading.Tasks;
 
 namespace BlitzCacheCore.Tests.Extensions
@@ -10,20 +12,23 @@ namespace BlitzCacheCore.Tests.Extensions
     [TestFixture]
     public class IServiceCollectionExtensionsTests
     {
+        private IBlitzCache cache;
+        private ServiceProvider serviceProvider;
+
         [SetUp]
-        public void ResetBlitzCacheGlobal()
-        {
-            BlitzCache.ClearGlobalForTesting(); // Reset the global instance
-        }
+        public void BeforeAll() => BlitzCache.ClearGlobalForTesting();
+
+        [TearDown]
+        public void AfterAll() => serviceProvider.Dispose();
 
         [Test]
         public async Task AddBlitzCache_RegistersGlobalSingleton()
         {
-            var services = new ServiceCollection();
-            services.AddBlitzCache();
-            var provider = services.BuildServiceProvider();
-            var cache1 = provider.GetService<IBlitzCache>();
-            var cache2 = provider.GetService<IBlitzCache>();
+            serviceProvider = new ServiceCollection().AddBlitzCache().BuildServiceProvider();
+
+            var cache1 = serviceProvider.GetService<IBlitzCache>();
+            var cache2 = serviceProvider.GetService<IBlitzCache>();
+
             Assert.IsNotNull(cache1);
             Assert.AreSame(cache1, cache2, "Should resolve the same global singleton instance");
             await AssertCacheWorksAsync(cache1);
@@ -31,74 +36,23 @@ namespace BlitzCacheCore.Tests.Extensions
         }
 
         [Test]
-        public async Task AddBlitzCacheInstance_RegistersDedicatedSingleton()
-        {
-            var services = new ServiceCollection();
-            services.AddBlitzCacheInstance();
-            var provider = services.BuildServiceProvider();
-            var cache1 = provider.GetService<IBlitzCache>();
-            var cache2 = provider.GetService<IBlitzCache>();
-            Assert.IsNotNull(cache1);
-            Assert.AreSame(cache1, cache2, "Should resolve the same dedicated singleton instance");
-            Assert.AreNotSame(BlitzCache.Global, cache1, "Should not be the global singleton");
-            await AssertCacheWorksAsync(cache1);
-            await AssertCacheWorksAsync(cache2, true);
-        }
+        public void AddBlitzCache_ThrowsOnNull() => Assert.Throws<ArgumentNullException>(() => IServiceCollectionExtensions.AddBlitzCache(null));
 
         [Test]
-        public async Task AddBlitzCacheInstance_Options_AreApplied()
-        {
-            var services = new ServiceCollection();
-            services.AddBlitzCacheInstance(defaultMilliseconds: 12345, enableStatistics: true);
-            var provider = services.BuildServiceProvider();
-            var cache = provider.GetService<IBlitzCache>() as BlitzCache;
-            Assert.IsNotNull(cache);
-            Assert.IsNotNull(cache.Statistics, "Statistics should be enabled");
-            await AssertCacheWorksAsync(cache);
-        }
+        public void AddBlitzCacheLogging_ThrowsOnNull() => Assert.Throws<ArgumentNullException>(() => IServiceCollectionExtensions.AddBlitzCacheLogging(null));
 
-        [Test]
-        public void AddBlitzCache_ThrowsOnNull()
-        {
-            Assert.Throws<ArgumentNullException>(() => IServiceCollectionExtensions.AddBlitzCache(null));
-        }
-
-        [Test]
-        public void AddBlitzCacheInstance_ThrowsOnNull()
-        {
-            Assert.Throws<ArgumentNullException>(() => IServiceCollectionExtensions.AddBlitzCacheInstance(null));
-        }
-
-        [Test]
-        public async Task AddBlitzCacheLogging_RegistersHostedService()
-        {
-            var services = new ServiceCollection();
-            services.AddBlitzCacheInstance(enableStatistics: true);
-            services.AddLogging(b => b.AddDebug());
-            services.AddBlitzCacheLogging(logInterval: TimeSpan.FromMilliseconds(10), applicationIdentifier: "TestApp");
-            var provider = services.BuildServiceProvider();
-            var hostedServices = provider.GetServices<Microsoft.Extensions.Hosting.IHostedService>();
-            Assert.IsTrue(System.Linq.Enumerable.Any(hostedServices, s => s.GetType().Name.Contains("BlitzCacheLoggingService")), "Should register BlitzCacheLoggingService as a hosted service");
-
-            var cache = provider.GetService<IBlitzCache>();
-            await AssertCacheWorksAsync(cache);
-        }
-
-        [Test]
-        public void AddBlitzCacheLogging_ThrowsOnNull()
-        {
-            Assert.Throws<ArgumentNullException>(() => IServiceCollectionExtensions.AddBlitzCacheLogging(null));
-        }
 
         [Test]
         public async Task AddBlitzCache_MultipleRegistrations_StillSingleton()
         {
-            var services = new ServiceCollection();
-            services.AddBlitzCache();
-            services.AddBlitzCache();
-            var provider = services.BuildServiceProvider();
-            var cache1 = provider.GetService<IBlitzCache>();
-            var cache2 = provider.GetService<IBlitzCache>();
+            serviceProvider = new ServiceCollection()
+                .AddBlitzCache()
+                .AddBlitzCache()
+                .BuildServiceProvider();
+
+            var cache1 = serviceProvider.GetService<IBlitzCache>();
+            var cache2 = serviceProvider.GetService<IBlitzCache>();
+
             Assert.IsNotNull(cache1);
             Assert.AreSame(cache1, cache2, "Multiple AddBlitzCache calls should still resolve the same singleton instance");
             await AssertCacheWorksAsync(cache1);
@@ -106,71 +60,34 @@ namespace BlitzCacheCore.Tests.Extensions
         }
 
         [Test]
-        public async Task AddBlitzCacheInstance_MultipleRegistrations_StillSingleton()
-        {
-            var services = new ServiceCollection();
-            services.AddBlitzCacheInstance();
-            services.AddBlitzCacheInstance();
-            var provider = services.BuildServiceProvider();
-            var cache1 = provider.GetService<IBlitzCache>();
-            var cache2 = provider.GetService<IBlitzCache>();
-            Assert.IsNotNull(cache1);
-            Assert.AreSame(cache1, cache2, "Multiple AddBlitzCacheInstance calls should still resolve the same singleton instance");
-            await AssertCacheWorksAsync(cache1);
-            await AssertCacheWorksAsync(cache2, true);
-        }
-
-        [Test]
-        public async Task AddBlitzCache_Then_AddBlitzCacheInstance_GlobalWins()
-        {
-            var services = new ServiceCollection();
-            services.AddBlitzCache();
-            services.AddBlitzCacheInstance();
-            var provider = services.BuildServiceProvider();
-            var cache = provider.GetService<IBlitzCache>();
-            Assert.IsNotNull(cache);
-            Assert.AreSame(BlitzCache.Global, cache, "AddBlitzCacheInstance after AddBlitzCache should get global singleton");
-            await AssertCacheWorksAsync(cache);
-        }
-
-        [Test]
-        public async Task AddBlitzCacheInstance_Then_AddBlitzCache_InstanceWins()
-        {
-            var services = new ServiceCollection();
-            services.AddBlitzCacheInstance();
-            services.AddBlitzCache();
-            var provider = services.BuildServiceProvider();
-            var cache = provider.GetService<IBlitzCache>();
-            Assert.IsNotNull(cache);
-            Assert.AreNotSame(BlitzCache.Global, cache, "AddBlitzCache after AddBlitzCacheInstance should get the instance");
-            await AssertCacheWorksAsync(cache);
-        }
-
-        [Test]
         public async Task AddBlitzCacheLogging_WithoutStatistics_LogsWarningAndDoesNotThrow()
         {
-            var services = new ServiceCollection();
-            services.AddBlitzCacheInstance(enableStatistics: false);
-            services.AddLogging(b => b.AddDebug());
-            services.AddBlitzCacheLogging(logInterval: TimeSpan.FromMilliseconds(10), applicationIdentifier: "TestApp");
-            var provider = services.BuildServiceProvider();
-            var hostedServices = provider.GetServices<Microsoft.Extensions.Hosting.IHostedService>();
-            Assert.IsTrue(System.Linq.Enumerable.Any(hostedServices, s => s.GetType().Name.Contains("BlitzCacheLoggingService")), "Should register BlitzCacheLoggingService as a hosted service");
+            serviceProvider = new ServiceCollection()
+                .AddBlitzCache()
+                .AddLogging(b => b.AddDebug())
+                .AddBlitzCacheLogging(logInterval: TimeSpan.FromMilliseconds(10), applicationIdentifier: "TestApp")
+                .BuildServiceProvider();
+
+            var hostedServices = serviceProvider.GetServices<IHostedService>();
+
+            Assert.IsTrue(Enumerable.Any(hostedServices, s => s.GetType().Name.Contains("BlitzCacheLoggingService")), "Should register BlitzCacheLoggingService as a hosted service");
             // Should not throw, and should log a warning (cannot assert log output here)
-            var cache = provider.GetService<IBlitzCache>();
+            var cache = serviceProvider.GetService<IBlitzCache>();
+
             await AssertCacheWorksAsync(cache);
         }
 
         [Test]
         public async Task AddBlitzCache_StatisticsShouldNotBeNull()
         {
-            var services = new ServiceCollection();
+            serviceProvider = new ServiceCollection()
             // Try to add BlitzCache with statistics enabled
-            services.AddBlitzCache(defaultMilliseconds: 60000);
-            var provider = services.BuildServiceProvider();
-            var cache = provider.GetService<IBlitzCache>() as BlitzCache;
-            await AssertCacheWorksAsync(cache);
+                .AddBlitzCache(enableStatistics: true)
+                .BuildServiceProvider();
 
+            var cache = serviceProvider.GetService<IBlitzCache>() as BlitzCache;
+
+            await AssertCacheWorksAsync(cache);
             Assert.IsNotNull(cache, "Cache should not be null");
             Assert.IsNotNull(cache.Statistics, "Statistics should not be null for the global singleton, even if requested");
             Assert.AreEqual(1, cache.Statistics.EntryCount, "EntryCount should be 1 after the AssertCacheWorksAsync call");

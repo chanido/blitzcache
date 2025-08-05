@@ -1,4 +1,3 @@
-using BlitzCacheCore;
 using BlitzCacheCore.Tests.Helpers;
 using NUnit.Framework;
 using System;
@@ -14,10 +13,10 @@ namespace BlitzCacheCore.Tests.Examples
     [TestFixture]
     public class BasicUsageExamples
     {
-        private IBlitzCache cache;
+        private IBlitzCacheInstance cache;
 
         [SetUp]
-        public void Setup() => cache = new BlitzCache();
+        public void Setup() => cache = new BlitzCacheInstance();
 
         [TearDown]
         public void TearDown() => cache?.Dispose();
@@ -39,10 +38,10 @@ namespace BlitzCacheCore.Tests.Examples
 
             // First call - BlitzCache executes function and caches the result
             var result1 = cache.BlitzGet("my_key", ExpensiveOperation, TestHelpers.StandardTimeoutMs);
-            
+
             // Second call - BlitzCache returns cached value instantly!
             var result2 = cache.BlitzGet("my_key", ExpensiveOperation, TestHelpers.StandardTimeoutMs);
-            
+
             // Verify caching worked - same result, function only called once
             Assert.AreEqual("Computed result #1", result1);
             Assert.AreEqual("Computed result #1", result2);
@@ -67,7 +66,7 @@ namespace BlitzCacheCore.Tests.Examples
             // BlitzCache works seamlessly with async - just add await!
             var result1 = await cache.BlitzGet("async_key", ExpensiveAsyncOperation, TestHelpers.StandardTimeoutMs);
             var result2 = await cache.BlitzGet("async_key", ExpensiveAsyncOperation, TestHelpers.StandardTimeoutMs);
-            
+
             Assert.AreEqual("Async result #1", result1);
             Assert.AreEqual("Async result #1", result2);
             Assert.AreEqual(1, callCount, "Async function should only be called once");
@@ -80,12 +79,15 @@ namespace BlitzCacheCore.Tests.Examples
         [Test]
         public void Example3_DifferentCacheKeys()
         {
-            string GetUserData(string userId) => $"User data for {userId}";
+            string GetUserData(string userId)
+            {
+                return $"User data for {userId}";
+            }
 
             // Different cache keys maintain completely separate cached values
             var user1Data = cache.BlitzGet("user_123", () => GetUserData("123"), TestHelpers.StandardTimeoutMs);
             var user2Data = cache.BlitzGet("user_456", () => GetUserData("456"), TestHelpers.StandardTimeoutMs);
-            
+
             Assert.AreEqual("User data for 123", user1Data);
             Assert.AreEqual("User data for 456", user2Data);
             Assert.AreNotEqual(user1Data, user2Data);
@@ -109,13 +111,13 @@ namespace BlitzCacheCore.Tests.Examples
             var result1 = cache.BlitzGet("timestamp", GetTimestamp, TestHelpers.StandardTimeoutMs);
             var result2 = cache.BlitzGet("timestamp", GetTimestamp, TestHelpers.StandardTimeoutMs);
             Assert.AreEqual(result1, result2, "Should return cached value immediately");
-            
+
             // Wait for cache to expire
             await TestHelpers.WaitForStandardExpiration();
-            
+
             // BlitzCache automatically calls function again after expiration
             var result3 = cache.BlitzGet("timestamp", GetTimestamp, TestHelpers.StandardTimeoutMs);
-            
+
             Assert.AreNotEqual(result1, result3, "Should return new value after expiration");
             Assert.AreEqual(2, callCount, "Function should be called twice due to expiration");
         }
@@ -140,10 +142,10 @@ namespace BlitzCacheCore.Tests.Examples
             Assert.AreEqual("Data #1", result1);
             Assert.AreEqual("Data #1", result2);
             Assert.AreEqual(1, callCount, "Should still be only one call");
-            
+
             // Manually remove from cache when you need fresh data
             cache.Remove("removable_key");
-            
+
             // Next call executes function again with fresh data
             var result3 = cache.BlitzGet("removable_key", GetData, TestHelpers.StandardTimeoutMs);
             Assert.AreEqual("Data #2", result3);
@@ -159,7 +161,7 @@ namespace BlitzCacheCore.Tests.Examples
         {
             // Pre-populate cache with BlitzUpdate - perfect for cache warming!
             cache.BlitzUpdate("preloaded_key", () => "Preloaded value", TestHelpers.StandardTimeoutMs);
-            
+
             // When requested, the value is already there - zero wait time!
             var callCount = 0;
             string FallbackFunction()
@@ -167,9 +169,9 @@ namespace BlitzCacheCore.Tests.Examples
                 callCount++;
                 return "This should not be called";
             }
-            
+
             var result = cache.BlitzGet("preloaded_key", FallbackFunction, TestHelpers.StandardTimeoutMs);
-            
+
             Assert.AreEqual("Preloaded value", result);
             Assert.AreEqual(0, callCount, "Fallback function should not be called");
         }
@@ -184,12 +186,12 @@ namespace BlitzCacheCore.Tests.Examples
             // Cache a number - works perfectly
             var number = cache.BlitzGet("number_key", () => 42, TestHelpers.StandardTimeoutMs);
             Assert.AreEqual(42, number);
-            
+
             // Cache a complex object - automatic serialization
             var person = cache.BlitzGet("person_key", () => new { Name = "John", Age = 30 }, TestHelpers.StandardTimeoutMs);
             Assert.AreEqual("John", person.Name);
             Assert.AreEqual(30, person.Age);
-            
+
             // Cache collections - arrays, lists, whatever you need
             var list = cache.BlitzGet("list_key", () => new[] { "a", "b", "c" }, TestHelpers.StandardTimeoutMs);
             Assert.AreEqual(3, list.Length);
@@ -203,6 +205,7 @@ namespace BlitzCacheCore.Tests.Examples
         [Test]
         public void Example8_GlobalCache()
         {
+            var cache = new BlitzCache();
             var callCount = 0;
             string LoadData()
             {
@@ -211,15 +214,15 @@ namespace BlitzCacheCore.Tests.Examples
             }
 
             // Access the global cache directly - perfect for simple scenarios
-            var result1 = BlitzCache.Global.BlitzGet("global_key", LoadData, TestHelpers.StandardTimeoutMs);
-            var result2 = BlitzCache.Global.BlitzGet("global_key", LoadData, TestHelpers.StandardTimeoutMs);
-            
+            var result1 = cache.BlitzGet("global_key", LoadData, TestHelpers.StandardTimeoutMs);
+            var result2 = cache.BlitzGet("global_key", LoadData, TestHelpers.StandardTimeoutMs);
+
             Assert.AreEqual("Global data #1", result1);
             Assert.AreEqual("Global data #1", result2);
             Assert.AreEqual(1, callCount, "Function should only be called once");
-            
+
             // Clean up for this demo
-            BlitzCache.Global.Remove("global_key");
+            cache.Remove("global_key");
         }
 
         /// <summary>
@@ -239,7 +242,7 @@ namespace BlitzCacheCore.Tests.Examples
             // No cache key needed - BlitzCache uses method name and file path automatically!
             var result1 = cache.BlitzGet(GetData, TestHelpers.StandardTimeoutMs);
             var result2 = cache.BlitzGet(GetData, TestHelpers.StandardTimeoutMs);
-            
+
             Assert.AreEqual("Method data #1", result1);
             Assert.AreEqual("Method data #1", result2);
             Assert.AreEqual(1, callCount, "Function should only be called once with automatic key");
@@ -264,15 +267,15 @@ namespace BlitzCacheCore.Tests.Examples
             var profile1 = cache.BlitzGet("user_profile_123", () => SimulateExpensiveDatabaseCall(123), TestHelpers.StandardTimeoutMs);
             var profile2 = cache.BlitzGet("user_profile_123", () => SimulateExpensiveDatabaseCall(123), TestHelpers.StandardTimeoutMs);
             var profile3 = cache.BlitzGet("user_profile_123", () => SimulateExpensiveDatabaseCall(123), TestHelpers.StandardTimeoutMs);
-            
+
             // All requests return the same cached data
             Assert.AreEqual("User profile for ID: 123 (DB call #1)", profile1);
             Assert.AreEqual("User profile for ID: 123 (DB call #1)", profile2);
             Assert.AreEqual("User profile for ID: 123 (DB call #1)", profile3);
-            
+
             // Database was only called once despite 3 requests - huge performance gain!
             Assert.AreEqual(1, databaseCallCount, "Database should only be called once thanks to caching!");
-            
+
             // Different user = different cache entry
             var otherProfile = cache.BlitzGet("user_profile_456", () => SimulateExpensiveDatabaseCall(456), TestHelpers.StandardTimeoutMs);
             Assert.AreEqual("User profile for ID: 456 (DB call #2)", otherProfile);
