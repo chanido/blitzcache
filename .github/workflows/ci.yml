@@ -25,6 +25,7 @@ on:
 
 env:
   DOTNET_VERSION: 8.0.x
+  TEST_CONFIGURATION: Debug
   CONFIGURATION: Release
 
 jobs:
@@ -57,12 +58,12 @@ jobs:
     - name: Install coverage collector
       run: dotnet add BlitzCache.Tests/BlitzCacheCore.Tests.csproj package coverlet.collector
       
-    - name: Build solution
-      run: dotnet build --configuration ${{ env.CONFIGURATION }} --no-restore
-      
+    - name: Build solution (Debug for tests)
+      run: dotnet build --configuration ${{ env.TEST_CONFIGURATION }} --no-restore
+
     - name: Run tests
       run: |
-        dotnet test --configuration ${{ env.CONFIGURATION }} --no-build --verbosity normal --collect:"XPlat Code Coverage" --results-directory ./TestResults
+        dotnet test --configuration ${{ env.TEST_CONFIGURATION }} --no-build --verbosity normal --collect:"XPlat Code Coverage" --results-directory ./TestResults
         echo "=== Test Results Structure ==="
         find ./TestResults -type f -ls || echo "No files in TestResults"
       
@@ -151,10 +152,10 @@ jobs:
         
     - name: Restore dependencies
       run: dotnet restore
-      
-    - name: Build solution
+
+    - name: Build solution (Release for packaging)
       run: dotnet build --configuration ${{ env.CONFIGURATION }} --no-restore
-      
+
     - name: Create NuGet package
       run: dotnet pack BlitzCache/BlitzCacheCore.csproj --configuration ${{ env.CONFIGURATION }} --no-build --include-symbols --output ./packages
       
