@@ -1,3 +1,4 @@
+
 # ⚡ BlitzCache
 
 <div align="center">
@@ -79,6 +80,7 @@ for (int i = 0; i < 100; i++)
 - [API Reference](#-api-reference)
 - [Comparison](#-comparison-with-alternatives)
 - [Contributing](#-contributing)
+- [Migration Guide](#-migration-guide-1x--2x)
 
 
 
@@ -470,6 +472,32 @@ BlitzCache delivers enterprise-grade performance and reliability:
 - ✅ **Thread-safe** - Concurrent operation guarantees
 
 Perfect for demanding production workloads! 🚀
+
+## 🛠️ Migration Guide: 1.x → 2.x
+
+If you are upgrading from BlitzCache 1.x to 2.x, please note the following breaking changes:
+
+- **Async BlitzUpdate Signature**: The `BlitzUpdate<T>` method for async operations now returns a `Task` instead of `void`. Update your code to `await` these calls:
+  - **Before (v1.x):**
+    ```csharp
+    void BlitzUpdate<T>(string cacheKey, Func<Task<T>> function, long milliseconds);
+    ```
+  - **After (v2.x):**
+    ```csharp
+    Task BlitzUpdate<T>(string cacheKey, Func<Task<T>> function, long milliseconds);
+    ```
+- **API Cleanup**: Obsolete and redundant APIs have been removed. Review the new interface for available methods.
+- **Unified Concurrency Control**: All concurrency is now managed with SemaphoreSlim. Remove any code referencing SmartLockDictionary or SmartLock classes.
+- **Instance-Based Caching**: BlitzCache is now instance-based instead of static. Update your code to create and manage BlitzCache instances as needed.
+
+**Migration Steps:**
+1. Update your NuGet reference to BlitzCache 2.x.
+2. Refactor all async `BlitzUpdate` usages to return and await a `Task`.
+3. Update all projects using BlitzCache to be compatible with the new interface.
+4. Review and update any code referencing removed or changed APIs.
+5. Run your test suite to ensure all caching and concurrency scenarios work as expected.
+
+For full details, see the [Changelog](./CHANGELOG.md#migration-guide-102--200).
 
 ## 🤝 Contributing
 

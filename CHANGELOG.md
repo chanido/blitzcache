@@ -65,6 +65,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - SmartLockDictionary and SmartLock classes (unified under SemaphoreSlim)
 - Time-based cleanup system (replaced with usage-based)
 
+## Migration Guide: 1.0.2 → 2.0.0
+
+### Breaking Changes
+- **Async BlitzUpdate Signature**: The `BlitzUpdate<T>` method for async operations now returns a `Task` instead of `void`. Update your code to `await` these calls:
+  - **Before (v1.x):**
+    ```csharp
+    void BlitzUpdate<T>(string cacheKey, Func<Task<T>> function, long milliseconds);
+    ```
+  - **After (v2.x):**
+    ```csharp
+    Task BlitzUpdate<T>(string cacheKey, Func<Task<T>> function, long milliseconds);
+    ```
+- **API Cleanup**: Removed obsolete and redundant APIs. Review the new interface for available methods.
+
+### Recommended Migration Steps
+
+1. **Update NuGet Reference**: Upgrade your BlitzCache NuGet package to 2.x.
+2. **Update BlitzUpdate Calls**: Refactor all async `BlitzUpdate` usages to return and await a `Task`.
+3. **Make sure you update ALL the projects using BlitzCache so they are all compatible with the new interface.
+4. **Review API Usage**: Check for any removed or changed APIs and update your code accordingly.
+5. **Test Thoroughly**: Run your test suite to ensure all caching and concurrency scenarios work as expected.
+
+For more details and examples, see the [GitHub repository](https://github.com/chanido/blitzcache).
+
 ## [1.0.2] - 2024-12-15
 
 ### Added
