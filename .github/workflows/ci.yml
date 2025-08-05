@@ -122,12 +122,19 @@ jobs:
     - name: Build BlitzCacheCore (Release for packaging)
       run: dotnet build BlitzCache/BlitzCacheCore.csproj --configuration ${{ env.CONFIGURATION }} --no-restore
       
+
     - name: Get short SHA
       id: vars
       run: echo "short_sha=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
-      
+
+    - name: Get csproj version
+      id: version
+      run: |
+        version=$(grep -oPm1 "(?<=<Version>)[^<]+" BlitzCache/BlitzCacheCore.csproj)
+        echo "package_version=${version}-dev-${{ steps.vars.outputs.short_sha }}" >> $GITHUB_OUTPUT
+
     - name: Create development NuGet package
-      run: dotnet pack BlitzCache/BlitzCacheCore.csproj --configuration ${{ env.CONFIGURATION }} --no-build --include-symbols --output ./packages -p:VersionSuffix="dev-${{ steps.vars.outputs.short_sha }}"
+      run: dotnet pack BlitzCache/BlitzCacheCore.csproj --configuration ${{ env.CONFIGURATION }} --no-build --include-symbols --output ./packages -p:PackageVersion="${{ steps.version.outputs.package_version }}"
       
     - name: Upload package artifacts
       uses: actions/upload-artifact@v4
