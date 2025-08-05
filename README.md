@@ -119,18 +119,15 @@ var data = await cache.BlitzGet("key", ExpensiveOperation, timeoutMs);
 services.AddBlitzCache();
 
 // Optional: Add automatic logging of cache statistics (v2.0.1+)
+services.AddBlitzCache(enableStatistics: true);
 services.AddBlitzCacheLogging(); // Logs cache performance hourly
 
-// As of v2.0.2, statistics are always available on the global singleton
-var stats = cache.Statistics; // Never null for BlitzCache.Global
+var stats = cache.Statistics; // Live statistics seamlessly
 
 // Usage anywhere
-public WeatherService(IBlitzCache cache) => _cache = cache;
+public WeatherService(IBlitzCache cache) => this.cache = cache;
 
-public async Task<Weather> GetWeather(string city) =>
-    await _cache.BlitzGet($"weather_{city}", 
-        () => CallWeatherApi(city), 
-        TimeSpan.FromMinutes(5).TotalMilliseconds);
+public Task<Weather> GetWeather(string city) => cache.BlitzGet($"weather_{city}",  () => CallWeatherApi(city));
 ```
 
 **Compatibility:** .NET Standard 2.1+ | .NET Core 3.1+ | .NET 5-8+
@@ -189,7 +186,7 @@ public class UserRepository
     {
         return await _cache.BlitzGet($"user_{userId}", 
             async () => await database.Users.FindAsync(userId), 
-            120000); // Cache for 2 minutes
+            1200000); // Cache for 20 minutes
     }
     
     // Multiple concurrent calls to GetUserAsync(123) will result in only ONE database query
@@ -242,6 +239,17 @@ public class ReportService
                 return report;
             },
             3600000); // Cache for 1 hour
+    }
+}
+```
+
+### Class or Bounded Context Isolated
+```csharp
+public class ReportService
+{
+    private static readonly BlitzCacheInstance  cache = new BlitzCacheInstance();
+
+    public Task<SalesReport> GetProductsForCustomer(Guid customerId) => cache.BlitzGet($"products_{customerId}", () => LoadProducts(customerId)); // Cache for 1 hour
     }
 }
 ```

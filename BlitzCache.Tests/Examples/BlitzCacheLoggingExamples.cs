@@ -88,7 +88,7 @@ namespace BlitzCacheCore.Tests.Examples
             serviceProvider = new ServiceCollection()
                 .AddLogging(builder => builder.AddProvider(new TestLoggerProvider()))
                 // Add BlitzCache with statistics enabled
-                .AddBlitzCache(defaultMilliseconds: TestHelpers.LongTimeoutMs, enableStatistics: true)
+                .AddBlitzCache(enableStatistics: true)
                 // Add automatic statistics logging with custom identifier
                 .AddBlitzCacheLogging(TimeSpan.FromMilliseconds(TestHelpers.VeryShortTimeoutMs), customIdentifier)
                 .BuildServiceProvider();

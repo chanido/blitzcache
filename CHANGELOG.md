@@ -1,8 +1,9 @@
 # [2.0.2] - 2025-08-05
 
 ### Changed
-- **Global statistics always enabled**: The global singleton (`BlitzCache.Global`) now always has statistics enabled. `cache.Statistics` is never null for the global instance, making monitoring and logging predictable in all scenarios.
-- Improved documentation to clarify statistics availability on the global instance.
+- **Added BlitzCacheInstance**: Sometimes you want an isolated cache that is not polluted from other parts of your application.
+You might want to use this for Bounded Contexts or to have a smaller dedicated cache for some particular feature or class.
+- Improved documentation to clarify usages of BlitzCacheInstance.
 - Test suite and examples updated to reflect this change.
 
 ### Fixed

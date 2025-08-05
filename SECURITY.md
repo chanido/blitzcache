@@ -7,8 +7,7 @@ We actively support the following versions of BlitzCache with security updates:
 | Version | Supported          |
 | ------- | ------------------ |
 | 2.x.x   | ✅ Full support    |
-| 1.x.x   | ✅ Security fixes  |
-| < 1.0   | ❌ End of life     |
+| < 2.0   | ❌ End of life     |
 
 ## Reporting Security Vulnerabilities
 
