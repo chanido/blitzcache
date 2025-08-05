@@ -26,12 +26,12 @@ namespace BlitzCacheCore.Logging
 
         protected override async Task ExecuteAsync(CancellationToken stoppingToken)
         {
-            logger.LogInformation("BlitzCache statistics logging started for '{ApplicationIdentifier}' with interval: {Interval}", 
+            logger.LogInformation("BlitzCache statistics logging started for '{ApplicationIdentifier}' with interval: {Interval}",
                 applicationIdentifier, logInterval);
 
             if (blitzCache.Statistics == null)
             {
-                logger.LogWarning("BlitzCache statistics are disabled for '{ApplicationIdentifier}'. No statistics will be logged. Enable statistics when configuring BlitzCache to use this feature.", 
+                logger.LogWarning("BlitzCache statistics are disabled for '{ApplicationIdentifier}'. No statistics will be logged. Enable statistics when configuring BlitzCache to use this feature.",
                     applicationIdentifier);
                 return;
             }
@@ -50,7 +50,7 @@ namespace BlitzCacheCore.Logging
                 }
                 catch (Exception ex)
                 {
-                    logger.LogError(ex, "Error occurred while logging BlitzCache statistics for '{ApplicationIdentifier}'", 
+                    logger.LogError(ex, "Error occurred while logging BlitzCache statistics for '{ApplicationIdentifier}'",
                         applicationIdentifier);
                 }
             }
@@ -101,7 +101,7 @@ namespace BlitzCacheCore.Logging
                 if (entryAssembly != null)
                 {
                     var assemblyName = entryAssembly.GetName().Name;
-                    if (!string.IsNullOrWhiteSpace(assemblyName) && 
+                    if (!string.IsNullOrWhiteSpace(assemblyName) &&
                         !assemblyName.Equals("testhost", StringComparison.OrdinalIgnoreCase))
                     {
                         return assemblyName;
@@ -110,7 +110,7 @@ namespace BlitzCacheCore.Logging
 
                 // Method 2: Try to get the process name
                 var processName = Process.GetCurrentProcess().ProcessName;
-                if (!string.IsNullOrWhiteSpace(processName) && 
+                if (!string.IsNullOrWhiteSpace(processName) &&
                     !processName.Equals("dotnet", StringComparison.OrdinalIgnoreCase) &&
                     !processName.Equals("testhost", StringComparison.OrdinalIgnoreCase))
                 {
@@ -122,7 +122,7 @@ namespace BlitzCacheCore.Logging
                 if (mainModule?.FileName != null)
                 {
                     var fileName = Path.GetFileNameWithoutExtension(mainModule.FileName);
-                    if (!string.IsNullOrWhiteSpace(fileName) && 
+                    if (!string.IsNullOrWhiteSpace(fileName) &&
                         !fileName.Equals("dotnet", StringComparison.OrdinalIgnoreCase) &&
                         !fileName.Equals("testhost", StringComparison.OrdinalIgnoreCase))
                     {

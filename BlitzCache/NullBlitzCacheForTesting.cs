@@ -1,7 +1,7 @@
-﻿using System;
+﻿using BlitzCacheCore.Statistics;
+using System;
 using System.Runtime.CompilerServices;
 using System.Threading.Tasks;
-using BlitzCacheCore.Statistics;
 
 #nullable enable
 
@@ -11,8 +11,8 @@ namespace BlitzCacheCore
     {
         private readonly ICacheStatistics? nullStatistics;
 
-        public NullBlitzCacheForTesting(bool enableStatistics = false) 
-        { 
+        public NullBlitzCacheForTesting(bool enableStatistics = false)
+        {
             nullStatistics = enableStatistics ? new NullCacheStatistics() : null;
         }
 
@@ -24,7 +24,7 @@ namespace BlitzCacheCore
             BlitzGet(callerMemberName + sourceFilePath, function, milliseconds);
 
         public T BlitzGet<T>(string cacheKey, Func<T> function, long? milliseconds = null) => function.Invoke();
-        public T BlitzGet<T>(string cacheKey, Func<Nuances,T> function, long? milliseconds = null) => function.Invoke(new Nuances());
+        public T BlitzGet<T>(string cacheKey, Func<Nuances, T> function, long? milliseconds = null) => function.Invoke(new Nuances());
 
         public Task<T> BlitzGet<T>(Func<Task<T>> function, long? milliseconds = null, [CallerMemberName] string callerMemberName = "", [CallerFilePath] string sourceFilePath = "") =>
             BlitzGet(callerMemberName + sourceFilePath, function, milliseconds);

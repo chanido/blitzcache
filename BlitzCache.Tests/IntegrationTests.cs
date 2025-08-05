@@ -1,4 +1,3 @@
-using BlitzCacheCore.LockDictionaries;
 using BlitzCacheCore.Tests.Helpers;
 using NUnit.Framework;
 using System;
@@ -13,19 +12,13 @@ namespace BlitzCacheCore.Tests
     [TestFixture]
     public class IntegrationTests
     {
-        private IBlitzCache cache;
+        private IBlitzCacheInstance cache;
 
         [SetUp]
-        public void Setup()
-        {
-            cache = TestHelpers.CreateBasic();
-        }
+        public void Setup() => cache = TestHelpers.CreateBlitzCacheInstance();
 
         [TearDown]
-        public void Cleanup()
-        {
-            cache?.Dispose();
-        }
+        public void Cleanup() => cache?.Dispose();
 
         [Test]
         public void BlitzCache_Should_Use_SmartSemaphoreDictionary_For_Sync_Operations()
@@ -39,7 +32,7 @@ namespace BlitzCacheCore.Tests
             // Perform sync operations
             var result1 = cache.BlitzGet("sync_key", () => "sync_value", TestHelpers.StandardTimeoutMs);
             var semaphoresDuringOperation = cache.GetSemaphoreCount();
-            
+
             Console.WriteLine($"📊 Semaphores during operation: {semaphoresDuringOperation}");
             Assert.That(result1, Is.EqualTo("sync_value"));
             Assert.That(semaphoresDuringOperation, Is.GreaterThan(initialSemaphores), "Should create semaphores for sync operations");
@@ -61,23 +54,25 @@ namespace BlitzCacheCore.Tests
             Console.WriteLine($"📊 Initial semaphores: {initialSemaphores}");
 
             // Perform async operations
-            var result1 = await cache.BlitzGet("async_key", async () => {
+            var result1 = await cache.BlitzGet("async_key", async () =>
+            {
                 await TestHelpers.WaitForEvictionCallbacks();
                 return "async_value";
             }, TestHelpers.StandardTimeoutMs);
 
             var semaphoresDuringOperation = cache.GetSemaphoreCount();
             Console.WriteLine($"📊 Semaphores during operation: {semaphoresDuringOperation}");
-            
+
             Assert.That(result1, Is.EqualTo("async_value"));
             Assert.That(semaphoresDuringOperation, Is.GreaterThan(initialSemaphores), "Should create semaphores for async operations");
 
             // Cache should work correctly with semaphore management
-            var result2 = await cache.BlitzGet("async_key", async () => {
+            var result2 = await cache.BlitzGet("async_key", async () =>
+            {
                 await TestHelpers.WaitForEvictionCallbacks();
                 return "new_async_value";
             }, TestHelpers.StandardTimeoutMs);
-            
+
             Assert.That(result2, Is.EqualTo("async_value"), "Should return cached value");
 
             Console.WriteLine("✅ SmartSemaphoreDictionary integration working!");
@@ -90,10 +85,10 @@ namespace BlitzCacheCore.Tests
             Console.WriteLine("====================================================");
 
             var initialSemaphores = cache.GetSemaphoreCount();
-            
+
             // Update cache
             cache.BlitzUpdate("update_key", () => "updated_value", TestHelpers.StandardTimeoutMs);
-            
+
             var semaphoresAfterUpdate = cache.GetSemaphoreCount();
             Console.WriteLine($"📊 Semaphores after update: {semaphoresAfterUpdate}");
 
@@ -111,22 +106,24 @@ namespace BlitzCacheCore.Tests
             Console.WriteLine("==========================================================");
 
             var initialSemaphores = cache.GetSemaphoreCount();
-            
+
             // Update cache asynchronously
-            await cache.BlitzUpdate("async_update_key", async () => {
+            await cache.BlitzUpdate("async_update_key", async () =>
+            {
                 await TestHelpers.WaitForEvictionCallbacks();
                 return "async_updated_value";
             }, TestHelpers.StandardTimeoutMs);
-            
+
             var semaphoresAfterUpdate = cache.GetSemaphoreCount();
             Console.WriteLine($"📊 Semaphores after async update: {semaphoresAfterUpdate}");
 
             // Verify the update worked
-            var result = await cache.BlitzGet("async_update_key", async () => {
+            var result = await cache.BlitzGet("async_update_key", async () =>
+            {
                 await TestHelpers.WaitForEvictionCallbacks();
                 return "async_fallback";
             }, TestHelpers.StandardTimeoutMs);
-            
+
             Assert.That(result, Is.EqualTo("async_updated_value"), "Async BlitzUpdate should cache the value");
 
             Console.WriteLine("✅ Async BlitzUpdate with SmartSemaphoreDictionary working!");

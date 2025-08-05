@@ -1,5 +1,3 @@
-using System;
-
 namespace BlitzCacheCore.Statistics
 {
     /// <summary>

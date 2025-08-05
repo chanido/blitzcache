@@ -1,7 +1,7 @@
-﻿using System;
+﻿using BlitzCacheCore.Statistics;
+using System;
 using System.Runtime.CompilerServices;
 using System.Threading.Tasks;
-using BlitzCacheCore.Statistics;
 
 #nullable enable
 
@@ -21,14 +21,12 @@ namespace BlitzCacheCore
         Task BlitzUpdate<T>(string cacheKey, Func<Task<T>> function, long milliseconds);
         void Remove(string cacheKey);
         int GetSemaphoreCount();
-        
+
         /// <summary>
         /// Gets cache performance statistics and monitoring information.
         /// Use these metrics to understand cache effectiveness and optimize cache configuration.
         /// Returns null if statistics are disabled for better performance.
         /// </summary>
         ICacheStatistics? Statistics { get; }
-        
-        void Dispose();
     }
 }

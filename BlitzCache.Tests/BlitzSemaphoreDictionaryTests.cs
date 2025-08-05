@@ -12,17 +12,12 @@ namespace BlitzCacheCore.Tests
         private BlitzSemaphoreDictionary semaphoreDictionary;
 
         [SetUp]
-        public void Setup()
-        {
+        public void Setup() =>
             // Use faster cleanup interval for tests
             semaphoreDictionary = new BlitzSemaphoreDictionary(TimeSpan.FromMilliseconds(500));
-        }
 
         [TearDown]
-        public void TearDown()
-        {
-            semaphoreDictionary?.Dispose();
-        }
+        public void TearDown() => semaphoreDictionary?.Dispose();
 
         [Test]
         public void GetSemaphore_ShouldReturnSameInstanceForSameKey()
@@ -84,7 +79,7 @@ namespace BlitzCacheCore.Tests
         public async Task SemaphoreCleanup_ShouldEventuallyCleanupUnusedSemaphores()
         {
             var keys = new[] { "cleanup_test_1", "cleanup_test_2", "cleanup_test_3" };
-            
+
             foreach (var key in keys)
             {
                 var semaphore = semaphoreDictionary.GetSemaphore(key);

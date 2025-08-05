@@ -1,7 +1,4 @@
-﻿
-using System;
-
-namespace BlitzCacheCore
+﻿namespace BlitzCacheCore
 {
     public class Nuances
     {

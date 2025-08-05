@@ -1,4 +1,3 @@
-using BlitzCacheCore.LockDictionaries;
 using BlitzCacheCore.Tests.Helpers;
 using NUnit.Framework;
 using System;
@@ -16,20 +15,15 @@ namespace BlitzCacheCore.Tests
     {
         public const int StandardBatchSize = 50;
         public const int MemoryTestBatchCount = 20;
-        private IBlitzCache cache;
+        private IBlitzCacheInstance cache;
 
         [SetUp]
-        public void Setup()
-        {
+        public void Setup() =>
             // Use factory method for consistent test configuration
-            cache = TestHelpers.CreateBasic();
-        }
+            cache = TestHelpers.CreateBlitzCacheInstance();
 
         [TearDown]
-        public void TearDown()
-        {
-            cache?.Dispose();
-        }
+        public void TearDown() => cache?.Dispose();
 
         #region Timer-Based Cleanup Tests (from SimplifiedCleanupTests.cs)
 
@@ -57,7 +51,7 @@ namespace BlitzCacheCore.Tests
             // Assert - Young semaphores should still be present due to 1-second protection
             var semaphoreCountAfterShortWait = cache.GetSemaphoreCount();
             Console.WriteLine($"📊 After {TestHelpers.StandardTimeoutMs}ms: {semaphoreCountAfterShortWait} semaphores");
-            
+
             if (elapsedTime < TestHelpers.StandardTimeoutMs)
             {
                 Assert.That(semaphoreCountAfterShortWait, Is.EqualTo(semaphoreCountAfterCreation),
@@ -102,7 +96,7 @@ namespace BlitzCacheCore.Tests
         {
             // Arrange - Create semaphores through cache operations to simulate active usage
             var keys = new[] { "active1", "active2" };
-            
+
             foreach (var key in keys)
             {
                 cache.BlitzGet(key, () => $"value_{key}", 10000);
@@ -131,10 +125,10 @@ namespace BlitzCacheCore.Tests
         {
             // Arrange - Create cache entries with different timing patterns
             cache.BlitzGet("old_entry", () => "old_value", 10000);
-            
+
             // Wait for the old entry's semaphore to age beyond 1 second
             await TestHelpers.LongDelay(); // 1.1 seconds to ensure it's old
-            
+
             var countAfterOldEntry = cache.GetSemaphoreCount();
             Console.WriteLine($"📊 After old entry creation and aging: {countAfterOldEntry} semaphore(s)");
 
@@ -176,7 +170,7 @@ namespace BlitzCacheCore.Tests
             {
                 var result = cache.BlitzGet($"memory_test_{i}", () => $"value_{i}", 10000);
                 Assert.That(result, Is.EqualTo($"value_{i}"));
-                
+
                 await TestHelpers.ShortDelay();
             }
 
@@ -185,7 +179,7 @@ namespace BlitzCacheCore.Tests
 
             // Assert - Semaphores should be created but managed properly
             Assert.That(countAfterCreation, Is.GreaterThanOrEqualTo(initialCount), "Semaphores should be created for cache operations");
-            
+
             Console.WriteLine("✅ Cache operations completed without memory issues");
         }
 
@@ -199,14 +193,14 @@ namespace BlitzCacheCore.Tests
                 {
                     var key = $"concurrent_cache_{Thread.CurrentThread.ManagedThreadId}_{j}";
                     var result = cache.BlitzGet(key, () => $"value_{key}", TestHelpers.LongTimeoutMs);
-                    
+
                     // Verify cache is working
                     var cachedResult = cache.BlitzGet(key, () => "should_not_be_called", 10000);
                     if (result != cachedResult)
                     {
                         throw new InvalidOperationException("Cache consistency issue");
                     }
-                    
+
                     await TestHelpers.ShortDelay();
                 }
                 return "completed";
@@ -216,7 +210,7 @@ namespace BlitzCacheCore.Tests
             var finalCount = cache.GetSemaphoreCount();
             Console.WriteLine($"📊 Final semaphore count after concurrent access: {finalCount}");
             Assert.That(testResult.AllResultsIdentical, Is.True, "All concurrent operations should complete successfully");
-            
+
             Console.WriteLine("✅ Concurrent cache operations completed successfully");
         }
 
@@ -271,7 +265,7 @@ namespace BlitzCacheCore.Tests
                 for (int j = 0; j < TestHelpers.SmallLoopCount; j++)
                 {
                     var key = $"pressure_test_{batchIndex}_{j}";
-                    
+
                     if (j % 3 == 0)
                     {
                         // Sync operations
@@ -289,7 +283,8 @@ namespace BlitzCacheCore.Tests
                     else
                     {
                         // Use Nuances for dynamic cache time
-                        await cache.BlitzGet(key, (Func<Nuances, Task<string>>)(async (nuances) => {
+                        await cache.BlitzGet(key, (Func<Nuances, Task<string>>)(async (nuances) =>
+                        {
                             nuances.CacheRetention = TestHelpers.VeryShortTimeoutMs; // Very short cache time
                             await TestHelpers.ShortDelay();
                             return $"nuanced_{batchIndex}_{j}";
@@ -365,7 +360,7 @@ namespace BlitzCacheCore.Tests
         {
             // Arrange
             var initialCount = cache.GetSemaphoreCount();
-            
+
             // Act - Simulate long-term usage with many operations over time
             for (int batch = 0; batch < TestHelpers.SmallLoopCount; batch++)
             {
@@ -375,21 +370,21 @@ namespace BlitzCacheCore.Tests
                     var key = $"longterm_batch_{batch}_item_{i}";
                     cache.BlitzGet(key, () => $"value_{batch}_{i}", TestHelpers.StandardTimeoutMs); // Short cache time
                 }
-                
+
                 // Wait for cache expiration and potential cleanup
                 await TestHelpers.WaitForStandardExpiration();
-                
+
                 // Check semaphore count periodically
                 var currentCount = cache.GetSemaphoreCount();
                 Console.WriteLine($"📊 Batch {batch}: {currentCount} semaphores");
             }
-            
+
             // Final wait for cleanup with test settings
             await TestHelpers.LongDelay(); // Wait for at least two cleanup cycles
-            
+
             var finalCount = cache.GetSemaphoreCount();
             Console.WriteLine($"📊 Final semaphore count: {finalCount} (started with {initialCount})");
-            
+
             // Assert - With test cleanup intervals (1s), cleanup should be more aggressive
             Assert.That(finalCount, Is.LessThan(600), "Should not accumulate extreme numbers of semaphores over time (test cleanup intervals)");
         }

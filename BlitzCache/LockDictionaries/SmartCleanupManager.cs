@@ -57,7 +57,7 @@ namespace BlitzCacheCore.LockDictionaries
         public void Dispose()
         {
             if (disposed) return;
-            
+
             disposed = true;
             cleanupTimer?.Dispose();
         }

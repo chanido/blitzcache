@@ -1,4 +1,3 @@
-using BlitzCacheCore;
 using BlitzCacheCore.Tests.Helpers;
 using NUnit.Framework;
 using System;
@@ -13,19 +12,13 @@ namespace BlitzCacheCore.Tests
     [TestFixture]
     public class CacheStatisticsTests
     {
-        private IBlitzCache cache;
+        private IBlitzCacheInstance cache;
 
         [SetUp]
-        public void Setup()
-        {
-            cache = TestHelpers.CreateWithStatistics();
-        }
+        public void Setup() => cache = TestHelpers.CreateBlitzCacheInstanceWithStatistics();
 
         [TearDown]
-        public void TearDown()
-        {
-            cache?.Dispose();
-        }
+        public void TearDown() => cache?.Dispose();
 
         [Test]
         public void Statistics_InitialState_AllCountersAreZero()
@@ -87,12 +80,12 @@ namespace BlitzCacheCore.Tests
             // Act - First call (miss)
             cache.BlitzGet("test_key", TestFunction, TestHelpers.StandardTimeoutMs);
             TestHelpers.WaitForEvictionCallbacksSync();
-            
+
             var hitCountBefore = cache.Statistics.HitCount;
             var missCountBefore = cache.Statistics.MissCount;
             var entryCountBefore = cache.Statistics.EntryCount;
             var totalOperationsBefore = cache.Statistics.TotalOperations;
-            
+
             // Act - Second call (hit)
             var result = cache.BlitzGet("test_key", TestFunction, TestHelpers.StandardTimeoutMs);
             TestHelpers.WaitForEvictionCallbacksSync();
@@ -160,11 +153,11 @@ namespace BlitzCacheCore.Tests
             // Act
             var result1 = await cache.BlitzGet("async_key", TestFunctionAsync, TestHelpers.StandardTimeoutMs); // Miss
             await TestHelpers.WaitForEvictionCallbacks();
-            
+
             var hitCountAfterFirst = cache.Statistics.HitCount;
             var missCountAfterFirst = cache.Statistics.MissCount;
             var totalOperationsAfterFirst = cache.Statistics.TotalOperations;
-            
+
             var result2 = await cache.BlitzGet("async_key", TestFunctionAsync, TestHelpers.StandardTimeoutMs); // Hit
             await TestHelpers.WaitForEvictionCallbacks();
 
@@ -186,7 +179,7 @@ namespace BlitzCacheCore.Tests
             // Arrange
             cache.BlitzGet("test_key", () => "test value", TestHelpers.StandardTimeoutMs);
             var evictionCountBefore = cache.Statistics.EvictionCount;
-    
+
             // Act
             cache.Remove("test_key");
             TestHelpers.WaitForEvictionCallbacksSync();
@@ -216,7 +209,7 @@ namespace BlitzCacheCore.Tests
             // Arrange
             cache.BlitzGet("test_key", () => "original", TestHelpers.StandardTimeoutMs);
             TestHelpers.WaitForEvictionCallbacksSync();
-            
+
             var hitCountBefore = cache.Statistics.HitCount;
             var missCountBefore = cache.Statistics.MissCount;
             var totalOperationsBefore = cache.Statistics.TotalOperations;
@@ -405,7 +398,7 @@ namespace BlitzCacheCore.Tests
         public void Statistics_WhenDisabled_ReturnsNull()
         {
             // Arrange
-            var cacheWithoutStats = new BlitzCache(enableStatistics: false);
+            var cacheWithoutStats = new BlitzCacheInstance(enableStatistics: false);
 
             try
             {
@@ -422,7 +415,7 @@ namespace BlitzCacheCore.Tests
         public void Statistics_WhenDisabled_CacheStillWorks()
         {
             // Arrange
-            var cacheWithoutStats = new BlitzCache();
+            var cacheWithoutStats = new BlitzCacheInstance();
             var callCount = 0;
             string TestFunction()
             {
@@ -452,7 +445,7 @@ namespace BlitzCacheCore.Tests
         public async Task Statistics_WhenDisabled_AsyncCacheStillWorks()
         {
             // Arrange
-            var cacheWithoutStats = new BlitzCache();
+            var cacheWithoutStats = new BlitzCacheInstance();
             var callCount = 0;
             async Task<string> TestFunction()
             {
@@ -483,14 +476,14 @@ namespace BlitzCacheCore.Tests
         public void Statistics_WhenDisabled_UpdateOperationsWork()
         {
             // Arrange
-            var cacheWithoutStats = new BlitzCache();
+            var cacheWithoutStats = new BlitzCacheInstance();
 
             try
             {
                 // Act
                 cacheWithoutStats.BlitzUpdate("update-key", () => "initial-value", TestHelpers.StandardTimeoutMs);
                 var result1 = cacheWithoutStats.BlitzGet("update-key", () => "fallback-value", TestHelpers.StandardTimeoutMs);
-                
+
                 cacheWithoutStats.BlitzUpdate("update-key", () => "updated-value", TestHelpers.StandardTimeoutMs);
                 var result2 = cacheWithoutStats.BlitzGet("update-key", () => "fallback-value", TestHelpers.StandardTimeoutMs);
 

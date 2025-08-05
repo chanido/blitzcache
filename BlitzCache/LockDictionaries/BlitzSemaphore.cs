@@ -18,14 +18,17 @@ namespace BlitzCacheCore.LockDictionaries
         public bool IsDisposed { get; private set; } = false;
 
 
-        public BlitzSemaphore() => semaphore = new SemaphoreSlim(1, 1);
+        public BlitzSemaphore()
+        {
+            semaphore = new SemaphoreSlim(1, 1);
+        }
 
         public void MarkAsAccessed() => LastAccessed = DateTime.UtcNow;
 
         private bool ExecuteIfNotDisposed(Action action)
         {
             if (IsDisposed) return false;
-            
+
             lock (lockObject)
             {
                 if (IsDisposed) return false;
@@ -63,7 +66,7 @@ namespace BlitzCacheCore.LockDictionaries
             await semaphore.WaitAsync();
             return new BlitzSemaphoreReleaser(this);
         }
-        
+
         /// <summary>
         /// Synchronously acquire the semaphore. Returns an IDisposable that automatically releases when disposed.
         /// </summary>
@@ -80,12 +83,12 @@ namespace BlitzCacheCore.LockDictionaries
         public bool AttemptDispose()
         {
             if (IsDisposed) return true;
-            
+
             lock (lockObject)
             {
                 if (IsDisposed) return true;
                 if (IsInUse) return false;
-                
+
                 PerformDisposal();
                 return true;
             }
@@ -94,7 +97,7 @@ namespace BlitzCacheCore.LockDictionaries
         public void Dispose()
         {
             if (IsDisposed) return;
-            
+
             lock (lockObject)
             {
                 if (IsDisposed) return;
@@ -113,12 +116,15 @@ namespace BlitzCacheCore.LockDictionaries
             private readonly BlitzSemaphore entry;
             private bool disposed = false;
 
-            public BlitzSemaphoreReleaser(BlitzSemaphore entry) => this.entry = entry;
+            public BlitzSemaphoreReleaser(BlitzSemaphore entry)
+            {
+                this.entry = entry;
+            }
 
             public void Dispose()
             {
                 if (disposed) return;
-                
+
                 entry.ReleaseSemaphore();
                 disposed = true;
             }

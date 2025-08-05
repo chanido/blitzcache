@@ -1,12 +1,10 @@
-using BlitzCacheCore;
 using BlitzCacheCore.Extensions;
-using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using System;
 using System.Threading.Tasks;
 
-namespace BlitzCache.Tests.Examples
+namespace BlitzCacheCore.Tests.Examples
 {
     /// <summary>
     /// Real-world example showing how to set up BlitzCache with automatic statistics logging
@@ -24,14 +22,14 @@ namespace BlitzCache.Tests.Examples
                 .ConfigureServices((context, services) =>
                 {
                     // Configure BlitzCache with statistics enabled and custom settings
-                    services.AddBlitzCacheInstance(
+                    services.AddBlitzCache(
                         defaultMilliseconds: 3600000, // 1 hour default cache duration
                         enableStatistics: true       // Required for logging functionality
                     );
-                    
+
                     // Enable automatic statistics logging every hour
                     services.AddBlitzCacheLogging(TimeSpan.FromHours(1));
-                    
+
                     // Or configure more frequent logging for development/testing
                     // services.AddBlitzCacheLogging(TimeSpan.FromMinutes(10));
                 })
@@ -68,10 +66,10 @@ namespace BlitzCache.Tests.Examples
             return await cache.BlitzGet($"expensive-data-{id}", async () =>
             {
                 logger.LogDebug("Executing expensive operation for ID: {Id}", id);
-                
+
                 // Simulate expensive database or API call
                 await Task.Delay(2000);
-                
+
                 return $"Expensive data for ID {id} generated at {DateTime.UtcNow}";
             }, milliseconds: 300000); // Cache for 5 minutes
         }

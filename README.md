@@ -1,8 +1,7 @@
+
 # ⚡ BlitzCache
 
-<div align="center">
-  <img src="https://github.com/chanido/blitzcache/raw/develop/BlitzCache.png" alt="BlitzCache" width="300"/>
-</div>
+![BlitzCache](https://github.com/chanido/blitzcache/raw/develop/BlitzCache.png)
 
 [![NuGet](https://img.shields.io/nuget/v/BlitzCache.svg)](https://www.nuget.org/packages/BlitzCache/)
 [![NuGet Downloads](https://img.shields.io/nuget/dt/BlitzCache.svg)](https://www.nuget.org/packages/BlitzCache/)
@@ -60,9 +59,10 @@ for (int i = 0; i < 100; i++)
 ✅ **Ultra-fast performance** - 0.0001ms per operation with intelligent memory management  
 ✅ **Thread-safe by design** - Handles any concurrency scenario automatically  
 ✅ **Memory leak prevention** - Advanced cleanup prevents memory bloat  
-✅ **Production tested** - 128 comprehensive tests ensure reliability  
+✅ **Production tested** - 141 comprehensive tests ensure reliability  
 ✅ **Works with everything** - Sync, async, any data type, any .NET app  
 ✅ **Automatic logging** - Built-in statistics monitoring with one line setup (v2.0.1+)
+✅ **Global statistics always enabled** - As of v2.0.2, the global singleton always provides statistics for monitoring
 
 ## 📋 Table of Contents
 
@@ -78,6 +78,7 @@ for (int i = 0; i < 100; i++)
 - [API Reference](#-api-reference)
 - [Comparison](#-comparison-with-alternatives)
 - [Contributing](#-contributing)
+- [Migration Guide](#-migration-guide-1x--2x)
 
 
 
@@ -116,15 +117,15 @@ var data = await cache.BlitzGet("key", ExpensiveOperation, timeoutMs);
 services.AddBlitzCache();
 
 // Optional: Add automatic logging of cache statistics (v2.0.1+)
+services.AddBlitzCache(enableStatistics: true);
 services.AddBlitzCacheLogging(); // Logs cache performance hourly
 
-// Usage anywhere
-public WeatherService(IBlitzCache cache) => _cache = cache;
+var stats = cache.Statistics; // Live statistics seamlessly
 
-public async Task<Weather> GetWeather(string city) =>
-    await _cache.BlitzGet($"weather_{city}", 
-        () => CallWeatherApi(city), 
-        TimeSpan.FromMinutes(5).TotalMilliseconds);
+// Usage anywhere
+public WeatherService(IBlitzCache cache) => this.cache = cache;
+
+public Task<Weather> GetWeather(string city) => cache.BlitzGet($"weather_{city}",  () => CallWeatherApi(city));
 ```
 
 **Compatibility:** .NET Standard 2.1+ | .NET Core 3.1+ | .NET 5-8+
@@ -183,7 +184,7 @@ public class UserRepository
     {
         return await _cache.BlitzGet($"user_{userId}", 
             async () => await database.Users.FindAsync(userId), 
-            120000); // Cache for 2 minutes
+            1200000); // Cache for 20 minutes
     }
     
     // Multiple concurrent calls to GetUserAsync(123) will result in only ONE database query
@@ -236,6 +237,17 @@ public class ReportService
                 return report;
             },
             3600000); // Cache for 1 hour
+    }
+}
+```
+
+### Class or Bounded Context Isolated
+```csharp
+public class ReportService
+{
+    private static readonly BlitzCacheInstance  cache = new BlitzCacheInstance();
+
+    public Task<SalesReport> GetProductsForCustomer(Guid customerId) => cache.BlitzGet($"products_{customerId}", () => LoadProducts(customerId)); // Cache for 1 hour
     }
 }
 ```
@@ -293,11 +305,15 @@ cache.Remove("user_123");
 await cache.BlitzUpdate("weather_data", async () => await GetWeatherAsync(), 300000);
 ```
 
+
 ### Cache Statistics and Monitoring
-BlitzCache provides built-in performance statistics to help you monitor cache effectiveness and optimize your application:
+BlitzCache provides built-in performance statistics to help you monitor cache effectiveness and optimize your application.
+
+**As of v2.0.2, statistics are always enabled on the global singleton.**
 
 ```csharp
-// Access cache statistics
+
+// Access cache statistics (never null for BlitzCache.Global as of v2.0.2)
 var stats = cache.Statistics;
 
 Console.WriteLine($"Cache Hit Ratio: {stats.HitRatio:P1}"); // e.g., "75.5%"
@@ -457,11 +473,37 @@ Cleans up resources (implements IDisposable).
 BlitzCache delivers enterprise-grade performance and reliability:
 - ✅ **Zero memory leaks** - Advanced usage-based cleanup
 - ✅ **0.0001ms per operation** - Ultra-high performance 
-- ✅ **128 tests passing** - Comprehensive reliability
+- ✅ **141 tests passing** - Comprehensive reliability
 - ✅ **Advanced architecture** - Intelligent memory management
 - ✅ **Thread-safe** - Concurrent operation guarantees
 
 Perfect for demanding production workloads! 🚀
+
+## 🛠️ Migration Guide: 1.x → 2.x
+
+If you are upgrading from BlitzCache 1.x to 2.x, please note the following breaking changes:
+
+- **Async BlitzUpdate Signature**: The `BlitzUpdate<T>` method for async operations now returns a `Task` instead of `void`. Update your code to `await` these calls:
+  - **Before (v1.x):**
+    ```csharp
+    void BlitzUpdate<T>(string cacheKey, Func<Task<T>> function, long milliseconds);
+    ```
+  - **After (v2.x):**
+    ```csharp
+    Task BlitzUpdate<T>(string cacheKey, Func<Task<T>> function, long milliseconds);
+    ```
+- **API Cleanup**: Obsolete and redundant APIs have been removed. Review the new interface for available methods.
+- **Unified Concurrency Control**: All concurrency is now managed with SemaphoreSlim. Remove any code referencing SmartLockDictionary or SmartLock classes.
+- **Instance-Based Caching**: BlitzCache is now instance-based instead of static. Update your code to create and manage BlitzCache instances as needed.
+
+**Migration Steps:**
+1. Update your NuGet reference to BlitzCache 2.x.
+2. Refactor all async `BlitzUpdate` usages to return and await a `Task`.
+3. Update all projects using BlitzCache to be compatible with the new interface.
+4. Review and update any code referencing removed or changed APIs.
+5. Run your test suite to ensure all caching and concurrency scenarios work as expected.
+
+For full details, see the [Changelog](./CHANGELOG.md#migration-guide-102--200).
 
 ## 🤝 Contributing
 
@@ -507,13 +549,8 @@ This project is licensed under the MIT License - see the [LICENSE](licence.txt) 
 - Inspired by the need for simple, high-performance caching solutions
 
 ---
-
-<div align="center">
-
 **⭐ If BlitzCache helped you, please consider giving it a star! ⭐**
 
 [![GitHub stars](https://img.shields.io/github/stars/chanido/blitzcache.svg?style=social&label=Star)](https://github.com/chanido/blitzcache)
 
 Made with ⚡ by the BlitzCache team
-
-</div>

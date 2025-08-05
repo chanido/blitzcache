@@ -1,7 +1,7 @@
+using BlitzCacheCore.LockDictionaries;
 using System;
 using System.Threading;
 using System.Threading.Tasks;
-using BlitzCacheCore.LockDictionaries;
 
 namespace BlitzCacheCore.Tests.Helpers
 {
@@ -32,18 +32,18 @@ namespace BlitzCacheCore.Tests.Helpers
         #region Factory Methods
 
         /// <summary>
-        /// Creates a basic BlitzCache instance for general testing. RECOMMENDED
+        /// Creates a basic BlitzCache instance for general testing.
         /// </summary>
-        public static IBlitzCache CreateBasic() =>
-            new BlitzCache(defaultMilliseconds: LongTimeoutMs, enableStatistics: false,
-                cleanupInterval: TimeSpan.FromMilliseconds(StandardTimeoutMs));
+        public static IBlitzCache CreateBlitzCacheGlobal() => new BlitzCache(defaultMilliseconds: LongTimeoutMs, enableStatistics: false);
 
         /// <summary>
-        /// Creates a BlitzCache instance with statistics enabled for testing. RECOMMENDED
+        /// Creates a BlitzCache instance with statistics enabled for testing.
         /// </summary>
-        public static IBlitzCache CreateWithStatistics() =>
-            new BlitzCache(defaultMilliseconds: LongTimeoutMs, enableStatistics: true,
-                cleanupInterval: TimeSpan.FromMilliseconds(StandardTimeoutMs));
+        public static IBlitzCacheInstance CreateBlitzCacheInstanceWithStatistics() =>
+            new BlitzCacheInstance(LongTimeoutMs, true, cleanupInterval: TimeSpan.FromMilliseconds(StandardTimeoutMs));
+
+        public static IBlitzCacheInstance CreateBlitzCacheInstance() =>
+            new BlitzCacheInstance(LongTimeoutMs, true, cleanupInterval: TimeSpan.FromMilliseconds(StandardTimeoutMs));
 
         #endregion
 
@@ -57,9 +57,9 @@ namespace BlitzCacheCore.Tests.Helpers
         public static Task WaitForStandardExpiration() => Task.Delay(StandardTimeoutMs + ExpirationBufferMs);
 
         public static Task LongDelay() => Task.Delay(LongTimeoutMs);
-        
+
         public static Task WaitForSemaphoreExpiration() => Task.Delay(BlitzSemaphore.BlitzSemaphoreExpirationSeconds * 1500);
-                
+
         #endregion
     }
 }
