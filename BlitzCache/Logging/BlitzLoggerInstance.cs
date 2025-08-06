@@ -70,7 +70,6 @@ namespace BlitzCacheCore.Logging
             // Try multiple methods to get a meaningful application name
             try
             {
-                // Method 1: Try to get the entry assembly name (most reliable for applications)
                 var entryAssembly = Assembly.GetEntryAssembly();
                 if (entryAssembly != null)
                 {
@@ -82,29 +81,7 @@ namespace BlitzCacheCore.Logging
                     }
                 }
 
-                // Method 2: Try to get the process name
-                var processName = Process.GetCurrentProcess().ProcessName;
-                if (!string.IsNullOrWhiteSpace(processName) &&
-                    !processName.Equals("dotnet", StringComparison.OrdinalIgnoreCase) &&
-                    !processName.Equals("testhost", StringComparison.OrdinalIgnoreCase))
-                {
-                    return processName;
-                }
-
-                // Method 3: Try to get from the executable path
-                var mainModule = Process.GetCurrentProcess().MainModule;
-                if (mainModule?.FileName != null)
-                {
-                    var fileName = Path.GetFileNameWithoutExtension(mainModule.FileName);
-                    if (!string.IsNullOrWhiteSpace(fileName) &&
-                        !fileName.Equals("dotnet", StringComparison.OrdinalIgnoreCase) &&
-                        !fileName.Equals("testhost", StringComparison.OrdinalIgnoreCase))
-                    {
-                        return fileName;
-                    }
-                }
-
-                // Method 4: Fall back to calling assembly
+                // Fall back to calling assembly
                 var callingAssembly = Assembly.GetCallingAssembly();
                 if (callingAssembly != null)
                 {
