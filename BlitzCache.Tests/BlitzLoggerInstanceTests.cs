@@ -1,6 +1,5 @@
 using BlitzCacheCore.Logging;
 using BlitzCacheCore.Tests.Helpers;
-using Microsoft.Extensions.Logging;
 using NUnit.Framework;
 using System;
 
@@ -20,10 +19,7 @@ namespace BlitzCacheCore.Tests
         }
 
         [Test]
-        public void Constructor_ThrowsOnNullInstance()
-        {
-            Assert.Throws<ArgumentNullException>(() => new BlitzLoggerInstance(null));
-        }
+        public void Constructor_ThrowsOnNullInstance() => Assert.Throws<ArgumentNullException>(() => new BlitzLoggerInstance(null));
 
         [Test]
         public void Constructor_SetsPropertiesCorrectly()

@@ -7,6 +7,9 @@ namespace BlitzCacheCore.Tests.Helpers
     /// </summary>
     internal class FaultyCacheForTesting : NullBlitzCacheForTesting
     {
-        public new ICacheStatistics Statistics => new FaultyTestCacheStatistics();
+        public FaultyCacheForTesting()
+        {
+            nullStatistics = new FaultyStatistics();
+        }
     }
 }

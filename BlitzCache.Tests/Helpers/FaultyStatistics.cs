@@ -6,7 +6,7 @@ namespace BlitzCacheCore.Tests.Helpers
     /// <summary>
     /// Test implementation of ICacheStatistics that throws exceptions to test error handling.
     /// </summary>
-    public class FaultyTestCacheStatistics : ICacheStatistics
+    public class FaultyStatistics : ICacheStatistics
     {
         private int accessCount = 0;
 

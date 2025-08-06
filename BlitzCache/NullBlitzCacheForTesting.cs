@@ -7,7 +7,7 @@ namespace BlitzCacheCore
 {
     public class NullBlitzCacheForTesting : IBlitzCache
     {
-        private ICacheStatistics? nullStatistics;
+        protected ICacheStatistics? nullStatistics;
 
         public NullBlitzCacheForTesting()
         { }
