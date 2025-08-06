@@ -58,13 +58,6 @@ namespace BlitzCacheCore.Logging
             }
         }
 
-        public override bool Equals(object? obj)
-        {
-            var cacheInstance = obj is IBlitzCache otherInstance ? otherInstance : obj is BlitzLoggerInstance other ? other.instance : null;
-
-            return instance.Equals(cacheInstance);
-        }
-
         /// <summary>
         /// Gets the application identifier, using the provided value or auto-detecting from the running application.
         /// </summary>
@@ -127,5 +120,14 @@ namespace BlitzCacheCore.Logging
 
             return "Unknown-Application";
         }
+
+        public override bool Equals(object? obj)
+        {
+            var cacheInstance = obj is IBlitzCache otherInstance ? otherInstance : obj is BlitzLoggerInstance other ? other.instance : null;
+
+            return instance.Equals(cacheInstance);
+        }
+
+        public override int GetHashCode() => instance.GetHashCode();
     }
 }

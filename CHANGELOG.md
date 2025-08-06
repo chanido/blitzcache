@@ -29,7 +29,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 - Enhanced `IServiceCollectionExtensions` with logging configuration options
 - Improved test coverage with logging functionality examples
-- Updated comprehensive test suite to 141 tests
+- Updated comprehensive test suite
 - **Updated CI/CD pipeline to .NET 8.0** - No longer supports .NET 6.0 in build pipeline for better security and performance
 
 ### Fixed

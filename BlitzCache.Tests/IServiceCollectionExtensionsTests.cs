@@ -12,7 +12,6 @@ namespace BlitzCacheCore.Tests.Extensions
     [TestFixture]
     public class IServiceCollectionExtensionsTests
     {
-        private IBlitzCache cache;
         private ServiceProvider serviceProvider;
 
         [SetUp]

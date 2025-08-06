@@ -57,7 +57,7 @@ jobs:
       
     - name: Install coverage collector
       run: dotnet add BlitzCache.Tests/BlitzCacheCore.Tests.csproj package coverlet.collector
-      
+
     - name: Build solution (Debug for tests)
       run: dotnet build --configuration ${{ env.TEST_CONFIGURATION }} --no-restore
 
@@ -80,24 +80,33 @@ jobs:
         token: ${{ secrets.CODECOV_TOKEN }}
         slug: chanido/blitzcache
         
-    - name: Update README codecov badge for current branch
+    - name: Update README badges for codecov and tests
       if: github.event_name == 'push' && (github.ref == 'refs/heads/master' || github.ref == 'refs/heads/develop')
       run: |
         CURRENT_BRANCH=${GITHUB_REF#refs/heads/}
         echo "Updating codecov badge for branch: $CURRENT_BRANCH"
-        
         # Update the codecov badge URL to point to current branch
         sed -i "s|https://codecov.io/gh/chanido/blitzcache/branch/[^/]*/graph/badge.svg|https://codecov.io/gh/chanido/blitzcache/branch/$CURRENT_BRANCH/graph/badge.svg|g" README.md
-        
+
+        # Extract test count from junit.xml (first tests attribute found)
+        TEST_COUNT=$(grep -oP 'tests="\K[0-9]+' ./TestResults/junit.xml | head -1)
+        echo "Test count: $TEST_COUNT"
+        if [ -z "$TEST_COUNT" ]; then
+          echo "Could not extract test count, skipping badge update."
+        else
+          # Update the tests badge in README.md
+          sed -i "s|https://img.shields.io/badge/tests-[0-9]\+%20passing-brightgreen|https://img.shields.io/badge/tests-${TEST_COUNT}%20passing-brightgreen|g" README.md
+        fi
+
         # Check if there are any changes
         if git diff --quiet README.md; then
           echo "No changes needed to README.md"
         else
-          echo "README.md updated with codecov badge for branch: $CURRENT_BRANCH"
+          echo "README.md updated with codecov and/or tests badge"
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action"
           git add README.md
-          git commit -m "Update codecov badge to point to $CURRENT_BRANCH branch [skip ci]"
+          git commit -m "Update badges: codecov branch and tests count [skip ci]"
           git push
         fi
         
