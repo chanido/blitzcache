@@ -30,23 +30,22 @@ namespace BlitzCacheCore.Tests.Examples
                 // Add logging to capture the output
                 .AddLogging(builder => builder.AddProvider(new TestLoggerProvider()))
                 // Add BlitzCache with statistics enabled (required for logging) - use test constants
-                .AddBlitzCache(defaultMilliseconds: TestHelpers.LongTimeoutMs, enableStatistics: true)
+                .AddBlitzCache()
                 // Add automatic statistics logging with very short interval for fast testing
-                .AddBlitzCacheLogging(TimeSpan.FromMilliseconds(TestHelpers.VeryShortTimeoutMs))
+                .AddBlitzCacheLogging(TimeSpan.FromMilliseconds(TestConstants.VeryShortTimeoutMs))
                 .BuildServiceProvider();
 
             var cache = serviceProvider.GetRequiredService<IBlitzCache>();
 
-            // Act - Generate some cache activity to create interesting statistics
-            await GenerateCacheActivity(cache);
-
-            // Start the hosted service briefly to verify it works
+            // Act -  Start the hosted service briefly to verify it works
             var hostedServices = serviceProvider.GetServices<IHostedService>();
             Assert.That(hostedServices, Has.Exactly(1).Items);
+            // Generate some cache activity to create interesting statistics
+            await GenerateCacheActivity(cache);
 
             var loggingService = hostedServices.First();
             await loggingService.StartAsync(default);
-            await TestHelpers.MinimumDelay(); // Use test helper delay
+            await TestDelays.MinimumDelay(); // Use test helper delay
             await loggingService.StopAsync(default);
 
             // Assert - Verify cache has statistics
@@ -60,24 +59,6 @@ namespace BlitzCacheCore.Tests.Examples
             TestContext.WriteLine($"- Hit Ratio: {cache.Statistics.HitRatio:P2}");
         }
 
-        [Test]
-        public void LoggingWithDisabledStatistics_ShouldLogWarningMessage()
-        {
-            // Arrange - Set up BlitzCache without statistics
-            serviceProvider = new ServiceCollection()
-                .AddLogging(builder => builder.AddProvider(new TestLoggerProvider()))
-                // Add BlitzCache without statistics (default behavior) - use test constants
-                .AddBlitzCache(defaultMilliseconds: TestHelpers.LongTimeoutMs, enableStatistics: false)
-                .AddBlitzCacheLogging(TimeSpan.FromMilliseconds(TestHelpers.VeryShortTimeoutMs))
-                .BuildServiceProvider();
-
-            var cache = serviceProvider.GetRequiredService<IBlitzCache>();
-
-            // Assert - Statistics should be null
-            Assert.That(cache.Statistics, Is.Null);
-
-            TestContext.WriteLine("BlitzCache configured without statistics - logging service will detect this and log a warning.");
-        }
 
         [Test]
         public async Task LoggingWithCustomApplicationIdentifier_ShouldIncludeIdentifierInLogs()
@@ -87,21 +68,20 @@ namespace BlitzCacheCore.Tests.Examples
             // Arrange - Set up BlitzCache with custom application identifier
             serviceProvider = new ServiceCollection()
                 .AddLogging(builder => builder.AddProvider(new TestLoggerProvider()))
-                // Add BlitzCache with statistics enabled
-                .AddBlitzCache(enableStatistics: true)
+                .AddBlitzCache()
                 // Add automatic statistics logging with custom identifier
-                .AddBlitzCacheLogging(TimeSpan.FromMilliseconds(TestHelpers.VeryShortTimeoutMs), customIdentifier)
+                .AddBlitzCacheLogging(TimeSpan.FromMilliseconds(TestConstants.VeryShortTimeoutMs), customIdentifier)
                 .BuildServiceProvider();
-
             var cache = serviceProvider.GetRequiredService<IBlitzCache>();
+            var hostedServices = serviceProvider.GetServices<IHostedService>();
 
             // Act - Generate some cache activity and start the service briefly
             await GenerateCacheActivity(cache);
 
-            var hostedServices = serviceProvider.GetServices<IHostedService>();
+
             var loggingService = hostedServices.First();
             await loggingService.StartAsync(default);
-            await TestHelpers.MinimumDelay();
+            await TestDelays.MinimumDelay();
             await loggingService.StopAsync(default);
 
             // Assert - Verify cache has statistics
@@ -119,13 +99,13 @@ namespace BlitzCacheCore.Tests.Examples
 
             var asyncResult1 = await cache.BlitzGet("key2", async () =>
             {
-                await TestHelpers.MinimumDelay(); // Use test helper delay instead of hardcoded value
+                await TestDelays.MinimumDelay(); // Use test helper delay instead of hardcoded value
                 return "expensive async operation";
             });
 
             var asyncResult2 = await cache.BlitzGet("key2", async () =>
             {
-                await TestHelpers.MinimumDelay(); // Use test helper delay instead of hardcoded value
+                await TestDelays.MinimumDelay(); // Use test helper delay instead of hardcoded value
                 return "expensive async operation";
             }); // Cache hit
         }

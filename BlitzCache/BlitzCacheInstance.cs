@@ -5,8 +5,6 @@ using System;
 using System.Runtime.CompilerServices;
 using System.Threading.Tasks;
 
-#nullable enable
-
 namespace BlitzCacheCore
 {
     public class BlitzCacheInstance : IBlitzCacheInstance
@@ -14,7 +12,7 @@ namespace BlitzCacheCore
         private readonly IMemoryCache memoryCache;
         private readonly long defaultMilliseconds;
         private readonly BlitzSemaphoreDictionary semaphoreDictionary;
-        private readonly CacheStatistics? statistics;
+        private CacheStatistics? statistics;
 
         /// <summary>
         /// Creates a new BlitzCache instance.
@@ -22,20 +20,21 @@ namespace BlitzCacheCore
         /// <param name="defaultMilliseconds">Default cache duration in milliseconds</param>
         /// <param name="enableStatistics">Whether to enable statistics tracking (default: false for better performance)</param>
         /// <param name="cleanupInterval">Interval for automatic cleanup of unused semaphores (default: 10 seconds)</param>
-        public BlitzCacheInstance(long? defaultMilliseconds = 60000, bool? enableStatistics = false, TimeSpan? cleanupInterval = null)
+        public BlitzCacheInstance(long? defaultMilliseconds = 60000, TimeSpan? cleanupInterval = null)
         {
             if (defaultMilliseconds < 1) throw new ArgumentOutOfRangeException(nameof(defaultMilliseconds), "Default milliseconds must be non-negative");
 
             this.defaultMilliseconds = defaultMilliseconds!.Value;
             memoryCache = new MemoryCache(new MemoryCacheOptions());
             semaphoreDictionary = new BlitzSemaphoreDictionary(cleanupInterval);
-            statistics = enableStatistics == true ? new CacheStatistics(() => semaphoreDictionary.GetNumberOfLocks()) : null;
         }
 
         /// <summary>
         /// Gets the current number of semaphores for testing and monitoring purposes.
         /// </summary>
         public int GetSemaphoreCount() => semaphoreDictionary.GetNumberOfLocks();
+
+        public void InitializeStatistics() => statistics = statistics ?? new CacheStatistics(() => semaphoreDictionary.GetNumberOfLocks());
 
         /// <summary>
         /// Gets cache performance statistics and monitoring information.

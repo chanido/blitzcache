@@ -65,7 +65,7 @@ namespace BlitzCacheCore.Tests.Extensions
             serviceProvider = new ServiceCollection()
                 .AddBlitzCache()
                 .AddLogging(b => b.AddDebug())
-                .AddBlitzCacheLogging(logInterval: TimeSpan.FromMilliseconds(10), applicationIdentifier: "TestApp")
+                .AddBlitzCacheLogging(logInterval: TimeSpan.FromMilliseconds(10), globalCacheIdentifier: "TestApp")
                 .BuildServiceProvider();
 
             var hostedServices = serviceProvider.GetServices<IHostedService>();
@@ -78,19 +78,18 @@ namespace BlitzCacheCore.Tests.Extensions
         }
 
         [Test]
-        public async Task AddBlitzCache_StatisticsShouldNotBeNull()
+        public async Task AddBlitzCache_StatisticsShouldBeNull()
         {
             serviceProvider = new ServiceCollection()
-            // Try to add BlitzCache with statistics enabled
-                .AddBlitzCache(enableStatistics: true)
+                // Try to add BlitzCache
+                .AddBlitzCache()
                 .BuildServiceProvider();
 
             var cache = serviceProvider.GetService<IBlitzCache>() as BlitzCache;
 
             await AssertCacheWorksAsync(cache);
             Assert.IsNotNull(cache, "Cache should not be null");
-            Assert.IsNotNull(cache.Statistics, "Statistics should not be null for the global singleton, even if requested");
-            Assert.AreEqual(1, cache.Statistics.EntryCount, "EntryCount should be 1 after the AssertCacheWorksAsync call");
+            Assert.IsNull(cache.Statistics, "Statistics should not be null for the global singleton, even if requested");
         }
 
         private static async Task AssertCacheWorksAsync(IBlitzCache cache, bool isSingletonOnSecondCall = false)

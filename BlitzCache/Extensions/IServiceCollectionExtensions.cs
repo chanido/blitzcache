@@ -1,4 +1,5 @@
-﻿using Microsoft.Extensions.DependencyInjection;
+﻿using BlitzCacheCore.Logging;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Logging;
 using System;
@@ -16,12 +17,12 @@ namespace BlitzCacheCore.Extensions
         /// <param name="services">The service collection to add BlitzCache to.</param>
         /// <param name="defaultMilliseconds">Default cache duration in milliseconds. Defaults to 60000 (1 minute).</param>
         /// <returns>The service collection for method chaining.</returns>
-        public static IServiceCollection AddBlitzCache(this IServiceCollection services, long defaultMilliseconds = 60000, bool enableStatistics = false)
+        public static IServiceCollection AddBlitzCache(this IServiceCollection services, long defaultMilliseconds = 60000)
         {
             if (services == null) throw new ArgumentNullException(nameof(services));
 
             OptionsServiceCollectionExtensions.AddOptions(services);
-            ServiceCollectionDescriptorExtensions.TryAdd(services, ServiceDescriptor.Singleton<IBlitzCache>(_ => new BlitzCache(defaultMilliseconds, enableStatistics)));
+            ServiceCollectionDescriptorExtensions.TryAdd(services, ServiceDescriptor.Singleton<IBlitzCache>(_ => new BlitzCache(defaultMilliseconds)));
 
             return services;
         }
@@ -33,19 +34,17 @@ namespace BlitzCacheCore.Extensions
         /// </summary>
         /// <param name="services">The service collection to add the logging service to.</param>
         /// <param name="logInterval">How often to log statistics. Defaults to 1 hour.</param>
-        /// <param name="applicationIdentifier">Custom identifier for the application in logs. If null or empty, auto-detects from the running application.</param>
+        /// <param name="globalCacheIdentifier">Custom identifier for the globalCache in logs. If null or empty, auto-detects from the running application.</param>
         /// <returns>The service collection for method chaining.</returns>
-        public static IServiceCollection AddBlitzCacheLogging(this IServiceCollection services, TimeSpan? logInterval = null, string applicationIdentifier = null)
+        public static IServiceCollection AddBlitzCacheLogging(this IServiceCollection services, TimeSpan? logInterval = null, string? globalCacheIdentifier = null)
         {
             if (services == null) throw new ArgumentNullException(nameof(services));
 
-            services.AddHostedService(provider =>
-                new Logging.BlitzCacheLoggingService(
-                    provider.GetRequiredService<IBlitzCache>(),
-                    provider.GetRequiredService<ILogger<Logging.BlitzCacheLoggingService>>(),
-                    logInterval ?? TimeSpan.FromHours(1),
-                    applicationIdentifier
-                ));
+            services.AddHostedService(provider => new BlitzCacheLoggingService(
+                provider.GetRequiredService<IBlitzCache>(),
+                provider.GetRequiredService<ILogger<BlitzCacheLoggingService>>(),
+                globalCacheIdentifier,
+                logInterval - TimeSpan.FromMilliseconds(1)));
 
             return services;
         }

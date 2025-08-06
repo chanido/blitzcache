@@ -16,147 +16,214 @@ namespace BlitzCacheCore.Tests
         public void Statistics_PerformanceImpact_CacheHits()
         {
             // Arrange
-            var cache = TestHelpers.CreateBlitzCacheInstanceWithStatistics();
+            var cacheWithStatistics = TestFactory.CreateBlitzCacheInstance();
+            cacheWithStatistics.InitializeStatistics(); // Ensure statistics are enabled
+            var fastCache = TestFactory.CreateBlitzCacheGlobal();
+
             var iterations = 5000;
 
             // Pre-populate cache (1 miss)
-            cache.BlitzGet("test_key", () => "test_value", TestHelpers.LongTimeoutMs);
-            var statsAfterPrePopulation = cache.Statistics;
+            cacheWithStatistics.BlitzGet("test_key", () => "test_value");
+            fastCache.BlitzGet("test_key", () => "test_value");
+
+            var statsAfterPrePopulation = cacheWithStatistics.Statistics;
             Console.WriteLine($"After pre-population: {statsAfterPrePopulation.HitCount} hits, {statsAfterPrePopulation.MissCount} misses");
 
             // Warm up (should be all hits)
             for (int i = 0; i < 1000; i++)
             {
-                cache.BlitzGet("test_key", () => "test_value", TestHelpers.LongTimeoutMs);
+                cacheWithStatistics.BlitzGet("test_key", () => "test_value");
+                fastCache.BlitzGet("test_key", () => "test_value");
             }
-            var statsAfterWarmup = cache.Statistics;
+            var statsAfterWarmup = cacheWithStatistics.Statistics;
             Console.WriteLine($"After warmup: {statsAfterWarmup.HitCount} hits, {statsAfterWarmup.MissCount} misses");
 
             // Act - Measure cache hits (should be very fast)
-            var stopwatch = Stopwatch.StartNew();
+            var stopwatchWithStatistics = Stopwatch.StartNew();
 
             for (int i = 0; i < iterations; i++)
             {
-                cache.BlitzGet("test_key", () => "test_value", TestHelpers.LongTimeoutMs);
+                cacheWithStatistics.BlitzGet("test_key", () => "test_value", TestConstants.LongTimeoutMs);
             }
 
-            stopwatch.Stop();
+            stopwatchWithStatistics.Stop();
+
+            var stopwatchWithoutStatistics = Stopwatch.StartNew();
+
+            for (int i = 0; i < iterations; i++)
+            {
+                fastCache.BlitzGet("test_key", () => "test_value", TestConstants.LongTimeoutMs);
+            }
+
+            stopwatchWithoutStatistics.Stop();
 
             // Assert
-            var totalTimeMs = stopwatch.Elapsed.TotalMilliseconds;
-            var avgTimePerOp = totalTimeMs / iterations;
+            var totalTimeMsWithStatistics = stopwatchWithStatistics.Elapsed.TotalMilliseconds;
+            var avgTimePerOpWithStatistics = totalTimeMsWithStatistics / iterations;
+
+            var totalTimeMsWithoutStatistics = stopwatchWithoutStatistics.Elapsed.TotalMilliseconds;
+            var avgTimePerOpWithoutStatistics = totalTimeMsWithoutStatistics / iterations;
 
             Console.WriteLine($"=== Cache Statistics Performance Impact ===");
             Console.WriteLine($"Operations: {iterations:N0}");
-            Console.WriteLine($"Total time: {totalTimeMs:F2}ms");
-            Console.WriteLine($"Average per operation: {avgTimePerOp:F6}ms");
-            Console.WriteLine($"Operations per second: {iterations / stopwatch.Elapsed.TotalSeconds:N0}");
+            Console.WriteLine($"Total time With/Without: {totalTimeMsWithStatistics:F2}ms/{totalTimeMsWithoutStatistics:F2}ms");
+            Console.WriteLine($"Average per operation With/Without: {avgTimePerOpWithStatistics:F6}ms/{avgTimePerOpWithoutStatistics:F6}ms");
+            Console.WriteLine($"Operations per second With/Without: {iterations / stopwatchWithStatistics.Elapsed.TotalSeconds:N0}/{iterations / stopwatchWithoutStatistics.Elapsed.TotalSeconds:N0}");
 
-            var stats = cache.Statistics;
+            var stats = cacheWithStatistics.Statistics;
             Console.WriteLine($"Cache hits recorded: {stats.HitCount:N0}");
             Console.WriteLine($"Cache misses recorded: {stats.MissCount:N0}");
             Console.WriteLine($"Total operations: {stats.TotalOperations:N0}");
             Console.WriteLine($"Hit ratio: {stats.HitRatio:P2}");
 
             // Performance should still be excellent even with statistics
-            Assert.Less(avgTimePerOp, 0.1, "Average operation time should be less than 0.1ms even with statistics");
+            Assert.Less(avgTimePerOpWithStatistics, 0.1, "Average operation time should be less than 0.1ms even with statistics");
 
             // We expect: 1 miss (pre-population) + 1000 hits (warmup) + 5000 hits (test) = 6000 hits, 1 miss
             Assert.AreEqual(1, stats.MissCount, "Should have exactly 1 miss from pre-population");
             Assert.AreEqual(6000, stats.HitCount, $"Should record {1000} warmup + {5000} test hits");
 
-            cache.Dispose();
+            Console.WriteLine($"Without Statistics is: {(totalTimeMsWithStatistics - totalTimeMsWithoutStatistics) / iterations:F6}ms faster");
+            Console.WriteLine($"Without Statistics is: {totalTimeMsWithStatistics / totalTimeMsWithoutStatistics * 100:F2}% faster");
+            Console.WriteLine($"Average per operation With/Without: {avgTimePerOpWithStatistics:F6}ms/{avgTimePerOpWithoutStatistics:F6}ms");
+
+            cacheWithStatistics.Dispose();
         }
 
         [Test]
         public void Statistics_PerformanceImpact_CacheMisses()
         {
             // Arrange
-            var cache = TestHelpers.CreateBlitzCacheInstanceWithStatistics();
+            var cacheWithStatistics = TestFactory.CreateBlitzCacheInstance();
+            cacheWithStatistics.InitializeStatistics();
+            var cacheWithoutStatistics = TestFactory.CreateBlitzCacheGlobal();
             var iterations = 500;
-            var executionCount = 0;
+            var executionCountWithStats = 0;
+            var executionCountWithoutStats = 0;
 
-            string TestFunction(int id)
+            string TestFunctionWithStats(int id)
             {
-                executionCount++;
+                executionCountWithStats++;
+                return $"value_{id}";
+            }
+            string TestFunctionWithoutStats(int id)
+            {
+                executionCountWithoutStats++;
                 return $"value_{id}";
             }
 
-            // Act - Measure cache misses
-            var stopwatch = Stopwatch.StartNew();
-
+            // Act - Measure cache misses with statistics
+            var stopwatchWithStatistics = Stopwatch.StartNew();
             for (int i = 0; i < iterations; i++)
             {
-                cache.BlitzGet($"key_{i}", () => TestFunction(i), TestHelpers.LongTimeoutMs);
+                cacheWithStatistics.BlitzGet($"key_{i}", () => TestFunctionWithStats(i), TestConstants.LongTimeoutMs);
             }
+            stopwatchWithStatistics.Stop();
 
-            stopwatch.Stop();
+            // Act - Measure cache misses without statistics
+            var stopwatchWithoutStatistics = Stopwatch.StartNew();
+            for (int i = 0; i < iterations; i++)
+            {
+                cacheWithoutStatistics.BlitzGet($"key_{i}", () => TestFunctionWithoutStats(i), TestConstants.LongTimeoutMs);
+            }
+            stopwatchWithoutStatistics.Stop();
 
             // Assert
-            var totalTimeMs = stopwatch.Elapsed.TotalMilliseconds;
-            var avgTimePerOp = totalTimeMs / iterations;
+            var totalTimeMsWithStatistics = stopwatchWithStatistics.Elapsed.TotalMilliseconds;
+            var avgTimePerOpWithStatistics = totalTimeMsWithStatistics / iterations;
+            var totalTimeMsWithoutStatistics = stopwatchWithoutStatistics.Elapsed.TotalMilliseconds;
+            var avgTimePerOpWithoutStatistics = totalTimeMsWithoutStatistics / iterations;
 
-            Console.WriteLine($"=== Cache Miss Performance with Statistics ===");
+            Console.WriteLine($"=== Cache Miss Performance Impact ===");
             Console.WriteLine($"Operations: {iterations:N0}");
-            Console.WriteLine($"Total time: {totalTimeMs:F2}ms");
-            Console.WriteLine($"Average per operation: {avgTimePerOp:F6}ms");
-            Console.WriteLine($"Function executions: {executionCount:N0}");
+            Console.WriteLine($"Total time With/Without: {totalTimeMsWithStatistics:F2}ms/{totalTimeMsWithoutStatistics:F2}ms");
+            Console.WriteLine($"Average per operation With/Without: {avgTimePerOpWithStatistics:F6}ms/{avgTimePerOpWithoutStatistics:F6}ms");
+            Console.WriteLine($"Function executions With/Without: {executionCountWithStats:N0}/{executionCountWithoutStats:N0}");
 
-            var stats = cache.Statistics;
+            var stats = cacheWithStatistics.Statistics;
             Console.WriteLine($"Cache misses recorded: {stats.MissCount:N0}");
             Console.WriteLine($"Cache entries created: {stats.EntryCount:N0}");
 
+            // Performance should still be excellent even with statistics
+            Assert.Less(avgTimePerOpWithStatistics, 0.2, "Average operation time should be less than 0.2ms even with statistics");
+
             // Verify accuracy
             Assert.AreEqual(iterations, stats.MissCount, "Should record all misses accurately");
-            Assert.AreEqual(iterations, executionCount, "Should execute function for each miss");
+            Assert.AreEqual(iterations, executionCountWithStats, "Should execute function for each miss (with stats)");
             Assert.AreEqual(iterations, stats.EntryCount, "Should create entry for each miss");
+            Assert.AreEqual(iterations, executionCountWithoutStats, "Should execute function for each miss (without stats)");
 
-            cache.Dispose();
+            Console.WriteLine($"Without Statistics is: {(totalTimeMsWithStatistics - totalTimeMsWithoutStatistics) / iterations:F6}ms faster");
+            Console.WriteLine($"Without Statistics is: {totalTimeMsWithStatistics / totalTimeMsWithoutStatistics * 100:F2}% faster");
+            Console.WriteLine($"Average per operation With/Without: {avgTimePerOpWithStatistics:F6}ms/{avgTimePerOpWithoutStatistics:F6}ms");
+
+            cacheWithStatistics.Dispose();
         }
 
         [Test]
         public async Task Statistics_PerformanceImpact_AsyncOperations()
         {
             // Arrange
-            var cache = TestHelpers.CreateBlitzCacheInstanceWithStatistics();
+            var cacheWithStatistics = TestFactory.CreateBlitzCacheInstance();
+            cacheWithStatistics.InitializeStatistics();
+            var cacheWithoutStatistics = TestFactory.CreateBlitzCacheGlobal();
             var iterations = 500;
 
             // Pre-populate cache
-            await cache.BlitzGet("async_key", async () =>
+            await cacheWithStatistics.BlitzGet("async_key", async () =>
             {
-                await TestHelpers.ShortDelay();
+                await TestDelays.ShortDelay();
                 return "async_value";
-            }, TestHelpers.LongTimeoutMs);
+            }, TestConstants.LongTimeoutMs);
+            await cacheWithoutStatistics.BlitzGet("async_key", async () =>
+            {
+                await TestDelays.ShortDelay();
+                return "async_value";
+            }, TestConstants.LongTimeoutMs);
 
-            var statsAfterPrePopulation = cache.Statistics;
+            var statsAfterPrePopulation = cacheWithStatistics.Statistics;
             Console.WriteLine($"After pre-population: {statsAfterPrePopulation.HitCount} hits, {statsAfterPrePopulation.MissCount} misses");
 
-            // Act - Measure async cache hits
-            var stopwatch = Stopwatch.StartNew();
-
-            var tasks = new Task[iterations];
+            // Act - Measure async cache hits with statistics
+            var stopwatchWithStatistics = Stopwatch.StartNew();
+            var tasksWithStats = new Task[iterations];
             for (int i = 0; i < iterations; i++)
             {
-                tasks[i] = cache.BlitzGet("async_key", async () =>
+                tasksWithStats[i] = cacheWithStatistics.BlitzGet("async_key", async () =>
                 {
-                    await TestHelpers.ShortDelay();
+                    await TestDelays.ShortDelay();
                     return "async_value";
-                }, TestHelpers.LongTimeoutMs);
+                }, TestConstants.LongTimeoutMs);
             }
+            await Task.WhenAll(tasksWithStats);
+            stopwatchWithStatistics.Stop();
 
-            await Task.WhenAll(tasks);
-            stopwatch.Stop();
+            // Act - Measure async cache hits without statistics
+            var stopwatchWithoutStatistics = Stopwatch.StartNew();
+            var tasksWithoutStats = new Task[iterations];
+            for (int i = 0; i < iterations; i++)
+            {
+                tasksWithoutStats[i] = cacheWithoutStatistics.BlitzGet("async_key", async () =>
+                {
+                    await TestDelays.ShortDelay();
+                    return "async_value";
+                }, TestConstants.LongTimeoutMs);
+            }
+            await Task.WhenAll(tasksWithoutStats);
+            stopwatchWithoutStatistics.Stop();
 
             // Assert
-            var totalTimeMs = stopwatch.Elapsed.TotalMilliseconds;
-            var avgTimePerOp = totalTimeMs / iterations;
+            var totalTimeMsWithStatistics = stopwatchWithStatistics.Elapsed.TotalMilliseconds;
+            var avgTimePerOpWithStatistics = totalTimeMsWithStatistics / iterations;
+            var totalTimeMsWithoutStatistics = stopwatchWithoutStatistics.Elapsed.TotalMilliseconds;
+            var avgTimePerOpWithoutStatistics = totalTimeMsWithoutStatistics / iterations;
 
-            Console.WriteLine($"=== Async Operations Performance with Statistics ===");
+            Console.WriteLine($"=== Async Operations Performance Impact ===");
             Console.WriteLine($"Concurrent operations: {iterations:N0}");
-            Console.WriteLine($"Total time: {totalTimeMs:F2}ms");
-            Console.WriteLine($"Average per operation: {avgTimePerOp:F6}ms");
+            Console.WriteLine($"Total time With/Without: {totalTimeMsWithStatistics:F2}ms/{totalTimeMsWithoutStatistics:F2}ms");
+            Console.WriteLine($"Average per operation With/Without: {avgTimePerOpWithStatistics:F6}ms/{avgTimePerOpWithoutStatistics:F6}ms");
 
-            var stats = cache.Statistics;
+            var stats = cacheWithStatistics.Statistics;
             Console.WriteLine($"Cache hits recorded: {stats.HitCount:N0}");
             Console.WriteLine($"Cache misses recorded: {stats.MissCount:N0}");
             Console.WriteLine($"Total operations: {stats.TotalOperations:N0}");
@@ -166,56 +233,78 @@ namespace BlitzCacheCore.Tests
             Assert.AreEqual(iterations, stats.HitCount, "Should have all concurrent operations as hits");
             Assert.AreEqual(iterations + 1, stats.TotalOperations, "Should accurately count total operations");
 
-            cache.Dispose();
+            Console.WriteLine($"Without Statistics is: {(totalTimeMsWithStatistics - totalTimeMsWithoutStatistics) / iterations:F6}ms faster");
+            Console.WriteLine($"Without Statistics is: {totalTimeMsWithStatistics / totalTimeMsWithoutStatistics * 100:F2}% faster");
+            Console.WriteLine($"Average per operation With/Without: {avgTimePerOpWithStatistics:F6}ms/{avgTimePerOpWithoutStatistics:F6}ms");
+
+            cacheWithStatistics.Dispose();
         }
 
         [Test]
         public void Statistics_PerformanceImpact_ConcurrentAccess()
         {
             // Arrange
-            var cache = TestHelpers.CreateBlitzCacheInstanceWithStatistics();
+            var cacheWithStatistics = TestFactory.CreateBlitzCacheInstance();
+            cacheWithStatistics.InitializeStatistics();
+            var cacheWithoutStatistics = TestFactory.CreateBlitzCacheGlobal();
             var threadsCount = 10;
             var operationsPerThread = 500;
             var totalOperations = threadsCount * operationsPerThread;
 
-            // Act - Multiple threads accessing statistics simultaneously
-            var stopwatch = Stopwatch.StartNew();
-
-            var tasks = new Task[threadsCount];
+            // Act - Multiple threads accessing statistics simultaneously (with statistics)
+            var stopwatchWithStatistics = Stopwatch.StartNew();
+            var tasksWithStats = new Task[threadsCount];
             for (int t = 0; t < threadsCount; t++)
             {
                 int threadId = t;
-                tasks[t] = Task.Run((Action)(() =>
+                tasksWithStats[t] = Task.Run((Action)(() =>
                 {
                     for (int i = 0; i < operationsPerThread; i++)
                     {
-                        var key = $"thread_{threadId}_key_{i % 10}"; // Some repetition for hits
-                        cache.BlitzGet<string>(key, (Func<string>)(() => $"value_{threadId}_{i}"), TestHelpers.LongTimeoutMs);
-
-                        // Also access statistics frequently to test concurrent reads
-                        if (i % TestHelpers.ConcurrentOperationsCount == 0)
+                        var key = $"thread_{threadId}_key_{i % 10}";
+                        cacheWithStatistics.BlitzGet<string>(key, (Func<string>)(() => $"value_{threadId}_{i}"), TestConstants.LongTimeoutMs);
+                        if (i % TestConstants.ConcurrentOperationsCount == 0)
                         {
-                            var stats = cache.Statistics;
-                            var hitRatio = stats.HitRatio; // Force calculation
+                            var stats = cacheWithStatistics.Statistics;
+                            var hitRatio = stats.HitRatio;
                         }
                     }
                 }));
             }
+            Task.WaitAll(tasksWithStats);
+            stopwatchWithStatistics.Stop();
 
-            Task.WaitAll(tasks);
-            stopwatch.Stop();
+            // Act - Multiple threads accessing cache without statistics
+            var stopwatchWithoutStatistics = Stopwatch.StartNew();
+            var tasksWithoutStats = new Task[threadsCount];
+            for (int t = 0; t < threadsCount; t++)
+            {
+                int threadId = t;
+                tasksWithoutStats[t] = Task.Run((Action)(() =>
+                {
+                    for (int i = 0; i < operationsPerThread; i++)
+                    {
+                        var key = $"thread_{threadId}_key_{i % 10}";
+                        cacheWithoutStatistics.BlitzGet<string>(key, (Func<string>)(() => $"value_{threadId}_{i}"), TestConstants.LongTimeoutMs);
+                    }
+                }));
+            }
+            Task.WaitAll(tasksWithoutStats);
+            stopwatchWithoutStatistics.Stop();
 
             // Assert
-            var totalTimeMs = stopwatch.Elapsed.TotalMilliseconds;
-            var avgTimePerOp = totalTimeMs / totalOperations;
+            var totalTimeMsWithStatistics = stopwatchWithStatistics.Elapsed.TotalMilliseconds;
+            var avgTimePerOpWithStatistics = totalTimeMsWithStatistics / totalOperations;
+            var totalTimeMsWithoutStatistics = stopwatchWithoutStatistics.Elapsed.TotalMilliseconds;
+            var avgTimePerOpWithoutStatistics = totalTimeMsWithoutStatistics / totalOperations;
 
-            Console.WriteLine($"=== Concurrent Statistics Access Performance ===");
+            Console.WriteLine($"=== Concurrent Statistics Access Performance Impact ===");
             Console.WriteLine($"Threads: {threadsCount}");
             Console.WriteLine($"Total operations: {totalOperations:N0}");
-            Console.WriteLine($"Total time: {totalTimeMs:F2}ms");
-            Console.WriteLine($"Average per operation: {avgTimePerOp:F6}ms");
+            Console.WriteLine($"Total time With/Without: {totalTimeMsWithStatistics:F2}ms/{totalTimeMsWithoutStatistics:F2}ms");
+            Console.WriteLine($"Average per operation With/Without: {avgTimePerOpWithStatistics:F6}ms/{avgTimePerOpWithoutStatistics:F6}ms");
 
-            var finalStats = cache.Statistics;
+            var finalStats = cacheWithStatistics.Statistics;
             Console.WriteLine($"Final hit count: {finalStats.HitCount:N0}");
             Console.WriteLine($"Final miss count: {finalStats.MissCount:N0}");
             Console.WriteLine($"Final hit ratio: {finalStats.HitRatio:P2}");
@@ -226,28 +315,11 @@ namespace BlitzCacheCore.Tests
             Assert.Greater(finalStats.HitCount, 0, "Should have some hits due to key repetition");
             Assert.Greater(finalStats.MissCount, 0, "Should have some misses");
 
-            cache.Dispose();
-        }
+            Console.WriteLine($"Without Statistics is: {(totalTimeMsWithStatistics - totalTimeMsWithoutStatistics) / totalOperations:F6}ms faster");
+            Console.WriteLine($"Without Statistics is: {totalTimeMsWithStatistics / totalTimeMsWithoutStatistics * 100:F2}% faster");
+            Console.WriteLine($"Average per operation With/Without: {avgTimePerOpWithStatistics:F6}ms/{avgTimePerOpWithoutStatistics:F6}ms");
 
-        [Test]
-        public void Statistics_MemoryOverhead_Comparison()
-        {
-            // This test demonstrates that statistics add minimal memory overhead
-            var cacheWithStats = new BlitzCacheInstance(enableStatistics: true);
-            var nullCache = new NullBlitzCacheForTesting(enableStatistics: true);
-
-            Console.WriteLine($"=== Memory Overhead Analysis ===");
-            Console.WriteLine($"BlitzCache with statistics: Available");
-            Console.WriteLine($"NullCache (no statistics): Available");
-            Console.WriteLine($"Additional memory per statistics object: ~64 bytes (3 long fields + 2 delegates)");
-            Console.WriteLine($"Per-operation overhead: 1 atomic increment = ~1-2 CPU cycles");
-            Console.WriteLine($"Performance impact: Negligible (<0.001ms per operation)");
-
-            // Verify both have statistics interface
-            Assert.IsNotNull(cacheWithStats.Statistics, "BlitzCache should have statistics");
-            Assert.IsNotNull(nullCache.Statistics, "NullCache should have null statistics");
-
-            cacheWithStats.Dispose();
+            cacheWithStatistics.Dispose();
         }
     }
 }

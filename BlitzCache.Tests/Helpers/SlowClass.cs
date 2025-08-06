@@ -4,11 +4,11 @@ namespace BlitzCacheCore.Tests.Helpers
 {
     public class SlowClass
     {
-        private static readonly object locker = new object();
+        private static readonly object locker = new();
         public int Counter { get; set; }
 
-        public int ProcessQuickly() => Process(10);
-        public int ProcessSlowly() => Process(50);
+        public int ProcessQuickly() => Process(TestConstants.VeryShortTimeoutMs);
+        public int ProcessSlowly() => Process(TestConstants.StandardTimeoutMs);
         public bool FailIfZeroTrueIfEven(int number)
         {
             Process(0);

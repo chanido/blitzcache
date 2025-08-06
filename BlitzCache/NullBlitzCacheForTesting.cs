@@ -3,18 +3,14 @@ using System;
 using System.Runtime.CompilerServices;
 using System.Threading.Tasks;
 
-#nullable enable
-
 namespace BlitzCacheCore
 {
     public class NullBlitzCacheForTesting : IBlitzCache
     {
-        private readonly ICacheStatistics? nullStatistics;
+        private ICacheStatistics? nullStatistics;
 
-        public NullBlitzCacheForTesting(bool enableStatistics = false)
-        {
-            nullStatistics = enableStatistics ? new NullCacheStatistics() : null;
-        }
+        public NullBlitzCacheForTesting()
+        { }
 
         public ICacheStatistics? Statistics => nullStatistics;
 
@@ -48,6 +44,8 @@ namespace BlitzCacheCore
         public void Dispose() { }
 
         protected virtual void Dispose(bool dispose) { }
+
+        void IBlitzCache.InitializeStatistics() => nullStatistics = new NullCacheStatistics();
     }
 
     /// <summary>

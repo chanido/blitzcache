@@ -3,8 +3,6 @@ using System;
 using System.Runtime.CompilerServices;
 using System.Threading.Tasks;
 
-#nullable enable
-
 namespace BlitzCacheCore
 {
     public interface IBlitzCache
@@ -21,6 +19,7 @@ namespace BlitzCacheCore
         Task BlitzUpdate<T>(string cacheKey, Func<Task<T>> function, long milliseconds);
         void Remove(string cacheKey);
         int GetSemaphoreCount();
+        public void InitializeStatistics();
 
         /// <summary>
         /// Gets cache performance statistics and monitoring information.

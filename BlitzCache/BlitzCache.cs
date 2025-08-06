@@ -3,8 +3,6 @@ using System;
 using System.Runtime.CompilerServices;
 using System.Threading.Tasks;
 
-#nullable enable
-
 namespace BlitzCacheCore
 {
     public class BlitzCache : IBlitzCache
@@ -19,7 +17,7 @@ namespace BlitzCacheCore
         /// <param name="defaultMilliseconds">Default cache duration in milliseconds</param>
         /// <param name="enableStatistics">Whether to enable statistics tracking (default: false for better performance)</param>
         /// <param name="cleanupInterval">Interval for automatic cleanup of unused semaphores (default: 10 seconds)</param>
-        public BlitzCache(long? defaultMilliseconds = 60000, bool? enableStatistics = false, TimeSpan? cleanupInterval = null)
+        public BlitzCache(long? defaultMilliseconds = 60000, TimeSpan? cleanupInterval = null)
         {
             if (defaultMilliseconds < 1) throw new ArgumentOutOfRangeException(nameof(defaultMilliseconds), "Default milliseconds must be non-negative");
 
@@ -29,7 +27,7 @@ namespace BlitzCacheCore
                 {
                     if (globalInstance is null)
                     {
-                        globalInstance = new BlitzCacheInstance(defaultMilliseconds, enableStatistics, cleanupInterval);
+                        globalInstance = new BlitzCacheInstance(defaultMilliseconds, cleanupInterval);
                     }
                 }
             }
@@ -47,6 +45,7 @@ namespace BlitzCacheCore
         /// </summary>
         public ICacheStatistics? Statistics => globalInstance?.Statistics;
 
+        public void InitializeStatistics() => globalInstance?.InitializeStatistics();
 
         public T BlitzGet<T>(Func<T> function, long? milliseconds = null, [CallerMemberName] string callerMemberName = "", [CallerFilePath] string sourceFilePath = "") =>
             globalInstance!.BlitzGet(callerMemberName + sourceFilePath, nuances => function(), milliseconds);
