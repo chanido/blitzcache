@@ -1,8 +1,5 @@
 
 # ⚡ BlitzCache
-
-![BlitzCache](https://github.com/chanido/blitzcache/raw/develop/BlitzCache.png)
-
 [![NuGet](https://img.shields.io/nuget/v/BlitzCache.svg)](https://www.nuget.org/packages/BlitzCache/)
 [![NuGet Downloads](https://img.shields.io/nuget/dt/BlitzCache.svg)](https://www.nuget.org/packages/BlitzCache/)
 [![codecov](https://codecov.io/gh/chanido/blitzcache/branch/develop/graph/badge.svg)](https://codecov.io/gh/chanido/blitzcache)
