@@ -1,5 +1,6 @@
 
 using BlitzCacheCore.Extensions;
+using BlitzCacheCore.Logging;
 using BlitzCacheCore.Tests.Helpers;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -89,6 +90,50 @@ namespace BlitzCacheCore.Tests.Examples
             Assert.That(cache.Statistics.TotalOperations, Is.GreaterThan(0));
 
             TestContext.WriteLine($"Custom application identifier '{customIdentifier}' should appear in all log messages.");
+        }
+
+        [Test]
+        public async Task BlitzCacheInstancesCanShowStatisticsEasily()
+        {
+            var cacheInstance = new BlitzCacheInstance();
+            cacheInstance.InitializeStatistics();
+
+            await GenerateCacheActivity(cacheInstance);
+
+            Assert.IsNotNull(cacheInstance, "Cache should not be null");
+            Assert.IsNotNull(cacheInstance.Statistics, "Statistics should not be null for the global singleton");
+            Assert.IsTrue(cacheInstance.Statistics.EntryCount > 0, "Statistics should have at least one entry after cache operations");
+        }
+
+        [Test]
+        public async Task LoggingWhateverInstance()
+        {
+            // Arrange - Set up BlitzCache with custom application identifier
+            serviceProvider = new ServiceCollection()
+                .AddLogging(builder => builder.AddProvider(new TestLoggerProvider()))
+                // Add automatic statistics logging with custom identifier
+                .AddBlitzCacheLogging(TimeSpan.FromMilliseconds(TestConstants.VeryShortTimeoutMs))
+                .BuildServiceProvider();
+            var hostedServices = serviceProvider.GetServices<IHostedService>();
+
+
+            var newInstance = new BlitzCacheInstance();
+            BlitzCacheLoggingService.Add(newInstance, logInterval: TimeSpan.FromMilliseconds(TestConstants.VeryShortTimeoutMs));
+
+            // Act - Generate some cache activity and start the service briefly
+            await GenerateCacheActivity(newInstance);
+
+
+            var loggingService = hostedServices.First();
+            await loggingService.StartAsync(default);
+            await TestDelays.MinimumDelay();
+            await loggingService.StopAsync(default);
+
+            // Assert - Verify cache has statistics
+            Assert.That(newInstance.Statistics, Is.Not.Null);
+            Assert.That(newInstance.Statistics.TotalOperations, Is.GreaterThan(0));
+
+            TestContext.WriteLine($"Statistics for the newInstance should be logged.");
         }
 
         private static async Task GenerateCacheActivity(IBlitzCache cache)

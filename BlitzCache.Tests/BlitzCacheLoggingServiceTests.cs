@@ -38,13 +38,12 @@ namespace BlitzCacheCore.Tests
         [Test]
         public void Constructor_ValidatesArguments()
         {
-            Assert.Throws<ArgumentNullException>(() =>
-                new BlitzCacheLoggingService(null, testLogger, null, testInterval));
+            Assert.DoesNotThrow(() => new BlitzCacheLoggingService(testLogger, logInterval: testInterval));
 
             Assert.Throws<ArgumentNullException>(() =>
-                new BlitzCacheLoggingService(testCache, null, null, testInterval));
+                new BlitzCacheLoggingService(null, cache: testCache, logInterval: testInterval));
 
-            var service = new BlitzCacheLoggingService(testCache, testLogger, null, testInterval);
+            var service = new BlitzCacheLoggingService(testLogger, cache: testCache, logInterval: testInterval);
             Assert.That(service, Is.Not.Null);
         }
 
@@ -52,7 +51,7 @@ namespace BlitzCacheCore.Tests
         public async Task ExecuteAsync_WithValidStatistics_LogsStatisticsPeriodically()
         {
             await GenerateCacheActivity();
-            loggingService = new BlitzCacheLoggingService(testCache, testLogger, null, testInterval);
+            loggingService = new BlitzCacheLoggingService(testLogger, cache: testCache, logInterval: testInterval);
             var cancellationToken = new CancellationTokenSource(TimeSpan.FromMilliseconds(TestConstants.StandardTimeoutMs)).Token;
 
             await loggingService.StartAsync(cancellationToken);
@@ -69,7 +68,7 @@ namespace BlitzCacheCore.Tests
         public async Task ExecuteAsync_WithUnexpectedException_HandlesGracefully()
         {
             var faultyCache = new FaultyCacheForTesting();
-            loggingService = new BlitzCacheLoggingService(faultyCache, testLogger, null, testInterval);
+            loggingService = new BlitzCacheLoggingService(testLogger, faultyCache, logInterval: testInterval);
             var cancellationToken = new CancellationTokenSource(TimeSpan.FromMilliseconds(TestConstants.StandardTimeoutMs)).Token;
 
             Exception caughtException = null;
@@ -107,7 +106,7 @@ namespace BlitzCacheCore.Tests
         public async Task CustomApplicationIdentifier_AppearsInLogs()
         {
             const string customIdentifier = "TestMicroservice-API";
-            loggingService = new BlitzCacheLoggingService(testCache, testLogger, customIdentifier, testInterval);
+            loggingService = new BlitzCacheLoggingService(testLogger, testCache, customIdentifier, testInterval);
             var cancellationToken = new CancellationTokenSource(TimeSpan.FromMilliseconds(TestConstants.StandardTimeoutMs)).Token;
 
             await loggingService.StartAsync(cancellationToken);
@@ -121,8 +120,8 @@ namespace BlitzCacheCore.Tests
         [Test]
         public async Task WorksWithBlitzCacheAndInstances()
         {
-            loggingService = new BlitzCacheLoggingService(testCache, testLogger, "GlobalCache", testInterval);
-            BlitzCacheLoggingService.RegisterBlitzCacheInstance(new BlitzCacheInstance(), "CacheInstance", testInterval);
+            loggingService = new BlitzCacheLoggingService(testLogger, testCache, "GlobalCache", testInterval);
+            BlitzCacheLoggingService.Add(new BlitzCacheInstance(), "CacheInstance", testInterval);
             var cancellationToken = new CancellationTokenSource(TimeSpan.FromMilliseconds(TestConstants.StandardTimeoutMs)).Token;
 
             await loggingService.StartAsync(cancellationToken);
@@ -137,8 +136,8 @@ namespace BlitzCacheCore.Tests
         [Test]
         public async Task WorksWithInstances()
         {
-            BlitzCacheLoggingService.RegisterBlitzCacheInstance(new BlitzCacheInstance(), "CacheInstance1", testInterval);
-            BlitzCacheLoggingService.RegisterBlitzCacheInstance(new BlitzCacheInstance(), "CacheInstance2", testInterval);
+            BlitzCacheLoggingService.Add(new BlitzCacheInstance(), "CacheInstance1", testInterval);
+            BlitzCacheLoggingService.Add(new BlitzCacheInstance(), "CacheInstance2", testInterval);
             loggingService = new BlitzCacheLoggingService(testLogger, testInterval);
             var cancellationToken = new CancellationTokenSource(TimeSpan.FromMilliseconds(TestConstants.StandardTimeoutMs)).Token;
 
@@ -172,8 +171,8 @@ namespace BlitzCacheCore.Tests
         {
             loggingService = new BlitzCacheLoggingService(testLogger);
             var cacheInstance = new BlitzCacheInstance();
-            BlitzCacheLoggingService.RegisterBlitzCacheInstance(cacheInstance, "CacheInstance1", testInterval);
-            BlitzCacheLoggingService.RegisterBlitzCacheInstance(cacheInstance, "CacheInstance2", testInterval);
+            BlitzCacheLoggingService.Add(cacheInstance, "CacheInstance1", testInterval);
+            BlitzCacheLoggingService.Add(cacheInstance, "CacheInstance2", testInterval);
 
             Assert.AreEqual(1, BlitzCacheLoggingService.GetInstances().Count, "Should only register once even with multiple calls");
         }

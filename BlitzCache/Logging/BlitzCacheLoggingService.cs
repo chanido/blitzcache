@@ -20,20 +20,19 @@ namespace BlitzCacheCore.Logging
             this.logInterval = logInterval ?? TimeSpan.FromMinutes(5);
         }
 
-        internal BlitzCacheLoggingService(IBlitzCache cache, ILogger<BlitzCacheLoggingService> logger, string? identifier = null, TimeSpan? logInterval = null)
+        internal BlitzCacheLoggingService(ILogger<BlitzCacheLoggingService> logger, IBlitzCache? cache, string? identifier = null, TimeSpan? logInterval = null)
             : this(logger, logInterval)
         {
-            if (cache == null) throw new ArgumentNullException(nameof(cache), "BlitzCache cannot be null");
-            RegisterBlitzCacheInstance(cache, identifier, logInterval);
-            cache.InitializeStatistics();
+            if (cache != null) Add(cache, identifier, logInterval);
         }
 
-        public static void RegisterBlitzCacheInstance(IBlitzCache instance, string? identifier = null, TimeSpan? logInterval = null)
+        public static void Add(IBlitzCache instance, string? identifier = null, TimeSpan? logInterval = null)
         {
             if (instance == null) throw new ArgumentNullException(nameof(instance), "BlitzCacheInstance cannot be null");
 
             if (blitzCacheInstances.Any(bi => bi.Equals(instance))) return; // Prevent duplicate registrations
 
+            instance.InitializeStatistics();
             blitzCacheInstances.Add(new BlitzLoggerInstance(instance, identifier, logInterval));
         }
 

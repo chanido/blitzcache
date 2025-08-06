@@ -1,8 +1,8 @@
 # [2.0.2] - 2025-08-05
 
 ### Changed
-- **Added BlitzCacheInstance**: Sometimes you want an isolated cache that is not polluted from other parts of your application.
-You might want to use this for Bounded Contexts or to have a smaller dedicated cache for some particular feature or class.
+- **Added BlitzCacheInstance**: Ideal when you want an isolated cache that is not polluted from other parts of your application.
+- **Made Adding Statistics Optional Or Automatic**: They are not available by default but if the BlitzCacheInstance is added to the LoggingService they are activated automatically.
 - Improved documentation to clarify usages of BlitzCacheInstance.
 - Test suite and examples updated to reflect this change.
 

@@ -116,11 +116,8 @@ var data = await cache.BlitzGet("key", ExpensiveOperation, timeoutMs);
 // Setup (one line in Program.cs)
 services.AddBlitzCache();
 
-// Optional: Add automatic logging of cache statistics (v2.0.1+)
-services.AddBlitzCache(enableStatistics: true);
+// Optional: Add automatic logging of cache statistics (v2.0.2+)
 services.AddBlitzCacheLogging(); // Logs cache performance hourly
-
-var stats = cache.Statistics; // Live statistics seamlessly
 
 // Usage anywhere
 public WeatherService(IBlitzCache cache) => this.cache = cache;
