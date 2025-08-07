@@ -89,7 +89,7 @@ jobs:
         sed -i "s|https://codecov.io/gh/chanido/blitzcache/branch/[^/]*/graph/badge.svg|https://codecov.io/gh/chanido/blitzcache/branch/$CURRENT_BRANCH/graph/badge.svg|g" README.md
 
         # Extract test count from junit.xml (first tests attribute found)
-        TEST_COUNT=$(grep -oP 'tests="\K[0-9]+' ./TestResults/junit.xml | head -1)
+        TEST_COUNT=$(grep -oP 'tests="\K[0-9]+' BlitzCache.Tests/TestResults/junit.xml | head -1)
         echo "Test count: $TEST_COUNT"
         if [ -z "$TEST_COUNT" ]; then
           echo "Could not extract test count, skipping badge update."
