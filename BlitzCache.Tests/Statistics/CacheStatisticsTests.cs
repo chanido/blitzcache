@@ -1,9 +1,9 @@
 using BlitzCacheCore.Tests.Helpers;
 using NUnit.Framework;
-using System;
+using System.Linq;
 using System.Threading.Tasks;
 
-namespace BlitzCacheCore.Tests
+namespace BlitzCacheCore.Tests.Statistics
 {
     /// <summary>
     /// Tests for cache statistics and monitoring functionality.
@@ -270,14 +270,14 @@ namespace BlitzCacheCore.Tests
             for (int i = 0; i < tasks.Length; i++)
             {
                 int threadId = i;
-                tasks[i] = Task.Run((Action)(() =>
+                tasks[i] = Task.Run(() =>
                 {
                     for (int j = 0; j < totalOperations / tasks.Length; j++)
                     {
                         var key = $"thread_{threadId}_key_{j % 5}"; // Some keys will repeat (hits)
-                        cache.BlitzGet<string>(key, (Func<string>)(() => $"value_{threadId}_{j}"), TestConstants.StandardTimeoutMs);
+                        cache.BlitzGet(key, () => $"value_{threadId}_{j}", TestConstants.StandardTimeoutMs);
                     }
-                }));
+                });
             }
 
             Task.WaitAll(tasks);
@@ -500,6 +500,79 @@ namespace BlitzCacheCore.Tests
             {
                 cacheWithoutStats.Dispose();
             }
+        }
+
+        [Test]
+        public void TopSlowestQueries_TracksSlowQueriesCorrectly()
+        {
+            // Arrange: create cache with TopSlowestQueries enabled (e.g., 3)
+            var cache = new BlitzCacheInstance(maxTopSlowest: 3);
+            cache.InitializeStatistics();
+
+            // Insert queries with varying durations
+            cache.BlitzGet("q1", () => { Task.Delay(10).Wait(); return "v1"; }); // Simulate 10ms
+            cache.BlitzGet("q2", () => { Task.Delay(30).Wait(); return "v2"; }); // Simulate 30ms
+            cache.BlitzGet("q3", () => { Task.Delay(20).Wait(); return "v3"; }); // Simulate 20ms
+            cache.BlitzGet("q4", () => { Task.Delay(40).Wait(); return "v4"; }); // Simulate 40ms
+
+            // Act
+            var topSlowest = cache.Statistics.TopSlowestQueries?.ToList();
+
+            // Assert
+            Assert.NotNull(topSlowest, "TopSlowestQueries should not be null");
+            Assert.AreEqual(3, topSlowest.Count, "Should only keep the top 3 slowest queries");
+            // Should be sorted descending by duration (worst case)
+            var durations = topSlowest.Select(q => q.WorstCaseMs).ToList();
+            for (int i = 1; i < durations.Count; i++)
+                Assert.GreaterOrEqual(durations[i - 1], durations[i], "TopSlowestQueries should be sorted descending");
+            // The slowest queries should be q4, q2, q3 (40, 30, 20)
+            var keys = topSlowest.Select(q => q.CacheKey).ToList();
+            CollectionAssert.AreEquivalent(new[] { "q4", "q2", "q3" }, keys, "Top slowest queries should be correct");
+        }
+
+        [Test]
+        public async Task TopSlowestQueries_UpdatesOnRepeatedQueries()
+        {
+            // Arrange: create cache with TopSlowestQueries enabled (e.g., 2)
+            var cache = new BlitzCacheInstance(maxTopSlowest: 2);
+            cache.InitializeStatistics();
+
+            // Insert a query, then update it with a slower duration
+            cache.BlitzGet("q1", () => { Task.Delay(TestConstants.EvictionCallbackWaitMs).Wait(); return "v1"; }, TestConstants.EvictionCallbackWaitMs); //This call will take very little time and be disposed very quickly
+            cache.BlitzGet("q2", () => { Task.Delay(TestConstants.StandardTimeoutMs).Wait(); return "v2"; });
+
+            await TestDelays.ShortDelay(); // We wait until q1 is disposed
+
+            // Now update q1 with a slower run
+            cache.BlitzGet("q1", () => { Task.Delay(TestConstants.StandardTimeoutMs * 2).Wait(); return "v1b"; }); // Twice as slow as q2
+
+            // Act
+            var topSlowest = cache.Statistics.TopSlowestQueries?.ToList();
+
+            // Assert
+            Assert.NotNull(topSlowest, "TopSlowestQueries should not be null");
+            Assert.AreEqual(2, topSlowest.Count, "Should only keep the top 2 slowest queries");
+            // q1 should now be the slowest
+            Assert.AreEqual("q1", topSlowest[0].CacheKey, "q1 should be the slowest after update");
+            Assert.GreaterOrEqual(topSlowest[0].WorstCaseMs, topSlowest[1].WorstCaseMs, "Should be sorted descending");
+        }
+
+        [Test]
+        public void TopSlowestQueries_EmptyWhenDisabled()
+        {
+            // Arrange: create cache with TopSlowestQueries disabled
+            var cache = new BlitzCacheInstance(maxTopSlowest: 0);
+            cache.InitializeStatistics();
+
+            // Insert queries
+            cache.BlitzGet("q1", () => { Task.Delay(10).Wait(); return "v1"; });
+            cache.BlitzGet("q2", () => { Task.Delay(20).Wait(); return "v2"; });
+
+            // Act
+            var topSlowest = cache.Statistics.TopSlowestQueries;
+
+            // Assert
+            Assert.IsTrue(topSlowest == null || !topSlowest.Any(), "TopSlowestQueries should be null or empty when disabled");
         }
     }
 }

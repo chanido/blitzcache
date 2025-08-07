@@ -3,7 +3,8 @@
 ### Changed
 - **Added BlitzCacheInstance**: Ideal when you want an isolated cache that is not polluted from other parts of your application.
 - **Made Adding Statistics Optional Or Automatic**: They are not available by default but if the BlitzCacheInstance is added to the LoggingService they are activated automatically.
-- Improved documentation to clarify usages of BlitzCacheInstance.
+- **Top Slowest Queries Tracking**: Added a list of the `TopSlowestQueries` to help monitor the system and identify parts of the application that could be problematic.
+- Improved documentation to clarify usages of BlitzCacheInstance and the new slow query monitoring feature.
 - Test suite and examples updated to reflect this change.
 
 ### Fixed

@@ -3,7 +3,7 @@ using NUnit.Framework;
 using System;
 using System.Threading.Tasks;
 
-namespace BlitzCacheCore.Tests
+namespace BlitzCacheCore.Tests.Statistics
 {
     /// <summary>
     /// Tests to verify that cache statistics accurately track automatic cache expirations.

@@ -15,9 +15,9 @@ namespace BlitzCacheCore
         /// Creates a new BlitzCache instance.
         /// </summary>
         /// <param name="defaultMilliseconds">Default cache duration in milliseconds</param>
-        /// <param name="enableStatistics">Whether to enable statistics tracking (default: false for better performance)</param>
         /// <param name="cleanupInterval">Interval for automatic cleanup of unused semaphores (default: 10 seconds)</param>
-        public BlitzCache(long? defaultMilliseconds = 60000, TimeSpan? cleanupInterval = null)
+        /// <param name="maxTopSlowest">Max number of top slowest queries to store (0 for improved performance) (default: 5 queries)</param>
+        public BlitzCache(long? defaultMilliseconds = 60000, TimeSpan? cleanupInterval = null, int? maxTopSlowest = 5)
         {
             if (defaultMilliseconds < 1) throw new ArgumentOutOfRangeException(nameof(defaultMilliseconds), "Default milliseconds must be non-negative");
 
@@ -25,10 +25,7 @@ namespace BlitzCacheCore
             {
                 lock (globalLock)
                 {
-                    if (globalInstance is null)
-                    {
-                        globalInstance = new BlitzCacheInstance(defaultMilliseconds, cleanupInterval);
-                    }
+                    globalInstance ??= new BlitzCacheInstance(defaultMilliseconds, cleanupInterval, maxTopSlowest);
                 }
             }
         }

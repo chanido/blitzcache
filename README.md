@@ -61,6 +61,7 @@ for (int i = 0; i < 100; i++)
 ✅ **Works with everything** - Sync, async, any data type, any .NET app  
 ✅ **Automatic logging** - Built-in statistics monitoring with one line setup (v2.0.1+)
 ✅ **Global statistics always enabled** - As of v2.0.2, the global singleton always provides statistics for monitoring
+✅ **Top Slowest Queries** - As of v2.0.2, BlitzCache tracks and exposes the top slowest queries, making it easy to identify performance bottlenecks in your application
 
 ## 📋 Table of Contents
 
@@ -140,6 +141,7 @@ Perfect for **getting started** - covers essential patterns:
 - ✅ **BlitzUpdate usage** - Pre-populating cache
 - ✅ **Different data types** - Caching various objects
 - ✅ **Cache statistics monitoring** - Performance analytics and hit/miss tracking
+- ✅ **Top slowest queries** - Identify and monitor the slowest cache operations (v2.0.2+)
 - ✅ **Dependency injection** - ASP.NET Core integration
 
 #### 🚀 **[AdvancedUsageExamples.cs](https://github.com/chanido/blitzcache/blob/master/BlitzCache.Tests/Examples/AdvancedUsageExamples.cs)**
@@ -152,6 +154,7 @@ For **experienced users** - sophisticated scenarios:
 - ✅ **Conditional caching** - Success/failure caching logic
 - ✅ **Global vs Independent caches** - Instance management
 - ✅ **Performance monitoring** - Metrics and diagnostics
+- ✅ **Top slowest queries** - Track and analyze slowest cache operations for optimization (v2.0.2+)
 
 ### **Running the Examples**
 ```bash
@@ -308,7 +311,7 @@ BlitzCache provides built-in performance statistics to help you monitor cache ef
 
 ```csharp
 
-// Access cache statistics (never null for BlitzCache.Global as of v2.0.2)
+// Access cache statistics
 var stats = cache.Statistics;
 
 Console.WriteLine($"Cache Hit Ratio: {stats.HitRatio:P1}"); // e.g., "75.5%"
@@ -318,6 +321,13 @@ Console.WriteLine($"Cache Misses: {stats.MissCount}");
 Console.WriteLine($"Current Entries: {stats.CurrentEntryCount}");
 Console.WriteLine($"Evictions: {stats.EvictionCount}");
 Console.WriteLine($"Active Semaphores: {stats.ActiveSemaphoreCount}");
+// New in v2.0.2: Top slowest queries
+if (stats.TopSlowestQueries != null && stats.TopSlowestQueries.Any())
+{
+    Console.WriteLine("Top Slowest Queries:");
+    foreach (var q in stats.TopSlowestQueries)
+        Console.WriteLine($"  {q}");
+}
 ```
 
 #### Real-World Monitoring Example
@@ -372,6 +382,7 @@ Console.WriteLine($"Period hit ratio: {periodStats.HitRatio:P1}");
 - **`CurrentEntryCount`**: Current number of cached entries
 - **`EvictionCount`**: Number of manual removals and expirations
 - **`ActiveSemaphoreCount`**: Current concurrency control structures
+- **`TopSlowestQueries`**: List of the slowest cache operations (v2.0.2+)
 - **`Reset()`**: Method to reset all counters to zero
 
 ## 📖 API Reference

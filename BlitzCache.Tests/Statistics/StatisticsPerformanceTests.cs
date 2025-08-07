@@ -4,7 +4,7 @@ using System;
 using System.Diagnostics;
 using System.Threading.Tasks;
 
-namespace BlitzCacheCore.Tests
+namespace BlitzCacheCore.Tests.Statistics
 {
     /// <summary>
     /// Performance tests to measure the impact of cache statistics on BlitzCache operations.
@@ -257,19 +257,19 @@ namespace BlitzCacheCore.Tests
             for (int t = 0; t < threadsCount; t++)
             {
                 int threadId = t;
-                tasksWithStats[t] = Task.Run((Action)(() =>
+                tasksWithStats[t] = Task.Run(() =>
                 {
                     for (int i = 0; i < operationsPerThread; i++)
                     {
                         var key = $"thread_{threadId}_key_{i % 10}";
-                        cacheWithStatistics.BlitzGet<string>(key, (Func<string>)(() => $"value_{threadId}_{i}"), TestConstants.LongTimeoutMs);
+                        cacheWithStatistics.BlitzGet(key, () => $"value_{threadId}_{i}", TestConstants.LongTimeoutMs);
                         if (i % TestConstants.ConcurrentOperationsCount == 0)
                         {
                             var stats = cacheWithStatistics.Statistics;
                             var hitRatio = stats.HitRatio;
                         }
                     }
-                }));
+                });
             }
             Task.WaitAll(tasksWithStats);
             stopwatchWithStatistics.Stop();
@@ -280,14 +280,14 @@ namespace BlitzCacheCore.Tests
             for (int t = 0; t < threadsCount; t++)
             {
                 int threadId = t;
-                tasksWithoutStats[t] = Task.Run((Action)(() =>
+                tasksWithoutStats[t] = Task.Run(() =>
                 {
                     for (int i = 0; i < operationsPerThread; i++)
                     {
                         var key = $"thread_{threadId}_key_{i % 10}";
-                        cacheWithoutStatistics.BlitzGet<string>(key, (Func<string>)(() => $"value_{threadId}_{i}"), TestConstants.LongTimeoutMs);
+                        cacheWithoutStatistics.BlitzGet(key, () => $"value_{threadId}_{i}", TestConstants.LongTimeoutMs);
                     }
-                }));
+                });
             }
             Task.WaitAll(tasksWithoutStats);
             stopwatchWithoutStatistics.Stop();
@@ -320,6 +320,63 @@ namespace BlitzCacheCore.Tests
             Console.WriteLine($"Average per operation With/Without: {avgTimePerOpWithStatistics:F6}ms/{avgTimePerOpWithoutStatistics:F6}ms");
 
             cacheWithStatistics.Dispose();
+        }
+
+        [Test]
+        public void Statistics_PerformanceImpact_Top_50_SlowestQueries()
+        {
+            var topSlowestQueries = 100;
+            string GetRandomKey(int numberOfPossibleDifferentKeys)
+            {
+                return $"key_{Random.Shared.Next(numberOfPossibleDifferentKeys)}";
+            }
+
+            // Arrange
+            var iterations = 10000;
+
+            // 1. No statistics
+            var cacheNoStats = TestFactory.CreateBlitzCacheInstance();
+            cacheNoStats.BlitzGet(GetRandomKey(topSlowestQueries), () => "value"); // Pre-populate
+            var swNoStats = Stopwatch.StartNew();
+            for (int i = 0; i < iterations; i++)
+                cacheNoStats.BlitzGet(GetRandomKey(topSlowestQueries), () => "value", TestConstants.LongTimeoutMs);
+            swNoStats.Stop();
+
+            // 2. Statistics enabled, TopSlowestQueries disabled
+            var cacheStatsNoTop = new BlitzCacheInstance(maxTopSlowest: 0);
+            cacheStatsNoTop.InitializeStatistics();
+            // Try to disable TopSlowestQueries tracking if API allows, otherwise assume default is off or set to 0
+            if (cacheStatsNoTop.Statistics != null && cacheStatsNoTop.Statistics.TopSlowestQueries is IDisposable top)
+                top.Dispose(); // If possible, disable tracking
+            cacheStatsNoTop.BlitzGet(GetRandomKey(topSlowestQueries), () => "value"); // Pre-populate
+            var swStatsNoTop = Stopwatch.StartNew();
+            for (int i = 0; i < iterations; i++)
+                cacheStatsNoTop.BlitzGet(GetRandomKey(topSlowestQueries), () => "value", TestConstants.LongTimeoutMs);
+            swStatsNoTop.Stop();
+
+            // 3. Statistics enabled, TopSlowestQueries tracking 5
+            var cacheStatsTop5 = new BlitzCacheInstance(maxTopSlowest: topSlowestQueries);
+            cacheStatsTop5.InitializeStatistics();
+            cacheStatsTop5.BlitzGet(GetRandomKey(topSlowestQueries), () => "value"); // Pre-populate
+            var swStatsTop5 = Stopwatch.StartNew();
+            for (int i = 0; i < iterations; i++)
+                cacheStatsTop5.BlitzGet(GetRandomKey(topSlowestQueries), () => "value", TestConstants.LongTimeoutMs);
+            swStatsTop5.Stop();
+
+            // Results
+            var avgNoStats = swNoStats.Elapsed.TotalMilliseconds / iterations;
+            var avgStatsNoTop = swStatsNoTop.Elapsed.TotalMilliseconds / iterations;
+            var avgStatsTop5 = swStatsTop5.Elapsed.TotalMilliseconds / iterations;
+
+            Console.WriteLine($"=== TopSlowestQueries Performance Impact ===");
+            Console.WriteLine($"Operations: {iterations:N0}");
+            Console.WriteLine($"No statistics: {avgNoStats:F6}ms/op");
+            Console.WriteLine($"Statistics, no TopSlowestQueries: {avgStatsNoTop:F6}ms/op");
+            Console.WriteLine($"Statistics, TopSlowestQueries({topSlowestQueries}): {avgStatsTop5:F6}ms/op");
+
+            // Assert that all are performant, and TopSlowestQueries does not add excessive overhead
+            Assert.Less(avgStatsNoTop, avgNoStats * 5, "Statistics overhead should be reasonable");
+            Assert.Less(avgStatsTop5, avgStatsNoTop * 5, "TopSlowestQueries overhead should be reasonable");
         }
     }
 }

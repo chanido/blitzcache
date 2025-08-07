@@ -1,6 +1,8 @@
+
 using BlitzCacheCore.Tests.Helpers;
 using NUnit.Framework;
 using System;
+using System.Linq;
 using System.Threading.Tasks;
 
 namespace BlitzCacheCore.Tests.Examples
@@ -280,6 +282,35 @@ namespace BlitzCacheCore.Tests.Examples
             var otherProfile = cache.BlitzGet("user_profile_456", () => SimulateExpensiveDatabaseCall(456), TestConstants.StandardTimeoutMs);
             Assert.AreEqual("User profile for ID: 456 (DB call #2)", otherProfile);
             Assert.AreEqual(2, databaseCallCount, "Different user should trigger new database call");
+        }
+
+        /// <summary>
+        /// Example 11: Accessing Top Slowest Queries statistics
+        /// Demonstrates how to retrieve and inspect the slowest cache operations using BlitzCache statistics (v2.0.2+)
+        /// </summary>
+        [Test]
+        public async Task Example11_TopSlowestQueries()
+        {
+            cache.InitializeStatistics();
+            // Simulate several cache operations with varying delays
+            for (int i = 0; i < 3; i++)
+            {
+                await cache.BlitzGet($"slow_key_{i}", async () =>
+                {
+                    await Task.Delay(TestConstants.EvictionCallbackWaitMs + i * 20); // 30ms, 50ms, 70ms
+                    return $"Value {i}";
+                });
+            }
+
+            // Access the TopSlowestQueries statistics
+            var stats = cache.Statistics;
+            Assert.IsNotNull(stats, "Statistics should not be null");
+            Assert.IsNotNull(stats.TopSlowestQueries, "TopSlowestQueries should not be null");
+            Assert.IsTrue(stats.TopSlowestQueries.Count() > 0, "TopSlowestQueries should contain entries");
+
+            // Optionally, check that the slowest query is the one with the highest delay
+            var slowest = stats.TopSlowestQueries.First();
+            StringAssert.Contains("slow_key_2", slowest.ToString());
         }
     }
 }

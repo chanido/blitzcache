@@ -1,5 +1,6 @@
 ﻿using BlitzCacheCore.Statistics;
 using System;
+using System.Collections.Generic;
 using System.Runtime.CompilerServices;
 using System.Threading.Tasks;
 
@@ -61,6 +62,8 @@ namespace BlitzCacheCore
         public long EvictionCount => 0;
         public int ActiveSemaphoreCount => 0;
         public long TotalOperations => 0;
+        public IEnumerable<SlowQuery> TopSlowestQueries => Array.Empty<SlowQuery>();
+
         public void Reset() { }
     }
 }

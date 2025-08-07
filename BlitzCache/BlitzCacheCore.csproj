@@ -19,16 +19,18 @@
     <Version>2.0.2</Version>
     <AssemblyVersion>2.0.2.0</AssemblyVersion>
     <FileVersion>2.0.2.0</FileVersion>
-    <PackageReleaseNotes>BlitzCache v2.0.2 - Global statistics always enabled
+    <PackageReleaseNotes>BlitzCache v2.0.2 - Automatic Statistics
 
 NEW IN v2.0.2:
-• Global singleton now always has statistics enabled (cache.Statistics is never null)
+• Statistics enabled automatically or on demand if not using BlitzCacheLoggingService
 • Predictable monitoring and logging for all usages of BlitzCache.Global
+• Tracks and exposes the top slowest queries, making it easy to monitor and identify performance bottlenecks in your application.
 • Fully backward compatible for all other APIs
 
 THE SIMPLICITY ADVANTAGE:
 • One line of code prevents duplicate execution of expensive operations
 • Zero configuration required - works out of the box with sensible defaults
+• Automatic Statistics for monitoring your application
 • Ridiculously simple API that "just works" for any .NET application
 
 THUNDERING HERD PROTECTION:
@@ -47,7 +49,7 @@ ENTERPRISE PERFORMANCE:
 • Dynamic cache duration with result-based retention control
 • Full async/await support with proper Task handling
 • Automatic cache key generation or manual key management
-• Built-in statistics and monitoring capabilities
+• Built-in statistics, monitoring, and slow query tracking capabilities
 
 Perfect for protecting your backend systems while keeping your code simple!</PackageReleaseNotes>
     <PackageId>BlitzCache</PackageId>

@@ -1,7 +1,6 @@
 ﻿using Microsoft.Extensions.Logging;
 using System;
-using System.Diagnostics;
-using System.IO;
+using System.Linq;
 using System.Reflection;
 
 namespace BlitzCacheCore.Logging
@@ -32,14 +31,15 @@ namespace BlitzCacheCore.Logging
                 var stats = instance.Statistics!;
 
                 logger.LogInformation(
-                "[{Identifier}] BlitzCache Statistics - " +
-                "Hits: {HitCount}, " +
-                "Misses: {MissCount}, " +
-                "Hit Ratio: {HitRatio:P2}, " +
-                "Entries: {EntryCount}, " +
-                "Evictions: {EvictionCount}, " +
-                "Active Semaphores: {ActiveSemaphoreCount}, " +
-                "Total Operations: {TotalOperations}",
+                "***[{Identifier}] BlitzCache Statistics***\n" +
+                "Hits: {HitCount}\n" +
+                "Misses: {MissCount}\n" +
+                "Hit Ratio: {HitRatio:P2}\n" +
+                "Entries: {EntryCount}\n" +
+                "Evictions: {EvictionCount}\n" +
+                "Active Semaphores: {ActiveSemaphoreCount}\n" +
+                "Total Operations: {TotalOperations}\n" +
+                "Top Slowest Queries: {TopSlowestQueries}",
                 Identifier,
                 stats.HitCount,
                 stats.MissCount,
@@ -47,7 +47,8 @@ namespace BlitzCacheCore.Logging
                 stats.EntryCount,
                 stats.EvictionCount,
                 stats.ActiveSemaphoreCount,
-                stats.TotalOperations
+                stats.TotalOperations,
+                stats.TopSlowestQueries != null && stats.TopSlowestQueries.Count() > 0 ? string.Concat(stats.TopSlowestQueries.Select(q => $"\n\t{q}")) : "Not available"
             );
 
                 lastLogTime = DateTime.UtcNow;

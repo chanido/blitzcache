@@ -2,6 +2,7 @@
 using BlitzCacheCore.Statistics;
 using Microsoft.Extensions.Caching.Memory;
 using System;
+using System.Diagnostics;
 using System.Runtime.CompilerServices;
 using System.Threading.Tasks;
 
@@ -11,6 +12,7 @@ namespace BlitzCacheCore
     {
         private readonly IMemoryCache memoryCache;
         private readonly long defaultMilliseconds;
+        private readonly int maxTopSlowest;
         private readonly BlitzSemaphoreDictionary semaphoreDictionary;
         private CacheStatistics? statistics;
 
@@ -18,15 +20,16 @@ namespace BlitzCacheCore
         /// Creates a new BlitzCache instance.
         /// </summary>
         /// <param name="defaultMilliseconds">Default cache duration in milliseconds</param>
-        /// <param name="enableStatistics">Whether to enable statistics tracking (default: false for better performance)</param>
         /// <param name="cleanupInterval">Interval for automatic cleanup of unused semaphores (default: 10 seconds)</param>
-        public BlitzCacheInstance(long? defaultMilliseconds = 60000, TimeSpan? cleanupInterval = null)
+        /// <param name="maxTopSlowest">Max number of top slowest queries to store (0 for improved performance) (default: 5 queries)</param>
+        public BlitzCacheInstance(long? defaultMilliseconds = 60000, TimeSpan? cleanupInterval = null, int? maxTopSlowest = null)
         {
             if (defaultMilliseconds < 1) throw new ArgumentOutOfRangeException(nameof(defaultMilliseconds), "Default milliseconds must be non-negative");
 
             this.defaultMilliseconds = defaultMilliseconds!.Value;
             memoryCache = new MemoryCache(new MemoryCacheOptions());
             semaphoreDictionary = new BlitzSemaphoreDictionary(cleanupInterval);
+            this.maxTopSlowest = maxTopSlowest ?? 5;
         }
 
         /// <summary>
@@ -34,7 +37,7 @@ namespace BlitzCacheCore
         /// </summary>
         public int GetSemaphoreCount() => semaphoreDictionary.GetNumberOfLocks();
 
-        public void InitializeStatistics() => statistics = statistics ?? new CacheStatistics(() => semaphoreDictionary.GetNumberOfLocks());
+        public void InitializeStatistics() => statistics = statistics ?? new CacheStatistics(() => semaphoreDictionary.GetNumberOfLocks(), maxTopSlowest);
 
         /// <summary>
         /// Gets cache performance statistics and monitoring information.
@@ -78,14 +81,17 @@ namespace BlitzCacheCore
         {
             statistics?.RecordMiss();
             var nuances = new Nuances();
+
+            var stopwatch = Stopwatch.StartNew();
             var computedResult = function.Invoke(nuances);
+            stopwatch.Stop();
 
             var expirationTime = DateTime.UtcNow.AddMilliseconds(nuances.CacheRetention ?? milliseconds ?? defaultMilliseconds);
             var cacheEntryOptions = statistics?.CreateEntryOptions(expirationTime) ??
                 new MemoryCacheEntryOptions { AbsoluteExpiration = expirationTime };
 
             memoryCache.Set(cacheKey, computedResult, cacheEntryOptions);
-            statistics?.TrackEntry();
+            statistics?.TrackEntry(cacheKey, stopwatch);
             return computedResult;
         }
 
@@ -111,14 +117,16 @@ namespace BlitzCacheCore
         {
             statistics?.RecordMiss();
             var nuances = new Nuances();
+            var stopwatch = Stopwatch.StartNew();
             var computedResult = await function.Invoke(nuances);
+            stopwatch.Stop();
 
             var expirationTime = DateTime.UtcNow.AddMilliseconds(nuances.CacheRetention ?? milliseconds ?? defaultMilliseconds);
             var cacheEntryOptions = statistics?.CreateEntryOptions(expirationTime) ??
                 new MemoryCacheEntryOptions { AbsoluteExpiration = expirationTime };
 
             memoryCache.Set(cacheKey, computedResult, cacheEntryOptions);
-            statistics?.TrackEntry();
+            statistics?.TrackEntry(cacheKey, stopwatch);
             return computedResult;
         }
 
@@ -141,16 +149,16 @@ namespace BlitzCacheCore
         private void UpdateCacheEntry<T>(string cacheKey, T value, long milliseconds)
         {
             using var lockHandle = semaphoreDictionary.Wait(cacheKey);
-            SetCacheValue(cacheKey, value, milliseconds);
+            UpdateCacheValue(cacheKey, value, milliseconds);
         }
 
         private async Task UpdateCacheEntryAsync<T>(string cacheKey, T value, long milliseconds)
         {
             using var lockHandle = await semaphoreDictionary.WaitAsync(cacheKey);
-            SetCacheValue(cacheKey, value, milliseconds);
+            UpdateCacheValue(cacheKey, value, milliseconds);
         }
 
-        private void SetCacheValue<T>(string cacheKey, T value, long milliseconds)
+        private void UpdateCacheValue<T>(string cacheKey, T value, long milliseconds)
         {
             var existsInCache = memoryCache.TryGetValue(cacheKey, out _);
             var expirationTime = DateTime.UtcNow.AddMilliseconds(milliseconds);
@@ -160,7 +168,7 @@ namespace BlitzCacheCore
             memoryCache.Set(cacheKey, value, cacheEntryOptions);
 
             if (!existsInCache)
-                statistics?.TrackEntry();
+                statistics?.TrackEntryUpdate();
         }
 
         public void BlitzUpdate<T>(string cacheKey, Func<T> function, long milliseconds) => UpdateCacheEntry(cacheKey, function(), milliseconds);

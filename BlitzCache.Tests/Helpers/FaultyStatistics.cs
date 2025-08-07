@@ -1,5 +1,6 @@
 using BlitzCacheCore.Statistics;
 using System;
+using System.Collections.Generic;
 
 namespace BlitzCacheCore.Tests.Helpers
 {
@@ -27,6 +28,8 @@ namespace BlitzCacheCore.Tests.Helpers
         public long EvictionCount => 2;
         public int ActiveSemaphoreCount => 3;
         public long TotalOperations => 15;
+        public IEnumerable<SlowQuery> TopSlowestQueries => Array.Empty<SlowQuery>();
+
         public void Reset() { }
     }
 }
