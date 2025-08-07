@@ -45,6 +45,23 @@ for (int i = 0; i < 100; i++)
 }
 ```
 
+**📊 Automatic Statistics**
+```
+[12:51:32 INF] ***[Customers-Microservice] BlitzCache Statistics***
+Hits: 22
+Misses: 24
+Hit Ratio: 47.83 %
+Entries: 2
+Evictions: 20
+Active Semaphores: 0
+Total Operations: 46
+Top Slowest Queries:
+        LoadBlitzSafe_UsageFromView_819735987 - Worse: 18266ms | Best: 93ms | Avg: 2014 | Occurrences: 10
+        LoadBlitzSafe_MarketingView_819735987 - Worse: 8608ms | Best: 198ms | Avg: 4403 | Occurrences: 2
+        LoadBlitzSafe_BillingView_-2041290683 - Worse: 655ms | Best: 107ms | Avg: 228 | Occurrences: 7
+        CalculateAllDatesFromMarketing - Worse: 408ms | Best: 34ms | Avg: 201 | Occurrences: 3
+```
+
 **Perfect for protecting:**
 - 🗄️ **SQL Server** - Prevents slow query pile-ups that can crash databases
 - 🌐 **External APIs** - Avoids rate limiting and reduces costs
@@ -60,7 +77,7 @@ for (int i = 0; i < 100; i++)
 ✅ **Production tested** - Comprehensive testing ensure reliability  
 ✅ **Works with everything** - Sync, async, any data type, any .NET app  
 ✅ **Automatic logging** - Built-in statistics monitoring with one line setup (v2.0.1+)
-✅ **Global statistics always enabled** - As of v2.0.2, the global singleton always provides statistics for monitoring
+✅ **Global statistics** - As of v2.0.2, Statistics available and BlitzCacheLoggingService to log them automatically
 ✅ **Top Slowest Queries** - As of v2.0.2, BlitzCache tracks and exposes the top slowest queries, making it easy to identify performance bottlenecks in your application
 
 ## 📋 Table of Contents
@@ -307,7 +324,7 @@ await cache.BlitzUpdate("weather_data", async () => await GetWeatherAsync(), 300
 ### Cache Statistics and Monitoring
 BlitzCache provides built-in performance statistics to help you monitor cache effectiveness and optimize your application.
 
-**As of v2.0.2, statistics are always enabled on the global singleton.**
+**As of v2.0.2, statistics are automatically enabled if you add your cache instance to BlitzCacheLoggingService.**
 
 ```csharp
 
