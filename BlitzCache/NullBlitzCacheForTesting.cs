@@ -1,20 +1,17 @@
 ﻿using BlitzCacheCore.Statistics;
 using System;
+using System.Collections.Generic;
 using System.Runtime.CompilerServices;
 using System.Threading.Tasks;
-
-#nullable enable
 
 namespace BlitzCacheCore
 {
     public class NullBlitzCacheForTesting : IBlitzCache
     {
-        private readonly ICacheStatistics? nullStatistics;
+        protected ICacheStatistics? nullStatistics;
 
-        public NullBlitzCacheForTesting(bool enableStatistics = false)
-        {
-            nullStatistics = enableStatistics ? new NullCacheStatistics() : null;
-        }
+        public NullBlitzCacheForTesting()
+        { }
 
         public ICacheStatistics? Statistics => nullStatistics;
 
@@ -48,6 +45,8 @@ namespace BlitzCacheCore
         public void Dispose() { }
 
         protected virtual void Dispose(bool dispose) { }
+
+        void IBlitzCache.InitializeStatistics() => nullStatistics = new NullCacheStatistics();
     }
 
     /// <summary>
@@ -63,6 +62,8 @@ namespace BlitzCacheCore
         public long EvictionCount => 0;
         public int ActiveSemaphoreCount => 0;
         public long TotalOperations => 0;
+        public IEnumerable<SlowQuery> TopSlowestQueries => Array.Empty<SlowQuery>();
+
         public void Reset() { }
     }
 }

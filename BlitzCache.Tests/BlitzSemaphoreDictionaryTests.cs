@@ -55,7 +55,7 @@ namespace BlitzCacheCore.Tests
         [Test]
         public async Task GetSemaphore_ShouldWorkConcurrently()
         {
-            const int concurrentOperations = TestHelpers.ConcurrentOperationsCount;
+            const int concurrentOperations = TestConstants.ConcurrentOperationsCount;
             var tasks = new Task[concurrentOperations];
 
             for (int i = 0; i < concurrentOperations; i++)
@@ -65,7 +65,7 @@ namespace BlitzCacheCore.Tests
                 {
                     var semaphore = semaphoreDictionary.GetSemaphore($"concurrent_key_{index}");
                     using var lockHandle = await semaphore.AcquireAsync();
-                    await TestHelpers.ShortDelay();
+                    await TestDelays.ShortDelay();
                 });
             }
 
@@ -84,13 +84,13 @@ namespace BlitzCacheCore.Tests
             {
                 var semaphore = semaphoreDictionary.GetSemaphore(key);
                 using var lockHandle = await semaphore.AcquireAsync();
-                await TestHelpers.ShortDelay();
+                await TestDelays.ShortDelay();
             }
 
             var initialCount = semaphoreDictionary.GetNumberOfLocks();
 
             // Wait for cleanup cycles to occur (reduced from 1500ms with faster cleanup interval)
-            await TestHelpers.LongDelay();
+            await TestDelays.LongDelay();
 
             var finalCount = semaphoreDictionary.GetNumberOfLocks();
             Assert.That(finalCount, Is.LessThanOrEqualTo(initialCount));
@@ -107,7 +107,7 @@ namespace BlitzCacheCore.Tests
 
             var initialCount = semaphoreDictionary.GetNumberOfLocks();
 
-            await TestHelpers.LongDelay(); // Reduced from 2000ms with faster cleanup interval
+            await TestDelays.LongDelay(); // Reduced from 2000ms with faster cleanup interval
 
             var finalCount = semaphoreDictionary.GetNumberOfLocks();
             Assert.That(finalCount, Is.GreaterThanOrEqualTo(2));

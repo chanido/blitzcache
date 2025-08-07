@@ -1,11 +1,9 @@
 
 # ⚡ BlitzCache
-
-![BlitzCache](https://github.com/chanido/blitzcache/raw/develop/BlitzCache.png)
-
 [![NuGet](https://img.shields.io/nuget/v/BlitzCache.svg)](https://www.nuget.org/packages/BlitzCache/)
 [![NuGet Downloads](https://img.shields.io/nuget/dt/BlitzCache.svg)](https://www.nuget.org/packages/BlitzCache/)
-[![codecov](https://codecov.io/gh/chanido/blitzcache/branch/master/graph/badge.svg)](https://codecov.io/gh/chanido/blitzcache)
+[![Tests](https://img.shields.io/badge/tests-157%20passing-brightgreen)](./BlitzCache.Tests)
+[![codecov](https://codecov.io/gh/chanido/blitzcache/branch/develop/graph/badge.svg)](https://codecov.io/gh/chanido/blitzcache)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![.NET Standard](https://img.shields.io/badge/.NET%20Standard-2.1-blue.svg)](https://docs.microsoft.com/en-us/dotnet/standard/net-standard)
 
@@ -47,6 +45,23 @@ for (int i = 0; i < 100; i++)
 }
 ```
 
+**📊 Automatic Statistics**
+```
+[12:51:32 INF] ***[Customers-Microservice] BlitzCache Statistics***
+Hits: 22
+Misses: 24
+Hit Ratio: 47.83 %
+Entries: 2
+Evictions: 20
+Active Semaphores: 0
+Total Operations: 46
+Top Slowest Queries:
+        LoadBlitzSafe_UsageFromView_819735987 - Worse: 18266ms | Best: 93ms | Avg: 2014 | Occurrences: 10
+        LoadBlitzSafe_MarketingView_819735987 - Worse: 8608ms | Best: 198ms | Avg: 4403 | Occurrences: 2
+        LoadBlitzSafe_BillingView_-2041290683 - Worse: 655ms | Best: 107ms | Avg: 228 | Occurrences: 7
+        CalculateAllDatesFromMarketing - Worse: 408ms | Best: 34ms | Avg: 201 | Occurrences: 3
+```
+
 **Perfect for protecting:**
 - 🗄️ **SQL Server** - Prevents slow query pile-ups that can crash databases
 - 🌐 **External APIs** - Avoids rate limiting and reduces costs
@@ -59,10 +74,11 @@ for (int i = 0; i < 100; i++)
 ✅ **Ultra-fast performance** - 0.0001ms per operation with intelligent memory management  
 ✅ **Thread-safe by design** - Handles any concurrency scenario automatically  
 ✅ **Memory leak prevention** - Advanced cleanup prevents memory bloat  
-✅ **Production tested** - 141 comprehensive tests ensure reliability  
+✅ **Production tested** - Comprehensive testing ensure reliability  
 ✅ **Works with everything** - Sync, async, any data type, any .NET app  
 ✅ **Automatic logging** - Built-in statistics monitoring with one line setup (v2.0.1+)
-✅ **Global statistics always enabled** - As of v2.0.2, the global singleton always provides statistics for monitoring
+✅ **Global statistics** - As of v2.0.2, Statistics available and BlitzCacheLoggingService to log them automatically
+✅ **Top Slowest Queries** - As of v2.0.2, BlitzCache tracks and exposes the top slowest queries, making it easy to identify performance bottlenecks in your application
 
 ## 📋 Table of Contents
 
@@ -116,11 +132,8 @@ var data = await cache.BlitzGet("key", ExpensiveOperation, timeoutMs);
 // Setup (one line in Program.cs)
 services.AddBlitzCache();
 
-// Optional: Add automatic logging of cache statistics (v2.0.1+)
-services.AddBlitzCache(enableStatistics: true);
+// Optional: Add automatic logging of cache statistics (v2.0.2+)
 services.AddBlitzCacheLogging(); // Logs cache performance hourly
-
-var stats = cache.Statistics; // Live statistics seamlessly
 
 // Usage anywhere
 public WeatherService(IBlitzCache cache) => this.cache = cache;
@@ -145,6 +158,7 @@ Perfect for **getting started** - covers essential patterns:
 - ✅ **BlitzUpdate usage** - Pre-populating cache
 - ✅ **Different data types** - Caching various objects
 - ✅ **Cache statistics monitoring** - Performance analytics and hit/miss tracking
+- ✅ **Top slowest queries** - Identify and monitor the slowest cache operations (v2.0.2+)
 - ✅ **Dependency injection** - ASP.NET Core integration
 
 #### 🚀 **[AdvancedUsageExamples.cs](https://github.com/chanido/blitzcache/blob/master/BlitzCache.Tests/Examples/AdvancedUsageExamples.cs)**
@@ -157,6 +171,7 @@ For **experienced users** - sophisticated scenarios:
 - ✅ **Conditional caching** - Success/failure caching logic
 - ✅ **Global vs Independent caches** - Instance management
 - ✅ **Performance monitoring** - Metrics and diagnostics
+- ✅ **Top slowest queries** - Track and analyze slowest cache operations for optimization (v2.0.2+)
 
 ### **Running the Examples**
 ```bash
@@ -309,11 +324,11 @@ await cache.BlitzUpdate("weather_data", async () => await GetWeatherAsync(), 300
 ### Cache Statistics and Monitoring
 BlitzCache provides built-in performance statistics to help you monitor cache effectiveness and optimize your application.
 
-**As of v2.0.2, statistics are always enabled on the global singleton.**
+**As of v2.0.2, statistics are automatically enabled if you add your cache instance to BlitzCacheLoggingService.**
 
 ```csharp
 
-// Access cache statistics (never null for BlitzCache.Global as of v2.0.2)
+// Access cache statistics
 var stats = cache.Statistics;
 
 Console.WriteLine($"Cache Hit Ratio: {stats.HitRatio:P1}"); // e.g., "75.5%"
@@ -323,6 +338,13 @@ Console.WriteLine($"Cache Misses: {stats.MissCount}");
 Console.WriteLine($"Current Entries: {stats.CurrentEntryCount}");
 Console.WriteLine($"Evictions: {stats.EvictionCount}");
 Console.WriteLine($"Active Semaphores: {stats.ActiveSemaphoreCount}");
+// New in v2.0.2: Top slowest queries
+if (stats.TopSlowestQueries != null && stats.TopSlowestQueries.Any())
+{
+    Console.WriteLine("Top Slowest Queries:");
+    foreach (var q in stats.TopSlowestQueries)
+        Console.WriteLine($"  {q}");
+}
 ```
 
 #### Real-World Monitoring Example
@@ -377,6 +399,7 @@ Console.WriteLine($"Period hit ratio: {periodStats.HitRatio:P1}");
 - **`CurrentEntryCount`**: Current number of cached entries
 - **`EvictionCount`**: Number of manual removals and expirations
 - **`ActiveSemaphoreCount`**: Current concurrency control structures
+- **`TopSlowestQueries`**: List of the slowest cache operations (v2.0.2+)
 - **`Reset()`**: Method to reset all counters to zero
 
 ## 📖 API Reference
@@ -473,7 +496,7 @@ Cleans up resources (implements IDisposable).
 BlitzCache delivers enterprise-grade performance and reliability:
 - ✅ **Zero memory leaks** - Advanced usage-based cleanup
 - ✅ **0.0001ms per operation** - Ultra-high performance 
-- ✅ **141 tests passing** - Comprehensive reliability
+- ✅ **Every feature is tested** - Comprehensive reliability
 - ✅ **Advanced architecture** - Intelligent memory management
 - ✅ **Thread-safe** - Concurrent operation guarantees
 

@@ -1,9 +1,10 @@
 # [2.0.2] - 2025-08-05
 
 ### Changed
-- **Added BlitzCacheInstance**: Sometimes you want an isolated cache that is not polluted from other parts of your application.
-You might want to use this for Bounded Contexts or to have a smaller dedicated cache for some particular feature or class.
-- Improved documentation to clarify usages of BlitzCacheInstance.
+- **Added BlitzCacheInstance**: Ideal when you want an isolated cache that is not polluted from other parts of your application.
+- **Made Adding Statistics Optional Or Automatic**: They are not available by default but if the BlitzCacheInstance is added to the LoggingService they are activated automatically.
+- **Top Slowest Queries Tracking**: Added a list of the `TopSlowestQueries` to help monitor the system and identify parts of the application that could be problematic.
+- Improved documentation to clarify usages of BlitzCacheInstance and the new slow query monitoring feature.
 - Test suite and examples updated to reflect this change.
 
 ### Fixed
@@ -29,7 +30,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 - Enhanced `IServiceCollectionExtensions` with logging configuration options
 - Improved test coverage with logging functionality examples
-- Updated comprehensive test suite to 141 tests
+- Updated comprehensive test suite
 - **Updated CI/CD pipeline to .NET 8.0** - No longer supports .NET 6.0 in build pipeline for better security and performance
 
 ### Fixed

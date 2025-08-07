@@ -1,3 +1,5 @@
+using System.Collections.Generic;
+
 namespace BlitzCacheCore.Statistics
 {
     /// <summary>
@@ -47,6 +49,7 @@ namespace BlitzCacheCore.Statistics
         /// Total number of operations (hits + misses) performed by this cache instance.
         /// </summary>
         long TotalOperations { get; }
+        IEnumerable<SlowQuery> TopSlowestQueries { get; }
 
         /// <summary>
         /// Resets all statistics counters to zero.

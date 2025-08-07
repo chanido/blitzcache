@@ -3,7 +3,7 @@ using NUnit.Framework;
 using System;
 using System.Threading.Tasks;
 
-namespace BlitzCacheCore.Tests
+namespace BlitzCacheCore.Tests.Statistics
 {
     /// <summary>
     /// Tests to verify that cache statistics accurately track automatic cache expirations.
@@ -15,11 +15,12 @@ namespace BlitzCacheCore.Tests
         public async Task Statistics_AutomaticExpiration_TracksEvictionCorrectly()
         {
             // Arrange
-            var cache = TestHelpers.CreateBlitzCacheInstanceWithStatistics();
+            var cache = TestFactory.CreateBlitzCacheInstance();
+            cache.InitializeStatistics();
             var testId = Guid.NewGuid().ToString("N")[..8]; // Unique test ID
 
             // Act - Add cache entries with short expiration (one at a time)
-            cache.BlitzGet($"key1_{testId}", () => "value1", TestHelpers.StandardTimeoutMs);
+            cache.BlitzGet($"key1_{testId}", () => "value1", TestConstants.StandardTimeoutMs);
             var statsAfterFirst = cache.Statistics;
             Console.WriteLine($"After first creation: {statsAfterFirst.EntryCount} entries, {statsAfterFirst.EvictionCount} evictions");
 
@@ -28,13 +29,13 @@ namespace BlitzCacheCore.Tests
             Assert.AreEqual(0, statsAfterFirst.EvictionCount, "Should have no evictions after first creation");
 
             // Wait for automatic expiration
-            await TestHelpers.WaitForStandardExpiration(); // Wait longer than expiration
+            await TestDelays.WaitForStandardExpiration(); // Wait longer than expiration
 
             // Try to access the expired entry (this should trigger cleanup and create new entry)
-            var result1 = cache.BlitzGet($"key1_{testId}", () => "new_value1", TestHelpers.StandardTimeoutMs);
+            var result1 = cache.BlitzGet($"key1_{testId}", () => "new_value1", TestConstants.StandardTimeoutMs);
 
             // Give some time for the eviction callbacks to execute
-            await TestHelpers.WaitForEvictionCallbacks();
+            await TestDelays.WaitForEvictionCallbacks();
 
             var statsAfterExpiration = cache.Statistics;
             Console.WriteLine($"After expiration: {statsAfterExpiration.EntryCount} entries, {statsAfterExpiration.EvictionCount} evictions");
@@ -57,7 +58,8 @@ namespace BlitzCacheCore.Tests
         public async Task Statistics_ManualRemoval_DoesNotDoubleCountEvictions()
         {
             // Arrange
-            var cache = TestHelpers.CreateBlitzCacheInstanceWithStatistics(); // Use instance cache to avoid interference
+            var cache = TestFactory.CreateBlitzCacheInstance(); // Use instance cache to avoid interference
+            cache.InitializeStatistics();
             var testId = Guid.NewGuid().ToString("N")[..8]; // Unique test ID
 
             // Get initial state to handle any pre-existing evictions
@@ -66,11 +68,11 @@ namespace BlitzCacheCore.Tests
             Console.WriteLine($"Initial: {initialEvictionCount} evictions, {initialEntryCount} entries");
 
             // Act - Add and manually remove
-            cache.BlitzGet($"test_key_{testId}", () => "test_value", TestHelpers.StandardTimeoutMs);
+            cache.BlitzGet($"test_key_{testId}", () => "test_value", TestConstants.StandardTimeoutMs);
             var evictionCountAfterCreation = cache.Statistics.EvictionCount;
 
             cache.Remove($"test_key_{testId}");
-            await TestHelpers.WaitForEvictionCallbacks();
+            await TestDelays.WaitForEvictionCallbacks();
             var evictionCountAfterRemoval = cache.Statistics.EvictionCount;
             var entryCountAfterRemoval = cache.Statistics.EntryCount;
 
@@ -93,12 +95,13 @@ namespace BlitzCacheCore.Tests
         public async Task Statistics_MixedEvictions_TracksAllCorrectly()
         {
             // Arrange
-            var cache = TestHelpers.CreateBlitzCacheInstanceWithStatistics();
+            var cache = TestFactory.CreateBlitzCacheInstance();
+            cache.InitializeStatistics();
 
             // Act - Mix of automatic and manual evictions
-            cache.BlitzGet("auto_expire", () => "value1", TestHelpers.StandardTimeoutMs);
-            cache.BlitzGet("manual_remove", () => "value2", TestHelpers.StandardTimeoutMs);
-            cache.BlitzGet("keep_alive", () => "value3", TestHelpers.StandardTimeoutMs);
+            cache.BlitzGet("auto_expire", () => "value1", TestConstants.StandardTimeoutMs);
+            cache.BlitzGet("manual_remove", () => "value2", TestConstants.StandardTimeoutMs);
+            cache.BlitzGet("keep_alive", () => "value3", TestConstants.StandardTimeoutMs);
 
             var statsAfterCreation = cache.Statistics;
             Console.WriteLine($"After creation: {statsAfterCreation.EntryCount} entries");
@@ -107,13 +110,13 @@ namespace BlitzCacheCore.Tests
             cache.Remove("manual_remove");
 
             // Wait for automatic expiration
-            await TestHelpers.WaitForStandardExpiration();
+            await TestDelays.WaitForStandardExpiration();
 
             // Access expired key to trigger callback
-            cache.BlitzGet("auto_expire", () => "new_value", TestHelpers.StandardTimeoutMs);
+            cache.BlitzGet("auto_expire", () => "new_value", TestConstants.StandardTimeoutMs);
 
             // Give time for callbacks
-            await TestHelpers.WaitForEvictionCallbacks();
+            await TestDelays.WaitForEvictionCallbacks();
 
             var finalStats = cache.Statistics;
             Console.WriteLine($"Final: {finalStats.EntryCount} entries, {finalStats.EvictionCount} evictions");
@@ -129,19 +132,20 @@ namespace BlitzCacheCore.Tests
         public void Statistics_EntryCount_StaysAccurate()
         {
             // This test verifies that EntryCount reflects actual cache state
-            var cache = TestHelpers.CreateBlitzCacheInstanceWithStatistics();
+            var cache = TestFactory.CreateBlitzCacheInstance();
+            cache.InitializeStatistics();
 
             // Add some entries
-            cache.BlitzGet("key1", () => "value1", TestHelpers.StandardTimeoutMs);
-            cache.BlitzGet("key2", () => "value2", TestHelpers.StandardTimeoutMs);
-            cache.BlitzGet("key3", () => "value3", TestHelpers.StandardTimeoutMs);
+            cache.BlitzGet("key1", () => "value1", TestConstants.StandardTimeoutMs);
+            cache.BlitzGet("key2", () => "value2", TestConstants.StandardTimeoutMs);
+            cache.BlitzGet("key3", () => "value3", TestConstants.StandardTimeoutMs);
 
             var entryCountAfter3Adds = cache.Statistics.EntryCount;
             Assert.AreEqual(3, entryCountAfter3Adds, "Should have 3 entries");
 
             // Remove one
             cache.Remove("key2");
-            TestHelpers.WaitForEvictionCallbacksSync(); // Wait for eviction callback to complete
+            TestDelays.WaitForEvictionCallbacksSync(); // Wait for eviction callback to complete
 
             var entryCountAfterRemoval = cache.Statistics.EntryCount;
             var evictionCountAfterRemoval = cache.Statistics.EvictionCount;
@@ -149,7 +153,7 @@ namespace BlitzCacheCore.Tests
             Assert.AreEqual(1, evictionCountAfterRemoval, "Should have 1 eviction");
 
             // Add another
-            cache.BlitzGet("key4", () => "value4", TestHelpers.StandardTimeoutMs);
+            cache.BlitzGet("key4", () => "value4", TestConstants.StandardTimeoutMs);
 
             var finalEntryCount = cache.Statistics.EntryCount;
             var finalEvictionCount = cache.Statistics.EvictionCount;

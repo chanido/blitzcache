@@ -19,7 +19,7 @@ namespace BlitzCacheCore.Tests
         [SetUp]
         public void Setup()
         {
-            cache = TestHelpers.CreateBlitzCacheInstance();
+            cache = TestFactory.CreateBlitzCacheInstance();
             slowClass = new SlowClass();
             slowClassAsync = new SlowClassAsync();
         }
@@ -37,10 +37,10 @@ namespace BlitzCacheCore.Tests
             var cacheKey = GetUniqueCacheKey();
 
             // Act - Use AsyncRepeater for cleaner test like existing UnitTests
-            await AsyncRepeater.Go(TestHelpers.ConcurrentOperationsCount, () => cache.BlitzGet(cacheKey, slowClassAsync.ProcessQuickly, 10000));
+            await AsyncRepeater.Go(TestConstants.ConcurrentOperationsCount, () => cache.BlitzGet(cacheKey, slowClassAsync.ProcessQuickly, 10000));
 
             // Assert
-            Assert.AreEqual(1, slowClassAsync.Counter, $"Expensive async operation should only execute once despite {TestHelpers.ConcurrentOperationsCount} concurrent calls");
+            Assert.AreEqual(1, slowClassAsync.Counter, $"Expensive async operation should only execute once despite {TestConstants.ConcurrentOperationsCount} concurrent calls");
         }
 
         [Test]
@@ -50,11 +50,11 @@ namespace BlitzCacheCore.Tests
             var cacheKey = GetUniqueCacheKey();
 
             // Act - Use enhanced AsyncRepeater with existing SlowClassAsync
-            var testResult = await AsyncRepeater.GoWithResults(TestHelpers.SmallLoopCount, () => cache.BlitzGet(cacheKey, slowClassAsync.ProcessSlowly, TestHelpers.LongTimeoutMs));
+            var testResult = await AsyncRepeater.GoWithResults(TestConstants.SmallLoopCount, () => cache.BlitzGet(cacheKey, slowClassAsync.ProcessSlowly, TestConstants.LongTimeoutMs));
 
             // Assert
             Assert.AreEqual(1, slowClassAsync.Counter, "Expensive operation should only execute once");
-            Assert.AreEqual(TestHelpers.SmallLoopCount, testResult.ResultCount, $"Should have {TestHelpers.SmallLoopCount} results (one per concurrent call)");
+            Assert.AreEqual(TestConstants.SmallLoopCount, testResult.ResultCount, $"Should have {TestConstants.SmallLoopCount} results (one per concurrent call)");
             Assert.AreEqual(1, testResult.UniqueResultCount, "All calls should receive the same result");
             Assert.IsTrue(testResult.AllResultsIdentical, "All results should be identical");
         }
@@ -68,7 +68,7 @@ namespace BlitzCacheCore.Tests
             // Act - Use enhanced AsyncRepeater with staggered calls and existing SlowClassAsync
             var testResult = await AsyncRepeater.GoWithResults(5,
                 () => cache.BlitzGet(cacheKey, slowClassAsync.ProcessSlowly, 10000),
-                staggerDelayMs: TestHelpers.VeryShortTimeoutMs);
+                staggerDelayMs: TestConstants.VeryShortTimeoutMs);
 
             // Assert
             Assert.AreEqual(1, slowClassAsync.Counter, "Only one execution should have occurred");
@@ -84,13 +84,13 @@ namespace BlitzCacheCore.Tests
             var cacheKey = GetUniqueCacheKey();
 
             // Act - Use Parallel.For for sync operations like existing UnitTests
-            Parallel.For(0, TestHelpers.ConcurrentOperationsCount, (i) =>
+            Parallel.For(0, TestConstants.ConcurrentOperationsCount, (i) =>
             {
                 cache.BlitzGet(cacheKey, slowClass.ProcessQuickly, 10000);
             });
 
             // Assert
-            Assert.AreEqual(1, slowClass.Counter, $"Expensive sync operation should only execute once despite {TestHelpers.ConcurrentOperationsCount} concurrent calls");
+            Assert.AreEqual(1, slowClass.Counter, $"Expensive sync operation should only execute once despite {TestConstants.ConcurrentOperationsCount} concurrent calls");
         }
 
         [Test]
@@ -121,14 +121,14 @@ namespace BlitzCacheCore.Tests
             string SyncOperation()
             {
                 Interlocked.Increment(ref executionCount);
-                TestHelpers.ShortDelay();
+                TestDelays.ShortDelay();
                 return "MixedResult";
             }
 
             async Task<string> AsyncOperation()
             {
                 Interlocked.Increment(ref executionCount);
-                await TestHelpers.ShortDelay();
+                await TestDelays.ShortDelay();
                 return "MixedResult";
             }
 

@@ -57,15 +57,22 @@ jobs:
       
     - name: Install coverage collector
       run: dotnet add BlitzCache.Tests/BlitzCacheCore.Tests.csproj package coverlet.collector
-      
+
     - name: Build solution (Debug for tests)
       run: dotnet build --configuration ${{ env.TEST_CONFIGURATION }} --no-restore
 
     - name: Run tests
       run: |
-        dotnet test --configuration ${{ env.TEST_CONFIGURATION }} --no-build --verbosity normal --collect:"XPlat Code Coverage" --results-directory ./TestResults
+        dotnet test --configuration ${{ env.TEST_CONFIGURATION }} --no-build --verbosity normal --collect:"XPlat Code Coverage" --logger:"junit;LogFilePath=TestResults/junit.xml" --results-directory ./TestResults
         echo "=== Test Results Structure ==="
         find ./TestResults -type f -ls || echo "No files in TestResults"
+
+    - name: Upload test results to Codecov
+      if: ${{ !cancelled() }}
+      uses: codecov/test-results-action@v1
+      with:
+        token: ${{ secrets.CODECOV_TOKEN }}
+        files: ./TestResults/junit.xml
       
     - name: Upload coverage reports to Codecov
       uses: codecov/codecov-action@v5
@@ -73,24 +80,33 @@ jobs:
         token: ${{ secrets.CODECOV_TOKEN }}
         slug: chanido/blitzcache
         
-    - name: Update README codecov badge for current branch
+    - name: Update README badges for codecov and tests
       if: github.event_name == 'push' && (github.ref == 'refs/heads/master' || github.ref == 'refs/heads/develop')
       run: |
         CURRENT_BRANCH=${GITHUB_REF#refs/heads/}
         echo "Updating codecov badge for branch: $CURRENT_BRANCH"
-        
         # Update the codecov badge URL to point to current branch
         sed -i "s|https://codecov.io/gh/chanido/blitzcache/branch/[^/]*/graph/badge.svg|https://codecov.io/gh/chanido/blitzcache/branch/$CURRENT_BRANCH/graph/badge.svg|g" README.md
-        
+
+        # Extract test count from junit.xml (first tests attribute found)
+        TEST_COUNT=$(grep -oP 'tests="\K[0-9]+' BlitzCache.Tests/TestResults/junit.xml | head -1)
+        echo "Test count: $TEST_COUNT"
+        if [ -z "$TEST_COUNT" ]; then
+          echo "Could not extract test count, skipping badge update."
+        else
+          # Update the tests badge in README.md
+          sed -i "s|https://img.shields.io/badge/tests-[0-9]\+%20passing-brightgreen|https://img.shields.io/badge/tests-${TEST_COUNT}%20passing-brightgreen|g" README.md
+        fi
+
         # Check if there are any changes
         if git diff --quiet README.md; then
           echo "No changes needed to README.md"
         else
-          echo "README.md updated with codecov badge for branch: $CURRENT_BRANCH"
+          echo "README.md updated with codecov and/or tests badge"
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action"
           git add README.md
-          git commit -m "Update codecov badge to point to $CURRENT_BRANCH branch [skip ci]"
+          git commit -m "Update badges: codecov branch and tests count [skip ci]"
           git push
         fi
         
@@ -123,15 +139,12 @@ jobs:
       run: dotnet build BlitzCache/BlitzCacheCore.csproj --configuration ${{ env.CONFIGURATION }} --no-restore
       
 
-    - name: Get short SHA
-      id: vars
-      run: echo "short_sha=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
 
-    - name: Get csproj version
+    - name: Get csproj version with run number
       id: version
       run: |
         version=$(grep -oPm1 "(?<=<Version>)[^<]+" BlitzCache/BlitzCacheCore.csproj)
-        echo "package_version=${version}-dev-${{ steps.vars.outputs.short_sha }}" >> $GITHUB_OUTPUT
+        echo "package_version=${version}-dev-${GITHUB_RUN_NUMBER}" >> $GITHUB_OUTPUT
 
     - name: Create development NuGet package
       run: dotnet pack BlitzCache/BlitzCacheCore.csproj --configuration ${{ env.CONFIGURATION }} --no-build --include-symbols --output ./packages -p:PackageVersion="${{ steps.version.outputs.package_version }}"

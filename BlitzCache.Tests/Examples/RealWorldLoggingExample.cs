@@ -23,8 +23,7 @@ namespace BlitzCacheCore.Tests.Examples
                 {
                     // Configure BlitzCache with statistics enabled and custom settings
                     services.AddBlitzCache(
-                        defaultMilliseconds: 3600000, // 1 hour default cache duration
-                        enableStatistics: true       // Required for logging functionality
+                        defaultMilliseconds: 3600000 // 1 hour default cache duration
                     );
 
                     // Enable automatic statistics logging every hour
