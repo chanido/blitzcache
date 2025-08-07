@@ -6,10 +6,8 @@
     <PackageRequireLicenseAcceptance>true</PackageRequireLicenseAcceptance>
     <Nullable>enable</Nullable>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
-    <Authors>Chan (aburrio@gmail.com)</Authors>
-    <Company>IntuiChan</Company>
+    <Authors>The BlitzCache Group</Authors>
     <Description>Enterprise-grade caching that's ridiculously simple to use. One line of code prevents duplicate execution of expensive operations. Ultra-fast, thread-safe, and prevents server crashes from concurrent query bursts. Zero configuration required. Targets .NET Standard 2.1 - compatible with .NET Core 3.1+, .NET 5-8+.</Description>
-    <Copyright>Copyright (C) IntuiChan 2025</Copyright>
     <PackageProjectUrl>https://github.com/chanido/blitzcache</PackageProjectUrl>
     <RepositoryUrl>https://github.com/chanido/blitzcache</RepositoryUrl>
     <RepositoryType>git</RepositoryType>
