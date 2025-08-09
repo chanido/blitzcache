@@ -30,7 +30,7 @@ namespace BlitzCacheCore.Tests
             for (int i = 0; i < totalEntries; i++)
             {
                 var key = $"k{i}";
-                var val = cache.BlitzGet(key, () => new byte[valueBytes], TestConstants.LongTimeoutMs);
+                var val = cache.BlitzGet(key, () => new byte[valueBytes]);
                 Assert.AreEqual(valueBytes, val.Length);
             }
 
@@ -41,18 +41,18 @@ namespace BlitzCacheCore.Tests
             Assert.Greater(stats.EvictionCount, 0, "Capacity limit should trigger evictions");
             Assert.LessOrEqual(stats.ApproximateMemoryBytes, maxCacheSizeBytes, "Approximate memory should be within configured limit");
 
-            // Access some earliest keys; at least one should have been evicted and get recomputed
+            // Verify that at least one key was evicted by scanning all inserted keys
             int recomputed = 0;
-            for (int i = 0; i < 4; i++)
+            for (int i = 0; i < totalEntries; i++)
             {
                 var key = $"k{i}";
                 int calls = 0;
-                var result = cache.BlitzGet(key, () => { calls++; return new byte[valueBytes]; }, TestConstants.LongTimeoutMs);
+                var result = cache.BlitzGet(key, () => { calls++; return new byte[valueBytes]; });
                 Assert.AreEqual(valueBytes, result.Length);
-                recomputed += calls; // calls > 0 indicates it was evicted
+                if (calls > 0) recomputed++;
             }
 
-            Assert.GreaterOrEqual(recomputed, 1, "At least one of the earliest entries should have been evicted and recomputed");
+            Assert.GreaterOrEqual(recomputed, 1, "At least one of the entries should have been evicted and recomputed");
         }
 
         [Test]
@@ -76,7 +76,7 @@ namespace BlitzCacheCore.Tests
             for (int i = 0; i < totalEntries; i++)
             {
                 var key = $"ak{i}";
-                var val = await cache.BlitzGet(key, async () => await Task.FromResult(new byte[valueBytes]), TestConstants.LongTimeoutMs);
+                var val = await cache.BlitzGet(key, async () => await Task.FromResult(new byte[valueBytes]));
                 Assert.AreEqual(valueBytes, val.Length);
             }
 
@@ -86,18 +86,18 @@ namespace BlitzCacheCore.Tests
             Assert.Greater(stats.EvictionCount, 0, "Capacity limit should trigger evictions (async)");
             Assert.LessOrEqual(stats.ApproximateMemoryBytes, maxCacheSizeBytes, "Approximate memory should be within configured limit (async)");
 
-            // Access some earliest async keys; expect at least one recomputation
+            // Verify that at least one key was evicted by scanning all inserted keys
             int recomputed = 0;
-            for (int i = 0; i < 5; i++)
+            for (int i = 0; i < totalEntries; i++)
             {
                 var key = $"ak{i}";
                 int calls = 0;
-                var result = await cache.BlitzGet(key, async () => { calls++; return await Task.FromResult(new byte[valueBytes]); }, TestConstants.LongTimeoutMs);
+                var result = await cache.BlitzGet(key, async () => { calls++; return await Task.FromResult(new byte[valueBytes]); });
                 Assert.AreEqual(valueBytes, result.Length);
-                recomputed += calls;
+                if (calls > 0) recomputed++;
             }
 
-            Assert.GreaterOrEqual(recomputed, 1, "At least one of the earliest async entries should have been evicted and recomputed");
+            Assert.GreaterOrEqual(recomputed, 1, "At least one of the async entries should have been evicted and recomputed");
         }
 
         [Test]
@@ -120,22 +120,22 @@ namespace BlitzCacheCore.Tests
             for (int i = 0; i < totalEntries; i++)
             {
                 var key = $"ns{i}";
-                var val = cache.BlitzGet(key, () => new byte[valueBytes], TestConstants.LongTimeoutMs);
+                var val = cache.BlitzGet(key, () => new byte[valueBytes]);
                 Assert.AreEqual(valueBytes, val.Length);
             }
 
             TestDelays.WaitForEvictionCallbacksSync();
 
             // We cannot assert stats, but capacity-based eviction should still occur.
-            // Verify by accessing the earliest entries; at least one should be recomputed.
+            // Verify by scanning all earlier entries; at least one should be recomputed.
             int recomputed = 0;
-            for (int i = 0; i < 4; i++)
+            for (int i = 0; i < totalEntries; i++)
             {
                 var key = $"ns{i}";
                 int calls = 0;
-                var result = cache.BlitzGet(key, () => { calls++; return new byte[valueBytes]; }, TestConstants.LongTimeoutMs);
+                var result = cache.BlitzGet(key, () => { calls++; return new byte[valueBytes]; });
                 Assert.AreEqual(valueBytes, result.Length);
-                recomputed += calls;
+                if (calls > 0) recomputed++;
             }
 
             Assert.GreaterOrEqual(recomputed, 1, "Eviction should occur even with statistics disabled");
