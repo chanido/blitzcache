@@ -14,42 +14,27 @@
     <RepositoryBranch>master</RepositoryBranch>
     <PackageValidationBaselineVersion>1.0.0</PackageValidationBaselineVersion>
     <PackageTags>caching;performance;threading;async;concurrency;enterprise;dotnet;thundering-herd;duplicate-prevention;memory-cache;thread-safe;zero-configuration;blazing-fast;production-ready;sql-protection;cache-invalidation;logging;monitoring;statistics;microservices</PackageTags>
-    <Version>2.0.2</Version>
-    <AssemblyVersion>2.0.2.0</AssemblyVersion>
-    <FileVersion>2.0.2.0</FileVersion>
-    <PackageReleaseNotes>BlitzCache v2.0.2 - Automatic Statistics
+    <Version>2.1.0</Version>
+    <AssemblyVersion>2.1.0.0</AssemblyVersion>
+    <FileVersion>2.1.0.0</FileVersion>
+    <PackageReleaseNotes>BlitzCache v2.1.0 - Enhanced Statistics (Approx. Memory + Heaviest Keys)
 
-NEW IN v2.0.2:
-• Statistics enabled automatically or on demand if not using BlitzCacheLoggingService
-• Predictable monitoring and logging for all usages of BlitzCache.Global
-• Tracks and exposes the top slowest queries, making it easy to monitor and identify performance bottlenecks in your application.
-• Fully backward compatible for all other APIs
+NEW IN v2.1.0:
+• Approximate memory usage tracking (Statistics.ApproximateMemoryBytes)
+• New TopHeaviestEntries list to identify largest cached items by estimated size
+• Logging output now includes "Approx. Memory" and "Top Heaviest" sections
+• DI: AddBlitzCache now supports configuring maxTopHeaviest (default 5)
+• Non-breaking: existing APIs continue to work without changes
 
-THE SIMPLICITY ADVANTAGE:
-• One line of code prevents duplicate execution of expensive operations
-• Zero configuration required - works out of the box with sensible defaults
-• Automatic Statistics for monitoring your application
-• Ridiculously simple API that "just works" for any .NET application
+ABOUT SIZING:
+• Best-effort sizing for common types (string, byte[], primitive arrays)
+• Lightweight and allocation-friendly; avoids heavy reflection/serialization
 
-THUNDERING HERD PROTECTION:
-• Prevents SQL server crashes from concurrent query bursts
-• Multiple concurrent calls = Single execution (others wait for result)
-• Protects databases, APIs, and file systems from overload
-• Perfect for high-traffic applications and microservices
+STILL SIMPLE:
+• Automatic statistics when using AddBlitzCacheLogging()
+• Works out of the box; no configuration required for new metrics
 
-ENTERPRISE PERFORMANCE:
-• Ultra-fast 0.0001ms per operation with intelligent memory management
-• Zero memory leaks with advanced usage-based cleanup system
-• Thread-safe by design with granular concurrency control
-• Comprehensive testing ensuring production reliability
-
-🔧 ADVANCED FEATURES:
-• Dynamic cache duration with result-based retention control
-• Full async/await support with proper Task handling
-• Automatic cache key generation or manual key management
-• Built-in statistics, monitoring, and slow query tracking capabilities
-
-Perfect for protecting your backend systems while keeping your code simple!</PackageReleaseNotes>
+Perfect for monitoring cache footprint and identifying oversized entries.</PackageReleaseNotes>
     <PackageId>BlitzCache</PackageId>
     <PackageIcon>icon.png</PackageIcon>
     <PackageReadmeFile>README.md</PackageReadmeFile>

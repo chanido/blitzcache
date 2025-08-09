@@ -52,6 +52,17 @@ namespace BlitzCacheCore.Statistics
         IEnumerable<SlowQuery> TopSlowestQueries { get; }
 
         /// <summary>
+        /// Approximate total memory used by values stored in the cache, in bytes.
+        /// This value is best-effort and depends on the value sizer strategy.
+        /// </summary>
+        long ApproximateMemoryBytes { get; }
+
+        /// <summary>
+        /// Top N heaviest entries by approximate size. N is configuration-dependent.
+        /// </summary>
+        IEnumerable<HeavyEntry> TopHeaviestEntries { get; }
+
+        /// <summary>
         /// Resets all statistics counters to zero.
         /// Useful for monitoring cache performance over specific time periods.
         /// </summary>

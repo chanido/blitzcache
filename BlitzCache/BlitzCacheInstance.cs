@@ -2,6 +2,7 @@
 using BlitzCacheCore.Statistics;
 using Microsoft.Extensions.Caching.Memory;
 using System;
+using System.Collections.Concurrent;
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
 using System.Threading.Tasks;
@@ -15,6 +16,9 @@ namespace BlitzCacheCore
         private readonly int maxTopSlowest;
         private readonly BlitzSemaphoreDictionary semaphoreDictionary;
         private CacheStatistics? statistics;
+        private readonly IValueSizer valueSizer;
+        private readonly int maxTopHeaviest;
+        private readonly ConcurrentDictionary<string, long> keySizes = new ConcurrentDictionary<string, long>();
 
         /// <summary>
         /// Creates a new BlitzCache instance.
@@ -22,7 +26,9 @@ namespace BlitzCacheCore
         /// <param name="defaultMilliseconds">Default cache duration in milliseconds</param>
         /// <param name="cleanupInterval">Interval for automatic cleanup of unused semaphores (default: 10 seconds)</param>
         /// <param name="maxTopSlowest">Max number of top slowest queries to store (0 for improved performance) (default: 5 queries)</param>
-        public BlitzCacheInstance(long? defaultMilliseconds = 60000, TimeSpan? cleanupInterval = null, int? maxTopSlowest = null)
+        /// <param name="valueSizer">Strategy to estimate value sizes for memory accounting. If null, a default approximate sizer will be used.</param>
+        /// <param name="maxTopHeaviest">Max number of heaviest entries to track (0 disables). Default 5.</param>
+        public BlitzCacheInstance(long? defaultMilliseconds = 60000, TimeSpan? cleanupInterval = null, int? maxTopSlowest = null, IValueSizer? valueSizer = null, int? maxTopHeaviest = 5)
         {
             if (defaultMilliseconds < 1) throw new ArgumentOutOfRangeException(nameof(defaultMilliseconds), "Default milliseconds must be non-negative");
 
@@ -30,6 +36,8 @@ namespace BlitzCacheCore
             memoryCache = new MemoryCache(new MemoryCacheOptions());
             semaphoreDictionary = new BlitzSemaphoreDictionary(cleanupInterval);
             this.maxTopSlowest = maxTopSlowest ?? 5;
+            this.valueSizer = valueSizer ?? new ApproximateValueSizer();
+            this.maxTopHeaviest = maxTopHeaviest ?? 5;
         }
 
         /// <summary>
@@ -37,7 +45,7 @@ namespace BlitzCacheCore
         /// </summary>
         public int GetSemaphoreCount() => semaphoreDictionary.GetNumberOfLocks();
 
-        public void InitializeStatistics() => statistics = statistics ?? new CacheStatistics(() => semaphoreDictionary.GetNumberOfLocks(), maxTopSlowest);
+        public void InitializeStatistics() => statistics = statistics ?? new CacheStatistics(() => semaphoreDictionary.GetNumberOfLocks(), maxTopSlowest, maxTopHeaviest);
 
         /// <summary>
         /// Gets cache performance statistics and monitoring information.
@@ -90,7 +98,30 @@ namespace BlitzCacheCore
             var cacheEntryOptions = statistics?.CreateEntryOptions(expirationTime) ??
                 new MemoryCacheEntryOptions { AbsoluteExpiration = expirationTime };
 
+            // Ensure we clean up size tracking on automatic eviction (skip replacements)
+            cacheEntryOptions.PostEvictionCallbacks.Add(new PostEvictionCallbackRegistration
+            {
+                EvictionCallback = (key, value, reason, state) =>
+                {
+                    if (reason == EvictionReason.Replaced) return;
+                    if (key is string k && keySizes.TryRemove(k, out var size) && statistics != null)
+                    {
+                        statistics.RecordRemove(k, size);
+                    }
+                }
+            });
+
+            // Track size changes
+            var newSize = statistics is null ? 0 : valueSizer.GetSizeBytes(computedResult);
+            long? oldSize = null;
+            if (statistics != null && keySizes.TryGetValue(cacheKey, out var prev)) oldSize = prev;
+
             memoryCache.Set(cacheKey, computedResult, cacheEntryOptions);
+            if (statistics != null)
+            {
+                keySizes[cacheKey] = newSize;
+                statistics.RecordAddOrUpdate(cacheKey, newSize, oldSize);
+            }
             statistics?.TrackEntry(cacheKey, stopwatch);
             return computedResult;
         }
@@ -125,7 +156,29 @@ namespace BlitzCacheCore
             var cacheEntryOptions = statistics?.CreateEntryOptions(expirationTime) ??
                 new MemoryCacheEntryOptions { AbsoluteExpiration = expirationTime };
 
+            // Ensure we clean up size tracking on automatic eviction (skip replacements)
+            cacheEntryOptions.PostEvictionCallbacks.Add(new PostEvictionCallbackRegistration
+            {
+                EvictionCallback = (key, value, reason, state) =>
+                {
+                    if (reason == EvictionReason.Replaced) return;
+                    if (key is string k && keySizes.TryRemove(k, out var size) && statistics != null)
+                    {
+                        statistics.RecordRemove(k, size);
+                    }
+                }
+            });
+
+            var newSize = statistics is null ? 0 : valueSizer.GetSizeBytes(computedResult);
+            long? oldSize = null;
+            if (statistics != null && keySizes.TryGetValue(cacheKey, out var prev)) oldSize = prev;
+
             memoryCache.Set(cacheKey, computedResult, cacheEntryOptions);
+            if (statistics != null)
+            {
+                keySizes[cacheKey] = newSize;
+                statistics.RecordAddOrUpdate(cacheKey, newSize, oldSize);
+            }
             statistics?.TrackEntry(cacheKey, stopwatch);
             return computedResult;
         }
@@ -162,13 +215,34 @@ namespace BlitzCacheCore
         {
             var existsInCache = memoryCache.TryGetValue(cacheKey, out _);
             var expirationTime = DateTime.UtcNow.AddMilliseconds(milliseconds);
-            var cacheEntryOptions = statistics?.CreateEntryOptions(expirationTime) ??
-                new MemoryCacheEntryOptions { AbsoluteExpiration = expirationTime };
+            var cacheEntryOptions = statistics?.CreateEntryOptions(expirationTime) ?? new MemoryCacheEntryOptions { AbsoluteExpiration = expirationTime };
+
+            // Ensure we clean up size tracking on automatic eviction (skip replacements)
+            cacheEntryOptions.PostEvictionCallbacks.Add(new PostEvictionCallbackRegistration
+            {
+                EvictionCallback = (key, value, reason, state) =>
+                {
+                    if (reason == EvictionReason.Replaced) return;
+                    if (key is string k && keySizes.TryRemove(k, out var size) && statistics != null)
+                    {
+                        statistics.RecordRemove(k, size);
+                    }
+                }
+            });
+
+            var newSize = statistics is null ? 0 : valueSizer.GetSizeBytes(value);
+            long? oldSize = null;
+            if (statistics != null && keySizes.TryGetValue(cacheKey, out var prev)) oldSize = prev;
 
             memoryCache.Set(cacheKey, value, cacheEntryOptions);
 
-            if (!existsInCache)
-                statistics?.TrackEntryUpdate();
+            if (statistics != null)
+            {
+                keySizes[cacheKey] = newSize;
+                if (!existsInCache)
+                    statistics.TrackEntryUpdate();
+                statistics.RecordAddOrUpdate(cacheKey, newSize, oldSize);
+            }
         }
 
         public void BlitzUpdate<T>(string cacheKey, Func<T> function, long milliseconds) => UpdateCacheEntry(cacheKey, function(), milliseconds);
@@ -183,6 +257,10 @@ namespace BlitzCacheCore
             using var lockHandle = semaphoreDictionary.Wait(cacheKey);
             memoryCache.Remove(cacheKey);
             // There is no need to decrement entry count or record eviction here because that is handled by the memory cache PostEvictionCallbacks
+            if (statistics != null && keySizes.TryRemove(cacheKey, out var size))
+            {
+                statistics.RecordRemove(cacheKey, size);
+            }
         }
 
         public void Dispose()

@@ -17,13 +17,14 @@ namespace BlitzCacheCore.Extensions
         /// <param name="services">The service collection to add BlitzCache to.</param>
         /// <param name="defaultMilliseconds">Default cache duration in milliseconds. Defaults to 60000 (1 minute).</param>
         /// <param name="maxTopSlowest">Max number of top slowest queries to store (0 for improved performance) (default: 5 queries)</param>
+        /// <param name="maxTopHeaviest">Max number of heaviest entries to track (0 disables). Default: 5.</param>
         /// <returns>The service collection for method chaining.</returns>
-        public static IServiceCollection AddBlitzCache(this IServiceCollection services, long defaultMilliseconds = 60000, int maxTopSlowest = 5)
+        public static IServiceCollection AddBlitzCache(this IServiceCollection services, long defaultMilliseconds = 60000, int maxTopSlowest = 5, int maxTopHeaviest = 5)
         {
             if (services == null) throw new ArgumentNullException(nameof(services));
 
             OptionsServiceCollectionExtensions.AddOptions(services);
-            ServiceCollectionDescriptorExtensions.TryAdd(services, ServiceDescriptor.Singleton<IBlitzCache>(_ => new BlitzCache(defaultMilliseconds, maxTopSlowest: maxTopSlowest)));
+            ServiceCollectionDescriptorExtensions.TryAdd(services, ServiceDescriptor.Singleton<IBlitzCache>(_ => new BlitzCache(defaultMilliseconds, maxTopSlowest: maxTopSlowest, maxTopHeaviest: maxTopHeaviest)));
 
             return services;
         }

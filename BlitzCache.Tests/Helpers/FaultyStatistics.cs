@@ -29,6 +29,8 @@ namespace BlitzCacheCore.Tests.Helpers
         public int ActiveSemaphoreCount => 3;
         public long TotalOperations => 15;
         public IEnumerable<SlowQuery> TopSlowestQueries => Array.Empty<SlowQuery>();
+        public long ApproximateMemoryBytes => 42 * 1024; // arbitrary non-zero value for tests
+        public IEnumerable<HeavyEntry> TopHeaviestEntries => new[] { new HeavyEntry("faulty_key", 2048) };
 
         public void Reset() { }
     }

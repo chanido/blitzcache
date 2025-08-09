@@ -2,6 +2,7 @@ using Microsoft.Extensions.Caching.Memory;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Linq;
 using System.Threading;
 
 namespace BlitzCacheCore.Statistics
@@ -17,8 +18,10 @@ namespace BlitzCacheCore.Statistics
         private long missCount;
         private long evictionCount;
         private long entryCount;
+        private long approximateMemoryBytes;
         private readonly Func<int> getActiveSemaphoreCount;
         private readonly TopSlowestQueries? topSlowestQueries;
+        private readonly TopHeaviestEntries? topHeaviestEntries;
         public long HitCount => Interlocked.Read(ref hitCount);
         public long MissCount => Interlocked.Read(ref missCount);
         public long EntryCount => Interlocked.Read(ref entryCount);
@@ -26,6 +29,8 @@ namespace BlitzCacheCore.Statistics
         public int ActiveSemaphoreCount => getActiveSemaphoreCount();
         public long TotalOperations => HitCount + MissCount;
         public IEnumerable<SlowQuery> TopSlowestQueries => topSlowestQueries is null ? Array.Empty<SlowQuery>() : topSlowestQueries.Get();
+        public long ApproximateMemoryBytes => Interlocked.Read(ref approximateMemoryBytes);
+        public IEnumerable<HeavyEntry> TopHeaviestEntries => topHeaviestEntries is null ? Array.Empty<HeavyEntry>() : topHeaviestEntries.Get();
         public double HitRatio
         {
             get
@@ -41,13 +46,18 @@ namespace BlitzCacheCore.Statistics
         /// </summary>
         /// <param name="getActiveSemaphoreCount">Function to retrieve active semaphores on demand</param>
         /// <param name="maxTopSlowest">Max number of top slowest queries to store (0 disables it for improved performance)</param>
-        public CacheStatistics(Func<int> getActiveSemaphoreCount, int maxTopSlowest)
+        /// <param name="maxTopHeaviest">Max number of top heaviest entries to track (0 disables tracking)</param>
+        public CacheStatistics(Func<int> getActiveSemaphoreCount, int maxTopSlowest, int maxTopHeaviest = 5)
         {
             this.getActiveSemaphoreCount = getActiveSemaphoreCount ?? throw new ArgumentNullException(nameof(getActiveSemaphoreCount));
 
             if (maxTopSlowest > 0)
             {
                 topSlowestQueries = new TopSlowestQueries(maxTopSlowest);
+            }
+            if (maxTopHeaviest > 0)
+            {
+                topHeaviestEntries = new TopHeaviestEntries(maxTopHeaviest);
             }
         }
 
@@ -77,6 +87,28 @@ namespace BlitzCacheCore.Statistics
             Interlocked.Decrement(ref entryCount);
         }
 
+        internal void RecordAddOrUpdate(string cacheKey, long newSizeBytes, long? oldSizeBytes)
+        {
+            // adjust entry count on first creation
+            if (!oldSizeBytes.HasValue)
+                Interlocked.Increment(ref entryCount);
+
+            // Update total bytes delta
+            var delta = newSizeBytes - (oldSizeBytes ?? 0);
+            Interlocked.Add(ref approximateMemoryBytes, delta);
+
+            // Track heaviest list
+            topHeaviestEntries?.AddOrUpdate(cacheKey, newSizeBytes);
+        }
+
+        internal void RecordRemove(string cacheKey, long sizeBytes)
+        {
+            // Entry count and eviction are handled by the MemoryCache eviction callback.
+            // Here we only adjust memory accounting and heaviest list.
+            Interlocked.Add(ref approximateMemoryBytes, -sizeBytes);
+            topHeaviestEntries?.Remove(cacheKey);
+        }
+
         /// <summary>
         /// Creates memory cache entry options with eviction callback for statistics tracking.
         /// </summary>
@@ -102,14 +134,14 @@ namespace BlitzCacheCore.Statistics
         /// </summary>
         internal void TrackEntry(string cacheKey, Stopwatch stopwatch)
         {
-            TrackEntryUpdate();
+            // Entry count is handled in RecordAddOrUpdate. Only record query duration here.
             topSlowestQueries?.Add(cacheKey, stopwatch.ElapsedMilliseconds);
         }
 
         /// <summary>
         /// Tracks a new cache entry.
         /// </summary>
-        internal void TrackEntryUpdate() => Interlocked.Increment(ref entryCount);
+        internal void TrackEntryUpdate() { /* no-op: entry count handled in RecordAddOrUpdate */ }
 
         /// <summary>
         /// Resets all statistics counters to zero. Thread-safe.
@@ -120,7 +152,9 @@ namespace BlitzCacheCore.Statistics
             Interlocked.Exchange(ref missCount, 0);
             Interlocked.Exchange(ref evictionCount, 0);
             Interlocked.Exchange(ref entryCount, 0);
+            Interlocked.Exchange(ref approximateMemoryBytes, 0);
             topSlowestQueries?.Clear();
+            topHeaviestEntries?.Clear();
         }
     }
 }

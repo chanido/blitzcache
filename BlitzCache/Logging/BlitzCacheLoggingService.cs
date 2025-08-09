@@ -54,11 +54,11 @@ namespace BlitzCacheCore.Logging
                 }
                 catch (Exception ex)
                 {
-                    logger.LogError(ex, "Unexpected error occurred while logging BlitzCache statistics'");
+                    logger.LogError(ex, "Unexpected error occurred while logging BlitzCache statistics");
                 }
             }
 
-            logger.LogInformation("BlitzCache statistics logging stopped'");
+            logger.LogInformation("BlitzCache statistics logging stopped");
         }
 
         private void LogInstances()

@@ -574,6 +574,52 @@ namespace BlitzCacheCore.Tests.Statistics
             // Assert
             Assert.IsTrue(topSlowest == null || !topSlowest.Any(), "TopSlowestQueries should be null or empty when disabled");
         }
+
+        [Test]
+        public void MemoryTracking_ApproximateBytes_IncreasesOnAdd_DecreasesOnRemove()
+        {
+            // Arrange
+            var initialBytes = cache.Statistics.ApproximateMemoryBytes;
+
+            // Act
+            cache.BlitzGet("size_key1", () => new byte[1024], TestConstants.StandardTimeoutMs);
+            cache.BlitzGet("size_key2", () => new string('a', 100), TestConstants.StandardTimeoutMs);
+            TestDelays.WaitForEvictionCallbacksSync();
+
+            var afterAdd = cache.Statistics.ApproximateMemoryBytes;
+            Assert.Greater(afterAdd, initialBytes, "Memory should increase after adding entries");
+
+            // Remove one key
+            cache.Remove("size_key1");
+            TestDelays.WaitForEvictionCallbacksSync();
+
+            var afterRemove = cache.Statistics.ApproximateMemoryBytes;
+            Assert.Less(afterRemove, afterAdd, "Memory should decrease after removing an entry");
+        }
+
+        [Test]
+        public void TopHeaviestEntries_TracksLargest_ByApproximateSize()
+        {
+            // Arrange: create a dedicated cache to control config
+            var local = new BlitzCacheInstance(maxTopHeaviest: 2);
+            local.InitializeStatistics();
+
+            // Add entries with different sizes
+            local.BlitzGet("k_small", () => new byte[10], TestConstants.StandardTimeoutMs);
+            local.BlitzGet("k_medium", () => new byte[500], TestConstants.StandardTimeoutMs);
+            local.BlitzGet("k_large", () => new byte[2000], TestConstants.StandardTimeoutMs);
+            TestDelays.WaitForEvictionCallbacksSync();
+
+            // Act
+            var top = local.Statistics.TopHeaviestEntries.ToList();
+
+            // Assert: only largest two are kept and ordered desc
+            Assert.AreEqual(2, top.Count);
+            Assert.AreEqual("k_large", top[0].CacheKey);
+            Assert.AreEqual("k_medium", top[1].CacheKey);
+
+            local.Dispose();
+        }
     }
 }
 

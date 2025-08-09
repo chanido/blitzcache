@@ -1,3 +1,18 @@
+# [2.1.0] - 2025-08-09
+
+### Added
+- Approximate memory usage tracking: `Statistics.ApproximateMemoryBytes` reports best-effort total bytes for cached values.
+- Heaviest entries tracking: `Statistics.TopHeaviestEntries` lists the largest cache items by estimated size.
+- Logging enhancements: periodic logs now include Approx. Memory and Top Heaviest sections.
+- DI configuration: `AddBlitzCache(..., maxTopHeaviest: 5)` to configure heaviest list size.
+
+### Changed
+- README updated with examples and notes about sizing strategy and new metrics.
+- Tests extended to cover memory tracking and heaviest entries ordering.
+
+### Notes
+- Sizing is lightweight and supports common types (string, byte[], primitive arrays); others use a conservative default to avoid overhead.
+
 # [2.0.2] - 2025-08-05
 
 ### Changed
@@ -54,6 +69,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Instance-based caching instead of static MemoryCache (eliminates cache sharing issues)
 - Improved async/await patterns with proper Task handling
 - Enhanced performance: 0.0001ms per operation average
+- Enhanced Nuances: 0.0001ms per operation average
 - Enhanced NuGet package metadata for better discoverability
 
 ### Fixed

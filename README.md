@@ -1,4 +1,3 @@
-
 # ⚡ BlitzCache
 [![NuGet](https://img.shields.io/nuget/v/BlitzCache.svg)](https://www.nuget.org/packages/BlitzCache/)
 [![NuGet Downloads](https://img.shields.io/nuget/dt/BlitzCache.svg)](https://www.nuget.org/packages/BlitzCache/)
@@ -55,6 +54,10 @@ Entries: 2
 Evictions: 20
 Active Semaphores: 0
 Total Operations: 46
+Approx. Memory: 120.75 KB
+Top Heaviest:
+        users_cache - ~96 KB
+        products_cache - ~20 KB
 Top Slowest Queries:
         LoadBlitzSafe_UsageFromView_819735987 - Worse: 18266ms | Best: 93ms | Avg: 2014 | Occurrences: 10
         LoadBlitzSafe_MarketingView_819735987 - Worse: 8608ms | Best: 198ms | Avg: 4403 | Occurrences: 2
@@ -79,6 +82,8 @@ Top Slowest Queries:
 ✅ **Automatic logging** - Built-in statistics monitoring with one line setup (v2.0.1+)
 ✅ **Global statistics** - As of v2.0.2, Statistics available and BlitzCacheLoggingService to log them automatically
 ✅ **Top Slowest Queries** - As of v2.0.2, BlitzCache tracks and exposes the top slowest queries, making it easy to identify performance bottlenecks in your application
+✅ **Approximate Memory Usage** - As of v2.1.0, statistics include approximate memory usage for better monitoring
+✅ **Top Heaviest Entries** - As of v2.1.0, easily identify the largest cached items with the top heaviest entries feature
 
 ## 📋 Table of Contents
 
@@ -324,72 +329,27 @@ await cache.BlitzUpdate("weather_data", async () => await GetWeatherAsync(), 300
 ### Cache Statistics and Monitoring
 BlitzCache provides built-in performance statistics to help you monitor cache effectiveness and optimize your application.
 
-**As of v2.0.2, statistics are automatically enabled if you add your cache instance to BlitzCacheLoggingService.**
+As of v2.1.0+, statistics include approximate memory usage and top heaviest entries when enabled (defaults on):
 
 ```csharp
-
-// Access cache statistics
 var stats = cache.Statistics;
+Console.WriteLine($"Approx Memory: {FormatBytes(stats.ApproximateMemoryBytes)}");
+foreach (var heavy in stats.TopHeaviestEntries)
+    Console.WriteLine($"  {heavy}"); // HeavyEntry prints with human-friendly units
 
-Console.WriteLine($"Cache Hit Ratio: {stats.HitRatio:P1}"); // e.g., "75.5%"
-Console.WriteLine($"Total Operations: {stats.TotalOperations}");
-Console.WriteLine($"Cache Hits: {stats.HitCount}");
-Console.WriteLine($"Cache Misses: {stats.MissCount}");
-Console.WriteLine($"Current Entries: {stats.CurrentEntryCount}");
-Console.WriteLine($"Evictions: {stats.EvictionCount}");
-Console.WriteLine($"Active Semaphores: {stats.ActiveSemaphoreCount}");
-// New in v2.0.2: Top slowest queries
-if (stats.TopSlowestQueries != null && stats.TopSlowestQueries.Any())
+static string FormatBytes(long bytes)
 {
-    Console.WriteLine("Top Slowest Queries:");
-    foreach (var q in stats.TopSlowestQueries)
-        Console.WriteLine($"  {q}");
+    if (bytes < 1024) return $"{bytes} bytes";
+    var kb = bytes / 1024.0;
+    if (kb < 1024) return $"{kb:0.##} KB";
+    var mb = kb / 1024.0;
+    return $"{mb:0.##} MB";
 }
 ```
 
-#### Real-World Monitoring Example
-```csharp
-public class UserService
-{
-    private readonly IBlitzCache _cache;
-    
-    public UserService(IBlitzCache cache)
-    {
-        _cache = cache;
-    }
-    
-    public async Task<UserProfile> GetUserProfileAsync(int userId)
-    {
-        // Cache the expensive database operation
-        var profile = await _cache.BlitzGet($"user_profile_{userId}", 
-            async () => await database.GetUserProfileAsync(userId), 
-            300000); // 5 minutes
-            
-        // Log cache performance periodically
-        var stats = _cache.Statistics;
-        if (stats.TotalOperations % 100 == 0) // Every 100 operations
-        {
-            _logger.LogInformation("Cache performance: {HitRatio:P1} hit ratio, {CurrentEntries} entries", 
-                stats.HitRatio, stats.CurrentEntryCount);
-        }
-        
-        return profile;
-    }
-}
-```
-
-#### Statistics Reset for Time-Windowed Monitoring
-```csharp
-// Reset statistics to monitor performance over specific periods
-cache.Statistics.Reset();
-
-// Perform operations...
-DoSomeWork();
-
-// Check performance for this period only
-var periodStats = cache.Statistics;
-Console.WriteLine($"Period hit ratio: {periodStats.HitRatio:P1}");
-```
+Notes:
+- Memory accounting is best-effort and uses a lightweight sizer for common types (strings, byte[] and primitive arrays). Custom sizing can be added in future versions.
+- Heaviest list size is configurable via AddBlitzCache(..., maxTopHeaviest: 5).
 
 **Available Statistics:**
 - **`HitCount`**: Total cache hits since instance creation
@@ -400,6 +360,8 @@ Console.WriteLine($"Period hit ratio: {periodStats.HitRatio:P1}");
 - **`EvictionCount`**: Number of manual removals and expirations
 - **`ActiveSemaphoreCount`**: Current concurrency control structures
 - **`TopSlowestQueries`**: List of the slowest cache operations (v2.0.2+)
+- **`TopHeaviestEntries`**: List of the heaviest cache entries (v2.1.0+)
+- **`ApproximateMemoryBytes`**: Approximate memory usage in bytes (v2.1.0+)
 - **`Reset()`**: Method to reset all counters to zero
 
 ## 📖 API Reference
