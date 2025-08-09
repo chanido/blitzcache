@@ -35,7 +35,7 @@ namespace BlitzCacheCore.Tests
             }
 
             // Give eviction callbacks a moment
-            TestDelays.WaitForEvictionCallbacksSync();
+            TestDelays.WaitForStandardExpiration();
 
             var stats = cache.Statistics!;
             Assert.Greater(stats.EvictionCount, 0, "Capacity limit should trigger evictions");
@@ -80,7 +80,7 @@ namespace BlitzCacheCore.Tests
                 Assert.AreEqual(valueBytes, val.Length);
             }
 
-            await TestDelays.WaitForEvictionCallbacks();
+            await TestDelays.WaitForStandardExpiration();
 
             var stats = cache.Statistics!;
             Assert.Greater(stats.EvictionCount, 0, "Capacity limit should trigger evictions (async)");
@@ -124,7 +124,7 @@ namespace BlitzCacheCore.Tests
                 Assert.AreEqual(valueBytes, val.Length);
             }
 
-            TestDelays.WaitForEvictionCallbacksSync();
+            TestDelays.WaitForStandardExpiration();
 
             // We cannot assert stats, but capacity-based eviction should still occur.
             // Verify by scanning all earlier entries; at least one should be recomputed.

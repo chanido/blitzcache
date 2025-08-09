@@ -35,7 +35,7 @@ namespace BlitzCacheCore.Tests.Statistics
             var result1 = cache.BlitzGet($"key1_{testId}", () => "new_value1", TestConstants.StandardTimeoutMs);
 
             // Give some time for the eviction callbacks to execute
-            await TestDelays.WaitForEvictionCallbacks();
+            await TestDelays.WaitForStandardExpiration();
 
             var statsAfterExpiration = cache.Statistics;
             Console.WriteLine($"After expiration: {statsAfterExpiration.EntryCount} entries, {statsAfterExpiration.EvictionCount} evictions");
