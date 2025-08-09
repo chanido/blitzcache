@@ -119,11 +119,21 @@ namespace BlitzCacheCore.Statistics
         /// Creates memory cache entry options with eviction callback for statistics and size tracking.
         /// </summary>
         /// <param name="expirationTime">When the entry should expire</param>
+        /// <param name="size">Optional entry size in bytes. Only set when capacity-based eviction is enabled.</param>
         /// <returns>MemoryCacheEntryOptions configured with eviction tracking</returns>
-        internal MemoryCacheEntryOptions CreateEntryOptions(DateTime expirationTime) => new MemoryCacheEntryOptions
+        internal MemoryCacheEntryOptions CreateEntryOptions(DateTime expirationTime, long? size = null)
         {
-            AbsoluteExpiration = expirationTime,
-            PostEvictionCallbacks = { new PostEvictionCallbackRegistration
+            var options = new MemoryCacheEntryOptions
+            {
+                AbsoluteExpiration = expirationTime
+            };
+
+            if (size.HasValue && size.Value > 0)
+            {
+                options.Size = size.Value;
+            }
+
+            options.PostEvictionCallbacks.Add(new PostEvictionCallbackRegistration
             {
                 EvictionCallback = (key, value, reason, state) =>
                 {
@@ -131,15 +141,23 @@ namespace BlitzCacheCore.Statistics
                     // Don't count Replaced as eviction since it's just an update
                     if (reason != EvictionReason.Replaced)
                     {
-                        if (key is string k && keySizes.TryRemove(k, out var size))
+                        if (key is string k && keySizes.TryRemove(k, out var s))
                         {
-                            RecordRemove(k, size);
+                            RecordRemove(k, s);
                         }
                         RecordEviction();
                     }
                 }
-            }}
-        };
+            });
+
+            return options;
+        }
+
+        /// <summary>
+        /// Backwards-compatible overload without size parameter.
+        /// </summary>
+        internal MemoryCacheEntryOptions CreateEntryOptions(DateTime expirationTime)
+            => CreateEntryOptions(expirationTime, null);
 
         /// <summary>
         /// Called after setting an entry to track size and heaviest entries.

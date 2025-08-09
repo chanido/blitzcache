@@ -5,6 +5,10 @@
 - Heaviest entries tracking: `Statistics.TopHeaviestEntries` lists the largest cache items by estimated size.
 - Logging enhancements: periodic logs now include Approx. Memory and Top Heaviest sections.
 - DI configuration: `AddBlitzCache(..., maxTopHeaviest: 5)` to configure heaviest list size.
+- Optional capacity-based size limit via `maxCacheSizeBytes` on `BlitzCache` and `BlitzCacheInstance`.
+- Per-entry sizing wired to `MemoryCacheEntryOptions.Size` so `MemoryCache.SizeLimit` is enforced.
+- DI support: `AddBlitzCache(..., maxCacheSizeBytes: N)` to configure the limit from services.
+- Tests: sync/async capacity eviction and enforcement even when statistics are disabled.
 
 ### Changed
 - README updated with examples and notes about sizing strategy and new metrics.
@@ -12,6 +16,8 @@
 
 ### Notes
 - Sizing is lightweight and supports common types (string, byte[], primitive arrays); others use a conservative default to avoid overhead.
+- Eviction is handled by `MemoryCache` heuristics (priority/usage-based trimming).
+- Works independently of statistics; stats are only for visibility and logging.
 
 # [2.0.2] - 2025-08-05
 

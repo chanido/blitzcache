@@ -17,24 +17,21 @@
     <Version>2.1.0</Version>
     <AssemblyVersion>2.1.0.0</AssemblyVersion>
     <FileVersion>2.1.0.0</FileVersion>
-    <PackageReleaseNotes>BlitzCache v2.1.0 - Enhanced Statistics (Approx. Memory + Heaviest Keys)
+    <PackageReleaseNotes>BlitzCache v2.1.0 - Capacity-Based Size Limit (Optional)
 
 NEW IN v2.1.0:
 • Approximate memory usage tracking (Statistics.ApproximateMemoryBytes)
-• New TopHeaviestEntries list to identify largest cached items by estimated size
-• Logging output now includes "Approx. Memory" and "Top Heaviest" sections
-• DI: AddBlitzCache now supports configuring maxTopHeaviest (default 5)
-• Non-breaking: existing APIs continue to work without changes
+• TopHeaviestEntries to identify largest cached items
+• Logging includes Approx. Memory and Top Heaviest sections
+• Optional maxCacheSizeBytes to enable capacity-based eviction using MemoryCache.SizeLimit
+• Automatic per-entry sizing via lightweight IValueSizer so the limit is enforced
+• Works even when statistics are disabled
+• DI: AddBlitzCache now accepts maxCacheSizeBytes
+• New tests ensuring eviction occurs and memory stays within the limit
 
-ABOUT SIZING:
-• Best-effort sizing for common types (string, byte[], primitive arrays)
-• Lightweight and allocation-friendly; avoids heavy reflection/serialization
-
-STILL SIMPLE:
-• Automatic statistics when using AddBlitzCacheLogging()
-• Works out of the box; no configuration required for new metrics
-
-Perfect for monitoring cache footprint and identifying oversized entries.</PackageReleaseNotes>
+Notes:
+• Sizing is best-effort and designed to be lightweight for common types.
+• Capacity-based eviction relies on Microsoft.Extensions.Caching.Memory heuristics.</PackageReleaseNotes>
     <PackageId>BlitzCache</PackageId>
     <PackageIcon>icon.png</PackageIcon>
     <PackageReadmeFile>README.md</PackageReadmeFile>

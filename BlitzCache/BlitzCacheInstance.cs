@@ -26,12 +26,18 @@ namespace BlitzCacheCore
         /// <param name="maxTopSlowest">Max number of top slowest queries to store (0 for improved performance) (default: 5 queries)</param>
         /// <param name="valueSizer">Strategy to estimate value sizes for memory accounting. If null, a default approximate sizer will be used.</param>
         /// <param name="maxTopHeaviest">Max number of heaviest entries to track (0 disables). Default 5.</param>
-        public BlitzCacheInstance(long? defaultMilliseconds = 60000, TimeSpan? cleanupInterval = null, int? maxTopSlowest = null, IValueSizer? valueSizer = null, int? maxTopHeaviest = 5)
+        /// <param name="maxCacheSizeBytes">Optional maximum cache size in bytes. When specified, MemoryCache enforces this limit via capacity-based eviction.</param>
+        public BlitzCacheInstance(long? defaultMilliseconds = 60000, TimeSpan? cleanupInterval = null, int? maxTopSlowest = null, IValueSizer? valueSizer = null, int? maxTopHeaviest = 5, long? maxCacheSizeBytes = null)
         {
             if (defaultMilliseconds < 1) throw new ArgumentOutOfRangeException(nameof(defaultMilliseconds), "Default milliseconds must be non-negative");
 
             this.defaultMilliseconds = defaultMilliseconds!.Value;
-            memoryCache = new MemoryCache(new MemoryCacheOptions());
+            var options = new MemoryCacheOptions();
+            if (maxCacheSizeBytes.HasValue && maxCacheSizeBytes.Value > 0)
+            {
+                options.SizeLimit = maxCacheSizeBytes.Value;
+            }
+            memoryCache = new MemoryCache(options);
             semaphoreDictionary = new BlitzSemaphoreDictionary(cleanupInterval);
             this.maxTopSlowest = maxTopSlowest ?? 5;
             this.valueSizer = valueSizer ?? new ApproximateValueSizer();
@@ -93,11 +99,15 @@ namespace BlitzCacheCore
             stopwatch.Stop();
 
             var expirationTime = DateTime.UtcNow.AddMilliseconds(nuances.CacheRetention ?? milliseconds ?? defaultMilliseconds);
-            var cacheEntryOptions = statistics?.CreateEntryOptions(expirationTime) ??
-                new MemoryCacheEntryOptions { AbsoluteExpiration = expirationTime };
 
             // Determine if the key existed in the cache before this Set (for accurate entry count)
             var existed = memoryCache.TryGetValue(cacheKey, out _);
+
+            // Compute size for MemoryCache capacity enforcement
+            var newSize = valueSizer.GetSizeBytes(computedResult!);
+            var cacheEntryOptions = statistics?.CreateEntryOptions(expirationTime) ?? new MemoryCacheEntryOptions { AbsoluteExpiration = expirationTime };
+            cacheEntryOptions.Size = newSize;
+
             memoryCache.Set(cacheKey, computedResult, cacheEntryOptions);
             statistics?.RecordSetOrUpdate(cacheKey, computedResult!, existed);
             statistics?.TrackEntry(cacheKey, stopwatch);
@@ -131,11 +141,15 @@ namespace BlitzCacheCore
             stopwatch.Stop();
 
             var expirationTime = DateTime.UtcNow.AddMilliseconds(nuances.CacheRetention ?? milliseconds ?? defaultMilliseconds);
-            var cacheEntryOptions = statistics?.CreateEntryOptions(expirationTime) ??
-                new MemoryCacheEntryOptions { AbsoluteExpiration = expirationTime };
 
             // Determine if the key existed in the cache before this Set (for accurate entry count)
             var existed = memoryCache.TryGetValue(cacheKey, out _);
+
+            // Compute size for MemoryCache capacity enforcement
+            var newSize = valueSizer.GetSizeBytes(computedResult!);
+            var cacheEntryOptions = statistics?.CreateEntryOptions(expirationTime) ?? new MemoryCacheEntryOptions { AbsoluteExpiration = expirationTime };
+            cacheEntryOptions.Size = newSize;
+
             memoryCache.Set(cacheKey, computedResult, cacheEntryOptions);
             statistics?.RecordSetOrUpdate(cacheKey, computedResult!, existed);
             statistics?.TrackEntry(cacheKey, stopwatch);
@@ -174,7 +188,11 @@ namespace BlitzCacheCore
         {
             var existsInCache = memoryCache.TryGetValue(cacheKey, out _);
             var expirationTime = DateTime.UtcNow.AddMilliseconds(milliseconds);
+
+            // Compute size for MemoryCache capacity enforcement
+            var newSize = valueSizer.GetSizeBytes(value!);
             var cacheEntryOptions = statistics?.CreateEntryOptions(expirationTime) ?? new MemoryCacheEntryOptions { AbsoluteExpiration = expirationTime };
+            cacheEntryOptions.Size = newSize;
 
             memoryCache.Set(cacheKey, value, cacheEntryOptions);
 

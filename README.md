@@ -79,11 +79,12 @@ Top Slowest Queries:
 ✅ **Memory leak prevention** - Advanced cleanup prevents memory bloat  
 ✅ **Production tested** - Comprehensive testing ensure reliability  
 ✅ **Works with everything** - Sync, async, any data type, any .NET app  
-✅ **Automatic logging** - Built-in statistics monitoring with one line setup (v2.0.1+)
-✅ **Global statistics** - As of v2.0.2, Statistics available and BlitzCacheLoggingService to log them automatically
-✅ **Top Slowest Queries** - As of v2.0.2, BlitzCache tracks and exposes the top slowest queries, making it easy to identify performance bottlenecks in your application
-✅ **Approximate Memory Usage** - As of v2.1.0, statistics include approximate memory usage for better monitoring
-✅ **Top Heaviest Entries** - As of v2.1.0, easily identify the largest cached items with the top heaviest entries feature
+✅ **Automatic logging** - Built-in statistics monitoring with one line setup (v2.0.1+)  
+✅ **Global statistics** - As of v2.0.2, Statistics available and BlitzCacheLoggingService to log them automatically  
+✅ **Top Slowest Queries** - As of v2.0.2, BlitzCache tracks and exposes the top slowest queries, making it easy to identify performance bottlenecks in your application  
+✅ **Approximate Memory Usage** - As of v2.1.0, statistics include approximate memory usage for better monitoring  
+✅ **Top Heaviest Entries** - As of v2.1.0, easily identify the largest cached items with the top heaviest entries feature  
+✅ **Capacity-Based Size Limit (Optional)** - As of v2.1.0, set `maxCacheSizeBytes` to enable automatic eviction when the cache exceeds a size budget
 
 ## 📋 Table of Contents
 
@@ -126,7 +127,7 @@ dotnet add package BlitzCache
 
 **Basic Usage**
 ```csharp
-var cache = new BlitzCache();
+var cache = new BlitzCache(maxCacheSizeBytes: 200_000_000); // optional size limit
 
 // Any expensive operation becomes cached instantly
 var data = await cache.BlitzGet("key", ExpensiveOperation, timeoutMs);
@@ -135,7 +136,7 @@ var data = await cache.BlitzGet("key", ExpensiveOperation, timeoutMs);
 **ASP.NET Core Integration**  
 ```csharp
 // Setup (one line in Program.cs)
-services.AddBlitzCache();
+services.AddBlitzCache(maxCacheSizeBytes: 200_000_000);
 
 // Optional: Add automatic logging of cache statistics (v2.0.2+)
 services.AddBlitzCacheLogging(); // Logs cache performance hourly
@@ -148,131 +149,30 @@ public Task<Weather> GetWeather(string city) => cache.BlitzGet($"weather_{city}"
 
 **Compatibility:** .NET Standard 2.1+ | .NET Core 3.1+ | .NET 5-8+
 
-## 📚 Learning BlitzCache - Examples & Tutorials
-
-### **Comprehensive Example Files**
-BlitzCache includes comprehensive example test files that serve as **interactive tutorials** and **real-world usage guides**:
-
-#### 🌱 **[BasicUsageExamples.cs](https://github.com/chanido/blitzcache/blob/master/BlitzCache.Tests/Examples/BasicUsageExamples.cs)**
-Perfect for **getting started** - covers essential patterns:
-- ✅ **Basic synchronous caching** - Simple function caching
-- ✅ **Asynchronous operations** - Async/await patterns  
-- ✅ **Cache key management** - Working with different keys
-- ✅ **Cache expiration** - Understanding timeout behavior
-- ✅ **Manual cache removal** - Cache invalidation strategies
-- ✅ **BlitzUpdate usage** - Pre-populating cache
-- ✅ **Different data types** - Caching various objects
-- ✅ **Cache statistics monitoring** - Performance analytics and hit/miss tracking
-- ✅ **Top slowest queries** - Identify and monitor the slowest cache operations (v2.0.2+)
-- ✅ **Dependency injection** - ASP.NET Core integration
-
-#### 🚀 **[AdvancedUsageExamples.cs](https://github.com/chanido/blitzcache/blob/master/BlitzCache.Tests/Examples/AdvancedUsageExamples.cs)**
-For **experienced users** - sophisticated scenarios:
-- ✅ **Dynamic cache timeout with Nuances** - Result-based cache duration
-- ✅ **Thread-safe concurrent access** - Multi-threading patterns
-- ✅ **Circuit breaker pattern** - Resilient external service calls
-- ✅ **Multi-level caching strategy** - Complex caching hierarchies
-- ✅ **Cache warming techniques** - Pre-loading strategies
-- ✅ **Conditional caching** - Success/failure caching logic
-- ✅ **Global vs Independent caches** - Instance management
-- ✅ **Performance monitoring** - Metrics and diagnostics
-- ✅ **Top slowest queries** - Track and analyze slowest cache operations for optimization (v2.0.2+)
-
-### **Running the Examples**
-```bash
-# Run basic examples
-dotnet test --filter "BasicUsageExamples"
-
-# Run advanced examples  
-dotnet test --filter "AdvancedUsageExamples"
-
-# Run specific example
-dotnet test --filter "Example1_BasicSyncCaching"
-```
-
-These example files are **executable tests** that demonstrate real-world usage patterns and serve as **living documentation** that stays up-to-date with the codebase.
-
-## 🌟 Real-World Examples
-
-### Database Operations
-```csharp
-public class UserRepository
-{
-    private readonly IBlitzCache _cache;
-    
-    public async Task<User> GetUserAsync(int userId)
-    {
-        return await _cache.BlitzGet($"user_{userId}", 
-            async () => await database.Users.FindAsync(userId), 
-            1200000); // Cache for 20 minutes
-    }
-    
-    // Multiple concurrent calls to GetUserAsync(123) will result in only ONE database query
-}
-```
-
-### HTTP API Calls
-```csharp
-public class ExchangeRateService
-{
-    public async Task<decimal> GetExchangeRateAsync(string fromCurrency, string toCurrency)
-    {
-        return await _cache.BlitzGet($"rate_{fromCurrency}_{toCurrency}",
-            async () => {
-                var response = await httpClient.GetAsync($"api/rates/{fromCurrency}/{toCurrency}");
-                return await response.Content.ReadFromJsonAsync<decimal>();
-            }, 
-            600000); // Cache for 10 minutes
-    }
-}
-```
-
-### File System Operations
-```csharp
-public class ConfigurationService
-{
-    public async Task<AppConfig> LoadConfigAsync()
-    {
-        return await _cache.BlitzGet("app-config",
-            async () => {
-                var json = await File.ReadAllTextAsync("appsettings.json");
-                return JsonSerializer.Deserialize<AppConfig>(json);
-            },
-            1800000); // Cache for 30 minutes
-    }
-}
-```
-
-### Complex Calculations
-```csharp
-public class ReportService
-{
-    public async Task<SalesReport> GenerateMonthlyReportAsync(int year, int month)
-    {
-        return await _cache.BlitzGet($"sales_report_{year}_{month}",
-            async () => {
-                // This expensive calculation will only run once
-                var salesData = await CalculateComplexSalesMetricsAsync(year, month);
-                var report = await GenerateChartsAndGraphsAsync(salesData);
-                return report;
-            },
-            3600000); // Cache for 1 hour
-    }
-}
-```
-
-### Class or Bounded Context Isolated
-```csharp
-public class ReportService
-{
-    private static readonly BlitzCacheInstance  cache = new BlitzCacheInstance();
-
-    public Task<SalesReport> GetProductsForCustomer(Guid customerId) => cache.BlitzGet($"products_{customerId}", () => LoadProducts(customerId)); // Cache for 1 hour
-    }
-}
-```
-
 ## 🔧 Advanced Usage
+
+### Capacity-Based Size Limit
+BlitzCache can enforce an overall cache size budget using .NET MemoryCache’s SizeLimit. Enable it by providing `maxCacheSizeBytes`:
+
+```csharp
+// Instance-based
+var cache = new BlitzCacheInstance(maxCacheSizeBytes: 100 * 1024 * 1024); // 100 MB
+
+// Global
+var global = new BlitzCache(maxCacheSizeBytes: 100 * 1024 * 1024);
+
+// DI
+services.AddBlitzCache(maxCacheSizeBytes: 100 * 1024 * 1024);
+```
+
+How it works:
+- Each entry is assigned an approximate size using a lightweight IValueSizer.
+- MemoryCache evicts entries (LRU-like with priority) when inserting would exceed SizeLimit.
+- Enforced regardless of whether statistics are enabled.
+
+Notes:
+- Sizing is best-effort and optimized for common types (string, byte[], primitive arrays). Other types use a conservative default.
+- You can still use expiration times; capacity-based eviction works in addition to them.
 
 ### Automatic Cache Key Generation
 BlitzCache can automatically generate cache keys based on the calling method and file:
@@ -478,7 +378,7 @@ If you are upgrading from BlitzCache 1.x to 2.x, please note the following break
     ```csharp
     void BlitzUpdate<T>(string cacheKey, Func<Task<T>> function, long milliseconds);
     ```
-  - **After (v2.x):**
+  - **After (v2.x):
     ```csharp
     Task BlitzUpdate<T>(string cacheKey, Func<Task<T>> function, long milliseconds);
     ```
