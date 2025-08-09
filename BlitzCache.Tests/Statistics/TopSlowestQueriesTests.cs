@@ -15,31 +15,31 @@ namespace BlitzCacheCore.Tests.Statistics
         public void AddAndGetTop_BasicFunctionality_WorksCorrectly()
         {
             var topN = 3;
-            var topSlowest = new TopSlowestQueries(topN);
-            topSlowest.Add("A", 100);
-            topSlowest.Add("B", 200);
-            topSlowest.Add("C", 150);
+            var top = new TopNTracker<SlowQuery>(topN, (key, ms) => new SlowQuery(key, ms));
+            top.AddOrUpdate("A", 100);
+            top.AddOrUpdate("B", 200);
+            top.AddOrUpdate("C", 150);
 
-            var top = topSlowest.Get().ToList();
+            var results = top.Get().ToList();
 
-            Assert.AreEqual(topN, top.Count);
-            Assert.AreEqual("B", top.ElementAt(0).CacheKey);
-            Assert.AreEqual("C", top.ElementAt(1).CacheKey);
-            Assert.AreEqual("A", top.ElementAt(2).CacheKey);
+            Assert.AreEqual(topN, results.Count);
+            Assert.AreEqual("B", results.ElementAt(0).CacheKey);
+            Assert.AreEqual("C", results.ElementAt(1).CacheKey);
+            Assert.AreEqual("A", results.ElementAt(2).CacheKey);
         }
 
         [Test]
         public void Add_UpdatesExistingQuery_UpdatesStats()
         {
-            var topSlowest = new TopSlowestQueries(5);
-            topSlowest.Add("B", 150);
-            topSlowest.Add("A", 100);
-            topSlowest.Add("A", 200);
+            var top = new TopNTracker<SlowQuery>(5, (key, ms) => new SlowQuery(key, ms));
+            top.AddOrUpdate("B", 150);
+            top.AddOrUpdate("A", 100);
+            top.AddOrUpdate("A", 200);
 
-            var top = topSlowest.Get().ToList();
+            var results = top.Get().ToList();
 
-            Assert.AreEqual(2, top.Count);
-            var aStats = top.First();
+            Assert.AreEqual(2, results.Count);
+            var aStats = results.First();
             Assert.IsNotNull(aStats);
             Assert.AreEqual("A", aStats.CacheKey);
             Assert.AreEqual(200, aStats.WorstCaseMs);
@@ -51,37 +51,37 @@ namespace BlitzCacheCore.Tests.Statistics
         [Test]
         public void Clear_EmptiesTheCollection()
         {
-            var topSlowest = new TopSlowestQueries(2);
-            topSlowest.Add("A", 100);
-            topSlowest.Add("B", 200);
+            var top = new TopNTracker<SlowQuery>(2, (key, ms) => new SlowQuery(key, ms));
+            top.AddOrUpdate("A", 100);
+            top.AddOrUpdate("B", 200);
 
-            topSlowest.Clear();
-            var top = topSlowest.Get().ToList();
+            top.Clear();
+            var results = top.Get().ToList();
 
-            Assert.AreEqual(0, top.Count);
+            Assert.AreEqual(0, results.Count);
         }
 
         [Test]
         public void Add_MoreThanMaxSize_OnlyKeepsTopN()
         {
-            var topSlowest = new TopSlowestQueries(2);
-            topSlowest.Add("A", 100);
-            topSlowest.Add("B", 200);
-            topSlowest.Add("C", 300);
+            var top = new TopNTracker<SlowQuery>(2, (key, ms) => new SlowQuery(key, ms));
+            top.AddOrUpdate("A", 100);
+            top.AddOrUpdate("B", 200);
+            top.AddOrUpdate("C", 300);
 
-            var top = topSlowest.Get().ToList();
+            var results = top.Get().ToList();
 
-            Assert.AreEqual(2, top.Count);
+            Assert.AreEqual(2, results.Count);
             // Should contain the two slowest
-            Assert.IsTrue(top.First().CacheKey == "C");
-            Assert.IsTrue(top.Last().CacheKey == "B");
+            Assert.IsTrue(results.First().CacheKey == "C");
+            Assert.IsTrue(results.Last().CacheKey == "B");
         }
 
         [Test]
         public void Concurrent_AddAndUpdate_NoExceptionsAndCorrectness()
         {
             var topN = 5;
-            var topSlowest = new TopSlowestQueries(topN);
+            var top = new TopNTracker<SlowQuery>(topN, (key, ms) => new SlowQuery(key, ms));
             int threads = 10;
             int perThread = 1000;
             var keys = new[] { "A", "B", "C", "D", "E", "F", "G" };
@@ -96,16 +96,16 @@ namespace BlitzCacheCore.Tests.Statistics
                     {
                         var key = keys[rand.Next(keys.Length)];
                         var duration = rand.Next(50, 1000);
-                        topSlowest.Add(key, duration);
+                        top.AddOrUpdate(key, duration);
                     }
                 }));
             }
             Task.WaitAll(tasks.ToArray());
 
-            var top = topSlowest.Get().ToList();
-            Assert.AreEqual(topN, top.Count);
+            var results = top.Get().ToList();
+            Assert.AreEqual(topN, results.Count);
             // Should not throw and should contain only valid keys
-            foreach (var entry in top)
+            foreach (var entry in results)
             {
                 Assert.IsTrue(keys.Any(k => entry.CacheKey.Contains(k)) || string.IsNullOrWhiteSpace(entry.CacheKey));
             }

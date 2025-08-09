@@ -2,7 +2,6 @@
 using BlitzCacheCore.Statistics;
 using Microsoft.Extensions.Caching.Memory;
 using System;
-using System.Collections.Concurrent;
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
 using System.Threading.Tasks;
@@ -18,7 +17,6 @@ namespace BlitzCacheCore
         private CacheStatistics? statistics;
         private readonly IValueSizer valueSizer;
         private readonly int maxTopHeaviest;
-        private readonly ConcurrentDictionary<string, long> keySizes = new ConcurrentDictionary<string, long>();
 
         /// <summary>
         /// Creates a new BlitzCache instance.
@@ -45,7 +43,7 @@ namespace BlitzCacheCore
         /// </summary>
         public int GetSemaphoreCount() => semaphoreDictionary.GetNumberOfLocks();
 
-        public void InitializeStatistics() => statistics = statistics ?? new CacheStatistics(() => semaphoreDictionary.GetNumberOfLocks(), maxTopSlowest, maxTopHeaviest);
+        public void InitializeStatistics() => statistics = statistics ?? new CacheStatistics(() => semaphoreDictionary.GetNumberOfLocks(), maxTopSlowest, maxTopHeaviest, valueSizer);
 
         /// <summary>
         /// Gets cache performance statistics and monitoring information.
@@ -98,30 +96,10 @@ namespace BlitzCacheCore
             var cacheEntryOptions = statistics?.CreateEntryOptions(expirationTime) ??
                 new MemoryCacheEntryOptions { AbsoluteExpiration = expirationTime };
 
-            // Ensure we clean up size tracking on automatic eviction (skip replacements)
-            cacheEntryOptions.PostEvictionCallbacks.Add(new PostEvictionCallbackRegistration
-            {
-                EvictionCallback = (key, value, reason, state) =>
-                {
-                    if (reason == EvictionReason.Replaced) return;
-                    if (key is string k && keySizes.TryRemove(k, out var size) && statistics != null)
-                    {
-                        statistics.RecordRemove(k, size);
-                    }
-                }
-            });
-
-            // Track size changes
-            var newSize = statistics is null ? 0 : valueSizer.GetSizeBytes(computedResult);
-            long? oldSize = null;
-            if (statistics != null && keySizes.TryGetValue(cacheKey, out var prev)) oldSize = prev;
-
+            // Determine if the key existed in the cache before this Set (for accurate entry count)
+            var existed = memoryCache.TryGetValue(cacheKey, out _);
             memoryCache.Set(cacheKey, computedResult, cacheEntryOptions);
-            if (statistics != null)
-            {
-                keySizes[cacheKey] = newSize;
-                statistics.RecordAddOrUpdate(cacheKey, newSize, oldSize);
-            }
+            statistics?.RecordSetOrUpdate(cacheKey, computedResult!, existed);
             statistics?.TrackEntry(cacheKey, stopwatch);
             return computedResult;
         }
@@ -156,29 +134,10 @@ namespace BlitzCacheCore
             var cacheEntryOptions = statistics?.CreateEntryOptions(expirationTime) ??
                 new MemoryCacheEntryOptions { AbsoluteExpiration = expirationTime };
 
-            // Ensure we clean up size tracking on automatic eviction (skip replacements)
-            cacheEntryOptions.PostEvictionCallbacks.Add(new PostEvictionCallbackRegistration
-            {
-                EvictionCallback = (key, value, reason, state) =>
-                {
-                    if (reason == EvictionReason.Replaced) return;
-                    if (key is string k && keySizes.TryRemove(k, out var size) && statistics != null)
-                    {
-                        statistics.RecordRemove(k, size);
-                    }
-                }
-            });
-
-            var newSize = statistics is null ? 0 : valueSizer.GetSizeBytes(computedResult);
-            long? oldSize = null;
-            if (statistics != null && keySizes.TryGetValue(cacheKey, out var prev)) oldSize = prev;
-
+            // Determine if the key existed in the cache before this Set (for accurate entry count)
+            var existed = memoryCache.TryGetValue(cacheKey, out _);
             memoryCache.Set(cacheKey, computedResult, cacheEntryOptions);
-            if (statistics != null)
-            {
-                keySizes[cacheKey] = newSize;
-                statistics.RecordAddOrUpdate(cacheKey, newSize, oldSize);
-            }
+            statistics?.RecordSetOrUpdate(cacheKey, computedResult!, existed);
             statistics?.TrackEntry(cacheKey, stopwatch);
             return computedResult;
         }
@@ -217,31 +176,13 @@ namespace BlitzCacheCore
             var expirationTime = DateTime.UtcNow.AddMilliseconds(milliseconds);
             var cacheEntryOptions = statistics?.CreateEntryOptions(expirationTime) ?? new MemoryCacheEntryOptions { AbsoluteExpiration = expirationTime };
 
-            // Ensure we clean up size tracking on automatic eviction (skip replacements)
-            cacheEntryOptions.PostEvictionCallbacks.Add(new PostEvictionCallbackRegistration
-            {
-                EvictionCallback = (key, value, reason, state) =>
-                {
-                    if (reason == EvictionReason.Replaced) return;
-                    if (key is string k && keySizes.TryRemove(k, out var size) && statistics != null)
-                    {
-                        statistics.RecordRemove(k, size);
-                    }
-                }
-            });
-
-            var newSize = statistics is null ? 0 : valueSizer.GetSizeBytes(value);
-            long? oldSize = null;
-            if (statistics != null && keySizes.TryGetValue(cacheKey, out var prev)) oldSize = prev;
-
             memoryCache.Set(cacheKey, value, cacheEntryOptions);
 
             if (statistics != null)
             {
-                keySizes[cacheKey] = newSize;
                 if (!existsInCache)
                     statistics.TrackEntryUpdate();
-                statistics.RecordAddOrUpdate(cacheKey, newSize, oldSize);
+                statistics.RecordSetOrUpdate(cacheKey, value!, existsInCache);
             }
         }
 
@@ -256,11 +197,7 @@ namespace BlitzCacheCore
 
             using var lockHandle = semaphoreDictionary.Wait(cacheKey);
             memoryCache.Remove(cacheKey);
-            // There is no need to decrement entry count or record eviction here because that is handled by the memory cache PostEvictionCallbacks
-            if (statistics != null && keySizes.TryRemove(cacheKey, out var size))
-            {
-                statistics.RecordRemove(cacheKey, size);
-            }
+            // No manual stats updates here: eviction callback handles it.
         }
 
         public void Dispose()

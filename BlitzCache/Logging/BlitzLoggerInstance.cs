@@ -50,7 +50,7 @@ namespace BlitzCacheCore.Logging
                 stats.EvictionCount,
                 stats.ActiveSemaphoreCount,
                 stats.TotalOperations,
-                FormatBytes(stats.ApproximateMemoryBytes),
+                Formatters.FormatBytes(stats.ApproximateMemoryBytes),
                 stats.TopHeaviestEntries != null && stats.TopHeaviestEntries.Any() ? string.Concat(stats.TopHeaviestEntries.Select(q => $"\n\t{q}")) : "Not available",
                 stats.TopSlowestQueries != null && stats.TopSlowestQueries.Count() > 0 ? string.Concat(stats.TopSlowestQueries.Select(q => $"\n\t{q}")) : "Not available"
             );
@@ -61,15 +61,6 @@ namespace BlitzCacheCore.Logging
             {
                 logger.LogError(ex, "Error occurred while logging BlitzCache statistics for '{Identifier}'", Identifier);
             }
-        }
-
-        private static string FormatBytes(long bytes)
-        {
-            if (bytes < 1024) return $"{bytes} bytes";
-            var kb = bytes / 1024.0;
-            if (kb < 1024) return $"{kb:0.##} KB";
-            var mb = kb / 1024.0;
-            return $"{mb:0.##} MB";
         }
 
         /// <summary>

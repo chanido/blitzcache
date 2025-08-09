@@ -3,10 +3,12 @@ namespace BlitzCacheCore.Statistics
     /// <summary>
     /// Represents a cache entry approximate size for reporting purposes.
     /// </summary>
-    public class HeavyEntry
+    public class HeavyEntry : IStatisticalEntry
     {
         public string CacheKey { get; }
-        public long SizeBytes { get; }
+        public long SizeBytes { get; private set; }
+
+        public long Score => SizeBytes;
 
         public HeavyEntry(string cacheKey, long sizeBytes)
         {
@@ -14,18 +16,14 @@ namespace BlitzCacheCore.Statistics
             SizeBytes = sizeBytes;
         }
 
+        void IStatisticalEntry.Update(long value)
+        {
+            SizeBytes = value;
+        }
+
         public override string ToString()
         {
-            var size = SizeBytes;
-            if (size < 1024)
-                return $"{CacheKey} - ~{size} bytes";
-
-            var kb = size / 1024.0;
-            if (kb < 1024)
-                return $"{CacheKey} - ~{kb:0.##} KB";
-
-            var mb = kb / 1024.0;
-            return $"{CacheKey} - ~{mb:0.##} MB";
+            return $"{CacheKey} - ~{Formatters.FormatBytes(SizeBytes)}";
         }
     }
 }

@@ -364,6 +364,11 @@ Notes:
 - **`ApproximateMemoryBytes`**: Approximate memory usage in bytes (v2.1.0+)
 - **`Reset()`**: Method to reset all counters to zero
 
+Practical guidance:
+- Use BlitzGet/BlitzUpdate APIs; they set AbsoluteExpiration and wire eviction callbacks for you.
+- For manual removals via Remove, statistics are updated through the eviction callback automatically—no extra work needed.
+- In tests, very small delays are used to allow callbacks to run; in production these callbacks execute automatically on the thread pool.
+
 ## 📖 API Reference
 
 ### Core Methods

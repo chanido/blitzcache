@@ -2,13 +2,15 @@
 
 namespace BlitzCacheCore.Statistics
 {
-    public class SlowQuery : IComparable
+    public class SlowQuery : IComparable, IStatisticalEntry
     {
         public string CacheKey { get; private set; }
         public long WorstCaseMs { get; private set; }
         public long BestCaseMs { get; private set; }
         public long AverageMs { get; private set; }
         public long Occurrences { get; private set; }
+
+        public long Score => WorstCaseMs;
 
         public SlowQuery(string cacheKey, long worstCaseMs)
         {
@@ -30,11 +32,13 @@ namespace BlitzCacheCore.Statistics
             return this;
         }
 
+        void IStatisticalEntry.Update(long value) => Update(value);
+
         public bool IsFasterThan(long durationMilliseconds) => WorstCaseMs < durationMilliseconds;
 
         public override bool Equals(object obj) => obj is SlowQuery other && CacheKey == other.CacheKey;
         public override int GetHashCode() => CacheKey.GetHashCode();
-        public override string ToString() => $"{CacheKey} - Worse: {WorstCaseMs}ms | Best: {BestCaseMs}ms | Avg: {AverageMs} | Occurrences: {Occurrences}";
+        public override string ToString() => $"{CacheKey} - Worse: {Formatters.FormatDuration(WorstCaseMs)} | Best: {Formatters.FormatDuration(BestCaseMs)} | Avg: {Formatters.FormatDuration(AverageMs)} | Occurrences: {Occurrences}";
         public int CompareTo(object obj) => obj is SlowQuery other ? WorstCaseMs.CompareTo(other.WorstCaseMs) : throw new ArgumentException("Object is not a SlowQuery");
     }
 }
