@@ -58,7 +58,14 @@ Notes:
   <ItemGroup>
     <None Include="..\README.md" Pack="true" PackagePath="\" />
     <None Include="..\licence.txt" Pack="true" PackagePath="\" />
-    <None Include="..\icon.png" Pack="true" PackagePath="\" />
+    <None Include="icon.png" Pack="true" PackagePath="\" />
   </ItemGroup>
 
+  <Target Name="EnsureIconInProject" BeforeTargets="Pack">
+    <Message Text="Ensuring icon.png exists in project directory for packing" Importance="high" />
+    <Copy SourceFiles="$(MSBuildProjectDirectory)/../icon.png"
+          DestinationFiles="$(MSBuildProjectDirectory)/icon.png"
+          SkipUnchangedFiles="true"
+          Condition="Exists('$(MSBuildProjectDirectory)/../icon.png')" />
+  </Target>
 </Project>
