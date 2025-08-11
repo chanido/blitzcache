@@ -574,6 +574,262 @@ namespace BlitzCacheCore.Tests.Statistics
             // Assert
             Assert.IsTrue(topSlowest == null || !topSlowest.Any(), "TopSlowestQueries should be null or empty when disabled");
         }
+
+        [Test]
+        public void MemoryTracking_ApproximateBytes_IncreasesOnAdd_DecreasesOnRemove()
+        {
+            // Arrange
+            var initialBytes = cache.Statistics.ApproximateMemoryBytes;
+
+            // Act
+            cache.BlitzGet("size_key1", () => new byte[1024], TestConstants.StandardTimeoutMs);
+            cache.BlitzGet("size_key2", () => new string('a', 100), TestConstants.StandardTimeoutMs);
+            TestDelays.WaitForEvictionCallbacksSync();
+
+            var afterAdd = cache.Statistics.ApproximateMemoryBytes;
+            Assert.Greater(afterAdd, initialBytes, "Memory should increase after adding entries");
+
+            // Remove one key
+            cache.Remove("size_key1");
+            TestDelays.WaitForEvictionCallbacksSync();
+
+            var afterRemove = cache.Statistics.ApproximateMemoryBytes;
+            Assert.Less(afterRemove, afterAdd, "Memory should decrease after removing an entry");
+        }
+
+        [Test]
+        public void TopHeaviestEntries_TracksLargest_ByApproximateSize()
+        {
+            // Arrange: create a dedicated cache to control config
+            var local = new BlitzCacheInstance(maxTopHeaviest: 2);
+            local.InitializeStatistics();
+
+            // Add entries with different sizes
+            local.BlitzGet("k_small", () => new byte[10], TestConstants.StandardTimeoutMs);
+            local.BlitzGet("k_medium", () => new byte[500], TestConstants.StandardTimeoutMs);
+            local.BlitzGet("k_large", () => new byte[2000], TestConstants.StandardTimeoutMs);
+            TestDelays.WaitForEvictionCallbacksSync();
+
+            // Act
+            var top = local.Statistics.TopHeaviestEntries.ToList();
+
+            // Assert: only largest two are kept and ordered desc
+            Assert.AreEqual(2, top.Count);
+            Assert.AreEqual("k_large", top[0].CacheKey);
+            Assert.AreEqual("k_medium", top[1].CacheKey);
+
+            local.Dispose();
+        }
+
+         [Test]
+        public async Task BlitzGet_AutoKey_WithNuances_SyncAndAsync_TrackStatistics()
+        {
+            var cache = new BlitzCacheInstance();
+            cache.InitializeStatistics();
+
+            // Sync with Nuances (auto-key)
+            int syncCalls = 0;
+            string SyncFunc(Nuances n)
+            {
+                syncCalls++;
+                n.CacheRetention = TestConstants.VeryShortTimeoutMs;
+                return "sync-value";
+            }
+
+            var s1 = cache.BlitzGet(SyncFunc);
+            var s2 = cache.BlitzGet(SyncFunc);
+
+            Assert.AreEqual("sync-value", s1);
+            Assert.AreEqual("sync-value", s2);
+            Assert.AreEqual(1, syncCalls, "Sync Nuances function should execute once with auto-key");
+
+            var statsAfterSync = cache.Statistics;
+            Assert.IsNotNull(statsAfterSync);
+            Assert.AreEqual(1, statsAfterSync!.MissCount, "One miss recorded for first sync call");
+            Assert.AreEqual(1, statsAfterSync.HitCount, "One hit recorded for second sync call");
+            Assert.AreEqual(1, statsAfterSync.EntryCount, "One entry present after sync calls");
+
+            // Async with Nuances (explicit key to avoid auto-key collision in same method)
+            int asyncCalls = 0;
+            Task<string> AsyncFunc(Nuances n)
+            {
+                asyncCalls++;
+                n.CacheRetention = TestConstants.VeryShortTimeoutMs;
+                return Task.FromResult("async-value");
+            }
+
+            var a1 = await cache.BlitzGet("async-key", AsyncFunc);
+            var a2 = await cache.BlitzGet("async-key", AsyncFunc);
+
+            Assert.AreEqual("async-value", a1);
+            Assert.AreEqual("async-value", a2);
+            Assert.AreEqual(1, asyncCalls, "Async Nuances function should execute once with explicit key");
+
+            var statsAfterAsync = cache.Statistics;
+            Assert.IsNotNull(statsAfterAsync);
+            // Totals include previous sync operations too
+            Assert.AreEqual(2, statsAfterAsync!.MissCount, "Two misses total (sync + async first calls)");
+            Assert.AreEqual(2, statsAfterAsync.HitCount, "Two hits total (sync + async second calls)");
+            Assert.AreEqual(2, statsAfterAsync.EntryCount, "Two distinct entries (sync and async) present");
+
+            // Verify expiration interacts with stats for auto-key + Nuances
+            await TestDelays.WaitForStandardExpiration();
+            var s3 = cache.BlitzGet(SyncFunc); // Re-create after expiration
+            await TestDelays.WaitForEvictionCallbacks();
+
+            var statsAfterExpire = cache.Statistics;
+            Assert.IsNotNull(statsAfterExpire);
+            Assert.GreaterOrEqual(statsAfterExpire!.EvictionCount, 1, "Automatic expiration should increment eviction count");
+            Assert.AreEqual(3, statsAfterExpire.MissCount, "Miss count should include re-creation after expiration");
+            Assert.AreEqual(2, statsAfterExpire.EntryCount, "Entry count remains at two after re-creation");
+
+            cache.Dispose();
+        }
+
+        [Test]
+        public async Task InterfaceCoverage_BlitzUpdate_Remove_Overloads_And_Stats()
+        {
+            var cache = new BlitzCacheInstance();
+            cache.InitializeStatistics();
+
+            // 1) BlitzGet auto-key (no Nuances) - sync
+            int callsAutoNoNuSync = 0;
+            string AutoNoNuSync() { callsAutoNoNuSync++; return "v-auto"; }
+            var g1 = cache.BlitzGet(AutoNoNuSync);
+            var g2 = cache.BlitzGet(AutoNoNuSync);
+            Assert.AreEqual("v-auto", g1);
+            Assert.AreEqual("v-auto", g2);
+            Assert.AreEqual(1, callsAutoNoNuSync, "Auto-key sync without Nuances should execute once");
+
+            // 2) BlitzGet explicit key (no Nuances) - async
+            int callsKeyNoNuAsync = 0;
+            async Task<string> KeyNoNuAsync()
+            {
+                callsKeyNoNuAsync++;
+                return await Task.FromResult("v-async-no-nu");
+            }
+            var a1 = await cache.BlitzGet("k-async-no-nu", KeyNoNuAsync);
+            var a2 = await cache.BlitzGet("k-async-no-nu", KeyNoNuAsync);
+            Assert.AreEqual("v-async-no-nu", a1);
+            Assert.AreEqual("v-async-no-nu", a2);
+            Assert.AreEqual(1, callsKeyNoNuAsync, "Explicit key async without Nuances should execute once");
+
+            // 3) BlitzGet explicit key (with Nuances) - sync
+            int callsKeyWithNuSync = 0;
+            string KeyWithNuSync(Nuances n)
+            {
+                callsKeyWithNuSync++;
+                n.CacheRetention = TestConstants.StandardTimeoutMs;
+                return "v-sync-nu";
+            }
+            var ns1 = cache.BlitzGet("k-sync-nu", KeyWithNuSync);
+            var ns2 = cache.BlitzGet("k-sync-nu", KeyWithNuSync);
+            Assert.AreEqual("v-sync-nu", ns1);
+            Assert.AreEqual("v-sync-nu", ns2);
+            Assert.AreEqual(1, callsKeyWithNuSync, "Explicit key sync with Nuances should execute once");
+
+            // 4) BlitzUpdate sync: create and update
+            cache.BlitzUpdate("u-sync", () => "u1", TestConstants.StandardTimeoutMs);
+            var u1 = cache.BlitzGet("u-sync", () => "ignored");
+            Assert.AreEqual("u1", u1, "Value should come from BlitzUpdate-created entry");
+
+            cache.BlitzUpdate("u-sync", () => "u2", TestConstants.StandardTimeoutMs);
+            var u2 = cache.BlitzGet("u-sync", () => "ignored2");
+            Assert.AreEqual("u2", u2, "Value should reflect BlitzUpdate overwrite");
+
+            // 5) BlitzUpdate async: create and update
+            await cache.BlitzUpdate("u-async", async () => await Task.FromResult("a1"), TestConstants.StandardTimeoutMs);
+            var ga1 = await cache.BlitzGet("u-async", async () => await Task.FromResult("ignored"));
+            Assert.AreEqual("a1", ga1);
+
+            await cache.BlitzUpdate("u-async", async () => await Task.FromResult("a2"), TestConstants.StandardTimeoutMs);
+            var ga2 = await cache.BlitzGet("u-async", async () => await Task.FromResult("ignored2"));
+            Assert.AreEqual("a2", ga2);
+
+            // 6) Remove: ensure miss after removal
+            var statsBeforeRemove = cache.Statistics!;
+            long missBefore = statsBeforeRemove.MissCount;
+
+            cache.Remove("u-sync");
+            await TestDelays.WaitForEvictionCallbacks();
+
+            var afterRemoveGet = cache.BlitzGet("u-sync", () => "recreated");
+            Assert.AreEqual("recreated", afterRemoveGet, "Entry should be recreated after removal");
+
+            var statsAfterRemove = cache.Statistics!;
+            Assert.AreEqual(missBefore + 1, statsAfterRemove.MissCount, "Remove should lead to a miss on next get");
+
+            // 7) GetSemaphoreCount
+            Assert.GreaterOrEqual(cache.GetSemaphoreCount(), 0, "Semaphore count should be non-negative");
+
+            cache.Dispose();
+        }
+
+        [Test]
+        public void Statistics_IsNull_Then_NotNull_After_Initialize()
+        {
+            using var cache = new BlitzCacheInstance();
+            Assert.IsNull(cache.Statistics, "Statistics should be null before InitializeStatistics for performance");
+            cache.InitializeStatistics();
+            Assert.IsNotNull(cache.Statistics, "Statistics should be available after InitializeStatistics");
+        }
+
+        [Test]
+        public async Task BlitzGet_AutoKey_Async_NoNuances_TrackStatistics()
+        {
+            var cache = new BlitzCacheInstance();
+            cache.InitializeStatistics();
+
+            int calls = 0;
+            async Task<string> Factory()
+            {
+                calls++;
+                return await Task.FromResult("auto-async-no-nu");
+            }
+
+            var v1 = await cache.BlitzGet(Factory);
+            var v2 = await cache.BlitzGet(Factory);
+
+            Assert.AreEqual("auto-async-no-nu", v1);
+            Assert.AreEqual("auto-async-no-nu", v2);
+            Assert.AreEqual(1, calls, "Auto-key async without Nuances should execute once");
+
+            var stats = cache.Statistics!;
+            Assert.AreEqual(1, stats.MissCount);
+            Assert.AreEqual(1, stats.HitCount);
+            Assert.AreEqual(1, stats.EntryCount);
+
+            cache.Dispose();
+        }
+
+        [Test]
+        public async Task BlitzGet_AutoKey_Async_WithNuances_TrackStatistics()
+        {
+            var cache = new BlitzCacheInstance();
+            cache.InitializeStatistics();
+
+            int calls = 0;
+            Task<string> Factory(Nuances n)
+            {
+                calls++;
+                n.CacheRetention = TestConstants.VeryShortTimeoutMs;
+                return Task.FromResult("auto-async-with-nu");
+            }
+
+            var v1 = await cache.BlitzGet(Factory);
+            var v2 = await cache.BlitzGet(Factory);
+
+            Assert.AreEqual("auto-async-with-nu", v1);
+            Assert.AreEqual("auto-async-with-nu", v2);
+            Assert.AreEqual(1, calls, "Auto-key async with Nuances should execute once");
+
+            var stats = cache.Statistics!;
+            Assert.AreEqual(1, stats.MissCount);
+            Assert.AreEqual(1, stats.HitCount);
+            Assert.AreEqual(1, stats.EntryCount);
+
+            cache.Dispose();
+        }
     }
 }
 

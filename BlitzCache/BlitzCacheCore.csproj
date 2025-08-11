@@ -2,7 +2,8 @@
 
   <PropertyGroup>
     <TargetFramework>netstandard2.1</TargetFramework>
-    <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
+    <!-- Only generate NuGet package during Release builds -->
+    <GeneratePackageOnBuild Condition="'$(Configuration)'=='Release'">true</GeneratePackageOnBuild>
     <PackageRequireLicenseAcceptance>true</PackageRequireLicenseAcceptance>
     <Nullable>enable</Nullable>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
@@ -14,42 +15,24 @@
     <RepositoryBranch>master</RepositoryBranch>
     <PackageValidationBaselineVersion>1.0.0</PackageValidationBaselineVersion>
     <PackageTags>caching;performance;threading;async;concurrency;enterprise;dotnet;thundering-herd;duplicate-prevention;memory-cache;thread-safe;zero-configuration;blazing-fast;production-ready;sql-protection;cache-invalidation;logging;monitoring;statistics;microservices</PackageTags>
-    <Version>2.0.2</Version>
-    <AssemblyVersion>2.0.2.0</AssemblyVersion>
-    <FileVersion>2.0.2.0</FileVersion>
-    <PackageReleaseNotes>BlitzCache v2.0.2 - Automatic Statistics
+    <Version>2.1.0</Version>
+    <AssemblyVersion>2.1.0.0</AssemblyVersion>
+    <FileVersion>2.1.0.0</FileVersion>
+    <PackageReleaseNotes>BlitzCache v2.1.0 - Capacity-Based Size Limit (Optional)
 
-NEW IN v2.0.2:
-• Statistics enabled automatically or on demand if not using BlitzCacheLoggingService
-• Predictable monitoring and logging for all usages of BlitzCache.Global
-• Tracks and exposes the top slowest queries, making it easy to monitor and identify performance bottlenecks in your application.
-• Fully backward compatible for all other APIs
+NEW IN v2.1.0:
+• Approximate memory usage tracking (Statistics.ApproximateMemoryBytes)
+• TopHeaviestEntries to identify largest cached items
+• Logging includes Approx. Memory and Top Heaviest sections
+• Optional maxCacheSizeBytes to enable capacity-based eviction using MemoryCache.SizeLimit
+• Automatic per-entry sizing via lightweight IValueSizer so the limit is enforced
+• Works even when statistics are disabled
+• DI: AddBlitzCache now accepts maxCacheSizeBytes
+• New tests ensuring eviction occurs and memory stays within the limit
 
-THE SIMPLICITY ADVANTAGE:
-• One line of code prevents duplicate execution of expensive operations
-• Zero configuration required - works out of the box with sensible defaults
-• Automatic Statistics for monitoring your application
-• Ridiculously simple API that "just works" for any .NET application
-
-THUNDERING HERD PROTECTION:
-• Prevents SQL server crashes from concurrent query bursts
-• Multiple concurrent calls = Single execution (others wait for result)
-• Protects databases, APIs, and file systems from overload
-• Perfect for high-traffic applications and microservices
-
-ENTERPRISE PERFORMANCE:
-• Ultra-fast 0.0001ms per operation with intelligent memory management
-• Zero memory leaks with advanced usage-based cleanup system
-• Thread-safe by design with granular concurrency control
-• Comprehensive testing ensuring production reliability
-
-🔧 ADVANCED FEATURES:
-• Dynamic cache duration with result-based retention control
-• Full async/await support with proper Task handling
-• Automatic cache key generation or manual key management
-• Built-in statistics, monitoring, and slow query tracking capabilities
-
-Perfect for protecting your backend systems while keeping your code simple!</PackageReleaseNotes>
+Notes:
+• Sizing is best-effort and designed to be lightweight for common types.
+• Capacity-based eviction relies on Microsoft.Extensions.Caching.Memory heuristics.</PackageReleaseNotes>
     <PackageId>BlitzCache</PackageId>
     <PackageIcon>icon.png</PackageIcon>
     <PackageReadmeFile>README.md</PackageReadmeFile>
@@ -76,7 +59,15 @@ Perfect for protecting your backend systems while keeping your code simple!</Pac
   <ItemGroup>
     <None Include="..\README.md" Pack="true" PackagePath="\" />
     <None Include="..\licence.txt" Pack="true" PackagePath="\" />
-    <None Include="..\icon.png" Pack="true" PackagePath="\" />
+    <!-- Only include the icon if it exists to prevent NU5019 in non-pack builds -->
+    <None Include="icon.png" Pack="true" PackagePath="\" Condition="Exists('$(MSBuildProjectDirectory)/icon.png')" />
   </ItemGroup>
 
+  <Target Name="EnsureIconInProject" BeforeTargets="Pack">
+    <Message Text="Ensuring icon.png exists in project directory for packing" Importance="high" />
+    <Copy SourceFiles="$(MSBuildProjectDirectory)/../icon.png"
+          DestinationFiles="$(MSBuildProjectDirectory)/icon.png"
+          SkipUnchangedFiles="true"
+          Condition="Exists('$(MSBuildProjectDirectory)/../icon.png')" />
+  </Target>
 </Project>

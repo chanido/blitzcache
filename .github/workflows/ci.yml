@@ -134,6 +134,11 @@ jobs:
         
     - name: Restore dependencies
       run: dotnet restore
+
+    - name: Ensure icon copied into project before packing
+      run: |
+        cp icon.png BlitzCache/icon.png
+        ls -l BlitzCache/icon.png
       
     - name: Build BlitzCacheCore (Release for packaging)
       run: dotnet build BlitzCache/BlitzCacheCore.csproj --configuration ${{ env.CONFIGURATION }} --no-restore
@@ -148,6 +153,13 @@ jobs:
 
     - name: Create development NuGet package
       run: dotnet pack BlitzCache/BlitzCacheCore.csproj --configuration ${{ env.CONFIGURATION }} --no-build --include-symbols --output ./packages -p:PackageVersion="${{ steps.version.outputs.package_version }}"
+
+    - name: Verify icon is embedded in package
+      run: |
+        pkg=$(ls ./packages/*.nupkg | head -1)
+        echo "Checking contents of $pkg"
+        unzip -l "$pkg" | grep -E "icon.png" || (echo "icon.png not found in package" && exit 1)
+        unzip -p "$pkg" *.nuspec | grep -E "<icon>icon.png</icon>" || (echo "nuspec missing <icon> element" && exit 1)
       
     - name: Upload package artifacts
       uses: actions/upload-artifact@v4
@@ -173,12 +185,24 @@ jobs:
     - name: Restore dependencies
       run: dotnet restore
 
+    - name: Ensure icon copied into project before packing
+      run: |
+        cp icon.png BlitzCache/icon.png
+        ls -l BlitzCache/icon.png
+
     - name: Build BlitzCacheCore (Release for packaging)
       run: dotnet build BlitzCache/BlitzCacheCore.csproj --configuration ${{ env.CONFIGURATION }} --no-restore
 
     - name: Create NuGet package
       run: dotnet pack BlitzCache/BlitzCacheCore.csproj --configuration ${{ env.CONFIGURATION }} --no-build --include-symbols --output ./packages
       
+    - name: Verify icon is embedded in package
+      run: |
+        pkg=$(ls ./packages/*.nupkg | head -1)
+        echo "Checking contents of $pkg"
+        unzip -l "$pkg" | grep -E "icon.png" || (echo "icon.png not found in package" && exit 1)
+        unzip -p "$pkg" *.nuspec | grep -E "<icon>icon.png</icon>" || (echo "nuspec missing <icon> element" && exit 1)
+
     - name: Upload package artifacts
       uses: actions/upload-artifact@v4
       with:

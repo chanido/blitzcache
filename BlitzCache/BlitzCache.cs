@@ -17,7 +17,9 @@ namespace BlitzCacheCore
         /// <param name="defaultMilliseconds">Default cache duration in milliseconds</param>
         /// <param name="cleanupInterval">Interval for automatic cleanup of unused semaphores (default: 10 seconds)</param>
         /// <param name="maxTopSlowest">Max number of top slowest queries to store (0 for improved performance) (default: 5 queries)</param>
-        public BlitzCache(long? defaultMilliseconds = 60000, TimeSpan? cleanupInterval = null, int? maxTopSlowest = 5)
+        /// <param name="maxTopHeaviest">Max number of heaviest entries to track (0 disables). Default: 5.</param>
+        /// <param name="maxCacheSizeBytes">Optional maximum cache size in bytes. When specified, enables capacity-based eviction.</param>
+        public BlitzCache(long? defaultMilliseconds = 60000, TimeSpan? cleanupInterval = null, int? maxTopSlowest = 5, int? maxTopHeaviest = 5, long? maxCacheSizeBytes = null)
         {
             if (defaultMilliseconds < 1) throw new ArgumentOutOfRangeException(nameof(defaultMilliseconds), "Default milliseconds must be non-negative");
 
@@ -25,9 +27,15 @@ namespace BlitzCacheCore
             {
                 lock (globalLock)
                 {
-                    globalInstance ??= new BlitzCacheInstance(defaultMilliseconds, cleanupInterval, maxTopSlowest);
+                    globalInstance ??= new BlitzCacheInstance(defaultMilliseconds, cleanupInterval, maxTopSlowest, null, maxTopHeaviest, maxCacheSizeBytes);
                 }
             }
+        }
+
+        [Obsolete("Prefer using the extended constructor to enable sizing and capacity features. This overload remains for binary compatibility.")]
+        public BlitzCache(long? defaultMilliseconds, TimeSpan? cleanupInterval, int? maxTopSlowest)
+            : this(defaultMilliseconds, cleanupInterval, maxTopSlowest, 5, null)
+        {
         }
 
         /// <summary>

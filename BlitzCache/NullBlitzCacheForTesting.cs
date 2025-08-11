@@ -63,6 +63,8 @@ namespace BlitzCacheCore
         public int ActiveSemaphoreCount => 0;
         public long TotalOperations => 0;
         public IEnumerable<SlowQuery> TopSlowestQueries => Array.Empty<SlowQuery>();
+        public long ApproximateMemoryBytes => 0;
+        public IEnumerable<HeavyEntry> TopHeaviestEntries => Array.Empty<HeavyEntry>();
 
         public void Reset() { }
     }

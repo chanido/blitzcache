@@ -1,9 +1,8 @@
-
 # ⚡ BlitzCache
 [![NuGet](https://img.shields.io/nuget/v/BlitzCache.svg)](https://www.nuget.org/packages/BlitzCache/)
 [![NuGet Downloads](https://img.shields.io/nuget/dt/BlitzCache.svg)](https://www.nuget.org/packages/BlitzCache/)
-[![Tests](https://img.shields.io/badge/tests-157%20passing-brightgreen)](./BlitzCache.Tests)
-[![codecov](https://codecov.io/gh/chanido/blitzcache/branch/master/graph/badge.svg)](https://codecov.io/gh/chanido/blitzcache)
+[![Tests](https://img.shields.io/badge/tests-194%20passing-brightgreen)](./BlitzCache.Tests)
+[![codecov](https://codecov.io/gh/chanido/blitzcache/branch/develop/graph/badge.svg)](https://codecov.io/gh/chanido/blitzcache)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![.NET Standard](https://img.shields.io/badge/.NET%20Standard-2.1-blue.svg)](https://docs.microsoft.com/en-us/dotnet/standard/net-standard)
 
@@ -55,6 +54,10 @@ Entries: 2
 Evictions: 20
 Active Semaphores: 0
 Total Operations: 46
+Approx. Memory: 120.75 KB
+Top Heaviest:
+        users_cache - ~96 KB
+        products_cache - ~20 KB
 Top Slowest Queries:
         LoadBlitzSafe_UsageFromView_819735987 - Worse: 18266ms | Best: 93ms | Avg: 2014 | Occurrences: 10
         LoadBlitzSafe_MarketingView_819735987 - Worse: 8608ms | Best: 198ms | Avg: 4403 | Occurrences: 2
@@ -76,9 +79,12 @@ Top Slowest Queries:
 ✅ **Memory leak prevention** - Advanced cleanup prevents memory bloat  
 ✅ **Production tested** - Comprehensive testing ensure reliability  
 ✅ **Works with everything** - Sync, async, any data type, any .NET app  
-✅ **Automatic logging** - Built-in statistics monitoring with one line setup (v2.0.1+)
-✅ **Global statistics** - As of v2.0.2, Statistics available and BlitzCacheLoggingService to log them automatically
-✅ **Top Slowest Queries** - As of v2.0.2, BlitzCache tracks and exposes the top slowest queries, making it easy to identify performance bottlenecks in your application
+✅ **Automatic logging** - Built-in statistics monitoring with one line setup (v2.0.1+)  
+✅ **Global statistics** - As of v2.0.2, Statistics available and BlitzCacheLoggingService to log them automatically  
+✅ **Top Slowest Queries** - As of v2.0.2, BlitzCache tracks and exposes the top slowest queries, making it easy to identify performance bottlenecks in your application  
+✅ **Approximate Memory Usage** - As of v2.1.0, statistics include approximate memory usage for better monitoring  
+✅ **Top Heaviest Entries** - As of v2.1.0, easily identify the largest cached items with the top heaviest entries feature  
+✅ **Capacity-Based Size Limit (Optional)** - As of v2.1.0, set `maxCacheSizeBytes` to enable automatic eviction when the cache exceeds a size budget
 
 ## 📋 Table of Contents
 
@@ -121,7 +127,7 @@ dotnet add package BlitzCache
 
 **Basic Usage**
 ```csharp
-var cache = new BlitzCache();
+var cache = new BlitzCache(maxCacheSizeBytes: 200_000_000); // optional size limit
 
 // Any expensive operation becomes cached instantly
 var data = await cache.BlitzGet("key", ExpensiveOperation, timeoutMs);
@@ -130,7 +136,7 @@ var data = await cache.BlitzGet("key", ExpensiveOperation, timeoutMs);
 **ASP.NET Core Integration**  
 ```csharp
 // Setup (one line in Program.cs)
-services.AddBlitzCache();
+services.AddBlitzCache(maxCacheSizeBytes: 200_000_000);
 
 // Optional: Add automatic logging of cache statistics (v2.0.2+)
 services.AddBlitzCacheLogging(); // Logs cache performance hourly
@@ -143,131 +149,30 @@ public Task<Weather> GetWeather(string city) => cache.BlitzGet($"weather_{city}"
 
 **Compatibility:** .NET Standard 2.1+ | .NET Core 3.1+ | .NET 5-8+
 
-## 📚 Learning BlitzCache - Examples & Tutorials
-
-### **Comprehensive Example Files**
-BlitzCache includes comprehensive example test files that serve as **interactive tutorials** and **real-world usage guides**:
-
-#### 🌱 **[BasicUsageExamples.cs](https://github.com/chanido/blitzcache/blob/master/BlitzCache.Tests/Examples/BasicUsageExamples.cs)**
-Perfect for **getting started** - covers essential patterns:
-- ✅ **Basic synchronous caching** - Simple function caching
-- ✅ **Asynchronous operations** - Async/await patterns  
-- ✅ **Cache key management** - Working with different keys
-- ✅ **Cache expiration** - Understanding timeout behavior
-- ✅ **Manual cache removal** - Cache invalidation strategies
-- ✅ **BlitzUpdate usage** - Pre-populating cache
-- ✅ **Different data types** - Caching various objects
-- ✅ **Cache statistics monitoring** - Performance analytics and hit/miss tracking
-- ✅ **Top slowest queries** - Identify and monitor the slowest cache operations (v2.0.2+)
-- ✅ **Dependency injection** - ASP.NET Core integration
-
-#### 🚀 **[AdvancedUsageExamples.cs](https://github.com/chanido/blitzcache/blob/master/BlitzCache.Tests/Examples/AdvancedUsageExamples.cs)**
-For **experienced users** - sophisticated scenarios:
-- ✅ **Dynamic cache timeout with Nuances** - Result-based cache duration
-- ✅ **Thread-safe concurrent access** - Multi-threading patterns
-- ✅ **Circuit breaker pattern** - Resilient external service calls
-- ✅ **Multi-level caching strategy** - Complex caching hierarchies
-- ✅ **Cache warming techniques** - Pre-loading strategies
-- ✅ **Conditional caching** - Success/failure caching logic
-- ✅ **Global vs Independent caches** - Instance management
-- ✅ **Performance monitoring** - Metrics and diagnostics
-- ✅ **Top slowest queries** - Track and analyze slowest cache operations for optimization (v2.0.2+)
-
-### **Running the Examples**
-```bash
-# Run basic examples
-dotnet test --filter "BasicUsageExamples"
-
-# Run advanced examples  
-dotnet test --filter "AdvancedUsageExamples"
-
-# Run specific example
-dotnet test --filter "Example1_BasicSyncCaching"
-```
-
-These example files are **executable tests** that demonstrate real-world usage patterns and serve as **living documentation** that stays up-to-date with the codebase.
-
-## 🌟 Real-World Examples
-
-### Database Operations
-```csharp
-public class UserRepository
-{
-    private readonly IBlitzCache _cache;
-    
-    public async Task<User> GetUserAsync(int userId)
-    {
-        return await _cache.BlitzGet($"user_{userId}", 
-            async () => await database.Users.FindAsync(userId), 
-            1200000); // Cache for 20 minutes
-    }
-    
-    // Multiple concurrent calls to GetUserAsync(123) will result in only ONE database query
-}
-```
-
-### HTTP API Calls
-```csharp
-public class ExchangeRateService
-{
-    public async Task<decimal> GetExchangeRateAsync(string fromCurrency, string toCurrency)
-    {
-        return await _cache.BlitzGet($"rate_{fromCurrency}_{toCurrency}",
-            async () => {
-                var response = await httpClient.GetAsync($"api/rates/{fromCurrency}/{toCurrency}");
-                return await response.Content.ReadFromJsonAsync<decimal>();
-            }, 
-            600000); // Cache for 10 minutes
-    }
-}
-```
-
-### File System Operations
-```csharp
-public class ConfigurationService
-{
-    public async Task<AppConfig> LoadConfigAsync()
-    {
-        return await _cache.BlitzGet("app-config",
-            async () => {
-                var json = await File.ReadAllTextAsync("appsettings.json");
-                return JsonSerializer.Deserialize<AppConfig>(json);
-            },
-            1800000); // Cache for 30 minutes
-    }
-}
-```
-
-### Complex Calculations
-```csharp
-public class ReportService
-{
-    public async Task<SalesReport> GenerateMonthlyReportAsync(int year, int month)
-    {
-        return await _cache.BlitzGet($"sales_report_{year}_{month}",
-            async () => {
-                // This expensive calculation will only run once
-                var salesData = await CalculateComplexSalesMetricsAsync(year, month);
-                var report = await GenerateChartsAndGraphsAsync(salesData);
-                return report;
-            },
-            3600000); // Cache for 1 hour
-    }
-}
-```
-
-### Class or Bounded Context Isolated
-```csharp
-public class ReportService
-{
-    private static readonly BlitzCacheInstance  cache = new BlitzCacheInstance();
-
-    public Task<SalesReport> GetProductsForCustomer(Guid customerId) => cache.BlitzGet($"products_{customerId}", () => LoadProducts(customerId)); // Cache for 1 hour
-    }
-}
-```
-
 ## 🔧 Advanced Usage
+
+### Capacity-Based Size Limit
+BlitzCache can enforce an overall cache size budget using .NET MemoryCache’s SizeLimit. Enable it by providing `maxCacheSizeBytes`:
+
+```csharp
+// Instance-based
+var cache = new BlitzCacheInstance(maxCacheSizeBytes: 100 * 1024 * 1024); // 100 MB
+
+// Global
+var global = new BlitzCache(maxCacheSizeBytes: 100 * 1024 * 1024);
+
+// DI
+services.AddBlitzCache(maxCacheSizeBytes: 100 * 1024 * 1024);
+```
+
+How it works:
+- Each entry is assigned an approximate size using a lightweight IValueSizer.
+- MemoryCache evicts entries (LRU-like with priority) when inserting would exceed SizeLimit.
+- Enforced regardless of whether statistics are enabled.
+
+Notes:
+- Sizing is best-effort and optimized for common types (string, byte[], primitive arrays). Other types use a conservative default.
+- You can still use expiration times; capacity-based eviction works in addition to them.
 
 ### Automatic Cache Key Generation
 BlitzCache can automatically generate cache keys based on the calling method and file:
@@ -324,72 +229,27 @@ await cache.BlitzUpdate("weather_data", async () => await GetWeatherAsync(), 300
 ### Cache Statistics and Monitoring
 BlitzCache provides built-in performance statistics to help you monitor cache effectiveness and optimize your application.
 
-**As of v2.0.2, statistics are automatically enabled if you add your cache instance to BlitzCacheLoggingService.**
+As of v2.1.0+, statistics include approximate memory usage and top heaviest entries when enabled (defaults on):
 
 ```csharp
-
-// Access cache statistics
 var stats = cache.Statistics;
+Console.WriteLine($"Approx Memory: {FormatBytes(stats.ApproximateMemoryBytes)}");
+foreach (var heavy in stats.TopHeaviestEntries)
+    Console.WriteLine($"  {heavy}"); // HeavyEntry prints with human-friendly units
 
-Console.WriteLine($"Cache Hit Ratio: {stats.HitRatio:P1}"); // e.g., "75.5%"
-Console.WriteLine($"Total Operations: {stats.TotalOperations}");
-Console.WriteLine($"Cache Hits: {stats.HitCount}");
-Console.WriteLine($"Cache Misses: {stats.MissCount}");
-Console.WriteLine($"Current Entries: {stats.CurrentEntryCount}");
-Console.WriteLine($"Evictions: {stats.EvictionCount}");
-Console.WriteLine($"Active Semaphores: {stats.ActiveSemaphoreCount}");
-// New in v2.0.2: Top slowest queries
-if (stats.TopSlowestQueries != null && stats.TopSlowestQueries.Any())
+static string FormatBytes(long bytes)
 {
-    Console.WriteLine("Top Slowest Queries:");
-    foreach (var q in stats.TopSlowestQueries)
-        Console.WriteLine($"  {q}");
+    if (bytes < 1024) return $"{bytes} bytes";
+    var kb = bytes / 1024.0;
+    if (kb < 1024) return $"{kb:0.##} KB";
+    var mb = kb / 1024.0;
+    return $"{mb:0.##} MB";
 }
 ```
 
-#### Real-World Monitoring Example
-```csharp
-public class UserService
-{
-    private readonly IBlitzCache _cache;
-    
-    public UserService(IBlitzCache cache)
-    {
-        _cache = cache;
-    }
-    
-    public async Task<UserProfile> GetUserProfileAsync(int userId)
-    {
-        // Cache the expensive database operation
-        var profile = await _cache.BlitzGet($"user_profile_{userId}", 
-            async () => await database.GetUserProfileAsync(userId), 
-            300000); // 5 minutes
-            
-        // Log cache performance periodically
-        var stats = _cache.Statistics;
-        if (stats.TotalOperations % 100 == 0) // Every 100 operations
-        {
-            _logger.LogInformation("Cache performance: {HitRatio:P1} hit ratio, {CurrentEntries} entries", 
-                stats.HitRatio, stats.CurrentEntryCount);
-        }
-        
-        return profile;
-    }
-}
-```
-
-#### Statistics Reset for Time-Windowed Monitoring
-```csharp
-// Reset statistics to monitor performance over specific periods
-cache.Statistics.Reset();
-
-// Perform operations...
-DoSomeWork();
-
-// Check performance for this period only
-var periodStats = cache.Statistics;
-Console.WriteLine($"Period hit ratio: {periodStats.HitRatio:P1}");
-```
+Notes:
+- Memory accounting is best-effort and uses a lightweight sizer for common types (strings, byte[] and primitive arrays). Custom sizing can be added in future versions.
+- Heaviest list size is configurable via AddBlitzCache(..., maxTopHeaviest: 5).
 
 **Available Statistics:**
 - **`HitCount`**: Total cache hits since instance creation
@@ -400,7 +260,14 @@ Console.WriteLine($"Period hit ratio: {periodStats.HitRatio:P1}");
 - **`EvictionCount`**: Number of manual removals and expirations
 - **`ActiveSemaphoreCount`**: Current concurrency control structures
 - **`TopSlowestQueries`**: List of the slowest cache operations (v2.0.2+)
+- **`TopHeaviestEntries`**: List of the heaviest cache entries (v2.1.0+)
+- **`ApproximateMemoryBytes`**: Approximate memory usage in bytes (v2.1.0+)
 - **`Reset()`**: Method to reset all counters to zero
+
+Practical guidance:
+- Use BlitzGet/BlitzUpdate APIs; they set AbsoluteExpiration and wire eviction callbacks for you.
+- For manual removals via Remove, statistics are updated through the eviction callback automatically—no extra work needed.
+- In tests, very small delays are used to allow callbacks to run; in production these callbacks execute automatically on the thread pool.
 
 ## 📖 API Reference
 

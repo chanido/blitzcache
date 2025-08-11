@@ -39,6 +39,8 @@ namespace BlitzCacheCore.Logging
                 "Evictions: {EvictionCount}\n" +
                 "Active Semaphores: {ActiveSemaphoreCount}\n" +
                 "Total Operations: {TotalOperations}\n" +
+                "Approx. Memory: {ApproxMemory}\n" +
+                "Top Heaviest: {TopHeaviest}\n" +
                 "Top Slowest Queries: {TopSlowestQueries}",
                 Identifier,
                 stats.HitCount,
@@ -48,6 +50,8 @@ namespace BlitzCacheCore.Logging
                 stats.EvictionCount,
                 stats.ActiveSemaphoreCount,
                 stats.TotalOperations,
+                Formatters.FormatBytes(stats.ApproximateMemoryBytes),
+                stats.TopHeaviestEntries != null && stats.TopHeaviestEntries.Any() ? string.Concat(stats.TopHeaviestEntries.Select(q => $"\n\t{q}")) : "Not available",
                 stats.TopSlowestQueries != null && stats.TopSlowestQueries.Count() > 0 ? string.Concat(stats.TopSlowestQueries.Select(q => $"\n\t{q}")) : "Not available"
             );
 

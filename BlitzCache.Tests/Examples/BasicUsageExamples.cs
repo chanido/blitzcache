@@ -110,15 +110,15 @@ namespace BlitzCacheCore.Tests.Examples
             }
 
             // Cache with short expiration for demo purposes
-            var result1 = cache.BlitzGet("timestamp", GetTimestamp, TestConstants.StandardTimeoutMs);
-            var result2 = cache.BlitzGet("timestamp", GetTimestamp, TestConstants.StandardTimeoutMs);
+            var result1 = cache.BlitzGet("timestamp", GetTimestamp, TestConstants.VeryShortTimeoutMs);
+            var result2 = cache.BlitzGet("timestamp", GetTimestamp, TestConstants.VeryShortTimeoutMs);
             Assert.AreEqual(result1, result2, "Should return cached value immediately");
 
             // Wait for cache to expire
             await TestDelays.WaitForStandardExpiration();
 
             // BlitzCache automatically calls function again after expiration
-            var result3 = cache.BlitzGet("timestamp", GetTimestamp, TestConstants.StandardTimeoutMs);
+            var result3 = cache.BlitzGet("timestamp", GetTimestamp, TestConstants.VeryShortTimeoutMs);
 
             Assert.AreNotEqual(result1, result3, "Should return new value after expiration");
             Assert.AreEqual(2, callCount, "Function should be called twice due to expiration");
