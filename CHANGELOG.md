@@ -75,7 +75,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Instance-based caching instead of static MemoryCache (eliminates cache sharing issues)
 - Improved async/await patterns with proper Task handling
 - Enhanced performance: 0.0001ms per operation average
-- Enhanced Nuances: 0.0001ms per operation average
 - Enhanced NuGet package metadata for better discoverability
 
 ### Fixed
