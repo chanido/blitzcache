@@ -32,6 +32,12 @@ namespace BlitzCacheCore
             }
         }
 
+        [Obsolete("Prefer using the extended constructor to enable sizing and capacity features. This overload remains for binary compatibility.")]
+        public BlitzCache(long? defaultMilliseconds, TimeSpan? cleanupInterval, int? maxTopSlowest)
+            : this(defaultMilliseconds, cleanupInterval, maxTopSlowest, 5, null)
+        {
+        }
+
         /// <summary>
         /// Gets the current number of semaphores for testing and monitoring purposes.
         /// </summary>

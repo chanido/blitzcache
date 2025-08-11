@@ -3,6 +3,7 @@ using BlitzCacheCore.Statistics;
 using Microsoft.Extensions.Caching.Memory;
 using System;
 using System.Diagnostics;
+using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Threading.Tasks;
 
@@ -17,6 +18,7 @@ namespace BlitzCacheCore
         private CacheStatistics? statistics;
         private readonly IValueSizer valueSizer;
         private readonly int maxTopHeaviest;
+        private readonly long? configuredSizeLimitBytes; // store configured capacity for proactive compaction
 
         /// <summary>
         /// Creates a new BlitzCache instance.
@@ -42,6 +44,19 @@ namespace BlitzCacheCore
             this.maxTopSlowest = maxTopSlowest ?? 5;
             this.valueSizer = valueSizer ?? new ApproximateValueSizer();
             this.maxTopHeaviest = maxTopHeaviest ?? 5;
+            this.configuredSizeLimitBytes = maxCacheSizeBytes; // remember for proactive compaction
+        }
+
+        /// <summary>
+        /// Backward-compatible constructor for callers compiled against older versions (pre heaviest/size-limit features).
+        /// </summary>
+        /// <param name="defaultMilliseconds">Default cache duration in milliseconds</param>
+        /// <param name="cleanupInterval">Interval for automatic cleanup of unused semaphores</param>
+        /// <param name="maxTopSlowest">Max number of top slowest queries to store</param>
+        [Obsolete("Prefer using the extended constructor to enable sizing and capacity features. This overload remains for binary compatibility.")]
+        public BlitzCacheInstance(long? defaultMilliseconds, TimeSpan? cleanupInterval, int? maxTopSlowest)
+            : this(defaultMilliseconds, cleanupInterval, maxTopSlowest, null, null, null)
+        {
         }
 
         /// <summary>
@@ -57,6 +72,39 @@ namespace BlitzCacheCore
         /// Returns null if statistics are disabled for better performance.
         /// </summary>
         public ICacheStatistics? Statistics => statistics;
+
+        private void EnforceCapacityIfNeeded()
+        {
+            // Only enforce proactively when a capacity was configured and statistics are enabled
+            if (!configuredSizeLimitBytes.HasValue || statistics == null) return;
+
+            var limit = configuredSizeLimitBytes.Value;
+            if (statistics.ApproximateMemoryBytes <= limit) return;
+
+            // Try deterministic removals using known sizes to get under budget
+            var sizes = statistics.GetKeySizesSnapshot();
+            if (sizes.Length > 0)
+            {
+                // Remove smallest-first to maximize retained useful entries
+                foreach (var kvp in sizes.OrderBy(k => k.Value))
+                {
+                    if (statistics.ApproximateMemoryBytes <= limit) break;
+                    memoryCache.Remove(kvp.Key);
+                }
+            }
+
+            // If still over, ask MemoryCache to compact the remainder percentage
+            if (memoryCache is MemoryCache concrete && statistics.ApproximateMemoryBytes > limit)
+            {
+                var approx = statistics.ApproximateMemoryBytes;
+                if (approx > 0)
+                {
+                    var over = approx - limit;
+                    var percent = Math.Min(1.0, Math.Max(0.02, (double)over / approx));
+                    concrete.Compact(percent);
+                }
+            }
+        }
 
         private T ExecuteWithCache<T>(string cacheKey, Func<Nuances, T> function, long? milliseconds)
         {
@@ -111,6 +159,8 @@ namespace BlitzCacheCore
             memoryCache.Set(cacheKey, computedResult, cacheEntryOptions);
             statistics?.RecordSetOrUpdate(cacheKey, computedResult!, existed);
             statistics?.TrackEntry(cacheKey, stopwatch);
+
+            EnforceCapacityIfNeeded();
             return computedResult;
         }
 
@@ -153,6 +203,8 @@ namespace BlitzCacheCore
             memoryCache.Set(cacheKey, computedResult, cacheEntryOptions);
             statistics?.RecordSetOrUpdate(cacheKey, computedResult!, existed);
             statistics?.TrackEntry(cacheKey, stopwatch);
+
+            EnforceCapacityIfNeeded();
             return computedResult;
         }
 
@@ -202,6 +254,8 @@ namespace BlitzCacheCore
                     statistics.TrackEntryUpdate();
                 statistics.RecordSetOrUpdate(cacheKey, value!, existsInCache);
             }
+
+            EnforceCapacityIfNeeded();
         }
 
         public void BlitzUpdate<T>(string cacheKey, Func<T> function, long milliseconds) => UpdateCacheEntry(cacheKey, function(), milliseconds);

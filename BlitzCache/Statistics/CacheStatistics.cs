@@ -188,6 +188,11 @@ namespace BlitzCacheCore.Statistics
         internal void TrackEntryUpdate() { }
 
         /// <summary>
+        /// Provides a snapshot of current key sizes for capacity enforcement.
+        /// </summary>
+        internal KeyValuePair<string, long>[] GetKeySizesSnapshot() => keySizes.ToArray();
+
+        /// <summary>
         /// Resets all statistics counters to zero. Thread-safe.
         /// </summary>
         public void Reset()
