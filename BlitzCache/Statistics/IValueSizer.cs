@@ -38,7 +38,7 @@ namespace BlitzCacheCore.Statistics
                 default:
                     // Fallback: rough estimate using string serialization length if available
                     // but avoid heavy serialization to keep it cheap; use type name overhead
-                    return 128; // conservative constant to avoid heavy computation
+                    return FallbackSizeBytes; // conservative constant to avoid heavy computation
             }
         }
     }
