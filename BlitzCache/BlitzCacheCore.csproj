@@ -2,7 +2,8 @@
 
   <PropertyGroup>
     <TargetFramework>netstandard2.1</TargetFramework>
-    <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
+    <!-- Only generate NuGet package during Release builds -->
+    <GeneratePackageOnBuild Condition="'$(Configuration)'=='Release'">true</GeneratePackageOnBuild>
     <PackageRequireLicenseAcceptance>true</PackageRequireLicenseAcceptance>
     <Nullable>enable</Nullable>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
@@ -58,7 +59,8 @@ Notes:
   <ItemGroup>
     <None Include="..\README.md" Pack="true" PackagePath="\" />
     <None Include="..\licence.txt" Pack="true" PackagePath="\" />
-    <None Include="icon.png" Pack="true" PackagePath="\" />
+    <!-- Only include the icon if it exists to prevent NU5019 in non-pack builds -->
+    <None Include="icon.png" Pack="true" PackagePath="\" Condition="Exists('$(MSBuildProjectDirectory)/icon.png')" />
   </ItemGroup>
 
   <Target Name="EnsureIconInProject" BeforeTargets="Pack">
