@@ -16,6 +16,7 @@ namespace BlitzCacheCore.Statistics
     /// </summary>
     internal class ApproximateValueSizer : IValueSizer
     {
+        private const long FallbackSizeBytes = 128; // conservative estimate for unknown types
         public long GetSizeBytes(object? value)
         {
             if (value is null) return 0;
@@ -38,7 +39,7 @@ namespace BlitzCacheCore.Statistics
                 default:
                     // Fallback: rough estimate using string serialization length if available
                     // but avoid heavy serialization to keep it cheap; use type name overhead
-                    return FallbackSizeBytes; // conservative constant to avoid heavy computation
+                    return FallbackSizeBytes;
             }
         }
     }
