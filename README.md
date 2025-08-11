@@ -378,7 +378,7 @@ If you are upgrading from BlitzCache 1.x to 2.x, please note the following break
     ```csharp
     void BlitzUpdate<T>(string cacheKey, Func<Task<T>> function, long milliseconds);
     ```
-  - **After (v2.x):
+  - **After (v2.x):**
     ```csharp
     Task BlitzUpdate<T>(string cacheKey, Func<Task<T>> function, long milliseconds);
     ```
