@@ -15,5 +15,31 @@ namespace BlitzCacheCore.Tests.Helpers
 
         public static Task WaitForSemaphoreExpiration() => Task.Delay(BlitzSemaphore.BlitzSemaphoreExpirationSeconds * 1500);
         public static Task WaitForStandardExpiration() => Task.Delay(TestConstants.StandardTimeoutMs + TestConstants.ExpirationBufferMs);
+
+        /// <summary>
+        /// Repeatedly waits (with StandardExpiration delay) until condition returns true or attempts exhausted.
+        /// </summary>
+        public static async Task<bool> WaitUntilAsync(System.Func<bool> condition, int maxAttempts = 3)
+        {
+            for (int i = 0; i < maxAttempts; i++)
+            {
+                if (condition()) return true;
+                await WaitForStandardExpiration();
+            }
+            return condition();
+        }
+
+        /// <summary>
+        /// Synchronous variant for tests that are not async. Blocks the thread between attempts.
+        /// </summary>
+        public static bool WaitUntil(System.Func<bool> condition, int maxAttempts = 3)
+        {
+            for (int i = 0; i < maxAttempts; i++)
+            {
+                if (condition()) return true;
+                WaitForStandardExpiration().GetAwaiter().GetResult();
+            }
+            return condition();
+        }
     }
 }

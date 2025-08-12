@@ -140,5 +140,103 @@ namespace BlitzCacheCore.Tests
 
             Assert.GreaterOrEqual(recomputed, 1, "Eviction should occur even with statistics disabled");
         }
+
+        [Test]
+        public void CapacityAccounting_Invariants_Sync()
+        {
+            const long maxCacheSizeBytes = 60_000; // ~6 entries of 10k
+            const int valueBytes = 10_000;
+            const int totalInsert = 16;
+
+            using var cache = new BlitzCacheInstance(
+                defaultMilliseconds: TestConstants.LongTimeoutMs,
+                cleanupInterval: TimeSpan.FromMilliseconds(TestConstants.StandardTimeoutMs),
+                maxTopSlowest: 0,
+                valueSizer: null,
+                maxTopHeaviest: 0,
+                maxCacheSizeBytes: maxCacheSizeBytes);
+            cache.InitializeStatistics();
+
+            var before = cache.Statistics!;
+            long entryBefore = before.EntryCount;
+            long evictBefore = before.EvictionCount;
+
+            for (int i = 0; i < totalInsert; i++)
+                cache.BlitzGet($"inv{i}", () => new byte[valueBytes]);
+
+            TestDelays.WaitForStandardExpiration();
+
+            var after = cache.Statistics!;
+            long entryAfter = after.EntryCount;
+            long evictAfter = after.EvictionCount;
+            long memAfter = after.ApproximateMemoryBytes;
+
+            // Allow eviction callbacks to register before asserting increase
+            if (evictAfter == evictBefore)
+            {
+                TestDelays.WaitUntil(() => (evictAfter = cache.Statistics!.EvictionCount) > evictBefore);
+            }
+            Assert.Greater(evictAfter, evictBefore, "Eviction count should increase");
+            Assert.GreaterOrEqual(memAfter, 0, "Approximate memory must be non-negative");
+            if (!TestDelays.WaitUntil(() => (memAfter = cache.Statistics!.ApproximateMemoryBytes) <= maxCacheSizeBytes))
+            {
+                Assert.Fail($"Approximate memory exceeded limit after retries. mem={memAfter} limit={maxCacheSizeBytes}");
+            }
+
+            var inserted = totalInsert;
+            var netIncrease = entryAfter - entryBefore;
+            var evicted = evictAfter - evictBefore;
+            var expectedEvicted = inserted - netIncrease;
+            Assert.LessOrEqual(Math.Abs(evicted - expectedEvicted), 1, $"Eviction delta mismatch: inserted={inserted} net+={netIncrease} evicted={evicted} expected={expectedEvicted}");
+        }
+
+        [Test]
+        public async Task CapacityAccounting_Invariants_Async()
+        {
+            const long maxCacheSizeBytes = 70_000; // ~7 entries
+            const int valueBytes = 10_000;
+            const int totalInsert = 18;
+
+            using var cache = new BlitzCacheInstance(
+                defaultMilliseconds: TestConstants.LongTimeoutMs,
+                cleanupInterval: TimeSpan.FromMilliseconds(TestConstants.StandardTimeoutMs),
+                maxTopSlowest: 0,
+                valueSizer: null,
+                maxTopHeaviest: 0,
+                maxCacheSizeBytes: maxCacheSizeBytes);
+            cache.InitializeStatistics();
+
+            var before = cache.Statistics!;
+            long entryBefore = before.EntryCount;
+            long evictBefore = before.EvictionCount;
+
+            for (int i = 0; i < totalInsert; i++)
+                await cache.BlitzGet($"ainv{i}", async () => await Task.FromResult(new byte[valueBytes]));
+
+            await TestDelays.WaitForStandardExpiration();
+
+            var after = cache.Statistics!;
+            long entryAfter = after.EntryCount;
+            long evictAfter = after.EvictionCount;
+            long memAfter = after.ApproximateMemoryBytes;
+
+            // Allow eviction callbacks to register before asserting increase (async)
+            if (evictAfter == evictBefore)
+            {
+                await TestDelays.WaitUntilAsync(() => (evictAfter = cache.Statistics!.EvictionCount) > evictBefore);
+            }
+            Assert.Greater(evictAfter, evictBefore, "Eviction count should increase (async)");
+            Assert.GreaterOrEqual(memAfter, 0, "Approximate memory must be non-negative (async)");
+            if (!await TestDelays.WaitUntilAsync(() => (memAfter = cache.Statistics!.ApproximateMemoryBytes) <= maxCacheSizeBytes))
+            {
+                Assert.Fail($"Approximate memory exceeded limit after retries (async). mem={memAfter} limit={maxCacheSizeBytes}");
+            }
+
+            var inserted = totalInsert;
+            var netIncrease = entryAfter - entryBefore;
+            var evicted = evictAfter - evictBefore;
+            var expectedEvicted = inserted - netIncrease;
+            Assert.LessOrEqual(Math.Abs(evicted - expectedEvicted), 1, $"Eviction delta mismatch (async): inserted={inserted} net+={netIncrease} evicted={evicted} expected={expectedEvicted}");
+        }
     }
 }

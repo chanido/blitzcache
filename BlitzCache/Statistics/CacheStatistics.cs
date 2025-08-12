@@ -24,7 +24,7 @@ namespace BlitzCacheCore.Statistics
         private readonly Func<int> getActiveSemaphoreCount;
         private readonly TopNTracker<SlowQuery>? topSlowestQueries;
         private readonly TopNTracker<HeavyEntry>? topHeaviestEntries;
-        private readonly BlitzCacheCore.Statistics.Memory.IValueSizer valueSizer;
+        private readonly IValueSizer valueSizer;
         private readonly ConcurrentDictionary<string, long> keySizes = new ConcurrentDictionary<string, long>();
 
         public long HitCount => Interlocked.Read(ref hitCount);
@@ -115,6 +115,22 @@ namespace BlitzCacheCore.Statistics
             // Here we only adjust memory accounting and heaviest list.
             Interlocked.Add(ref approximateMemoryBytes, -sizeBytes);
             topHeaviestEntries?.Remove(cacheKey);
+        }
+
+        /// <summary>
+        /// Used when an entry is manually removed outside the normal eviction callback path
+        /// (e.g., proactive capacity enforcement). Ensures statistics stay consistent.
+        /// </summary>
+        /// <param name="cacheKey">Key removed.</param>
+        /// <param name="sizeBytes">Previously recorded size in bytes.</param>
+        /// <param name="countAsEviction">Whether to increment eviction counters (true for policy-driven removals).</param>
+        internal void OnExternalRemoval(string cacheKey, long sizeBytes, bool countAsEviction)
+        {
+            RecordRemove(cacheKey, sizeBytes);
+            if (countAsEviction)
+            {
+                RecordEviction();
+            }
         }
 
         /// <summary>
