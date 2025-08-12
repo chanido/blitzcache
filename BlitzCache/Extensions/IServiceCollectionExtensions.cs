@@ -2,12 +2,46 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using System;
 
 namespace BlitzCacheCore.Extensions
 {
     public static class IServiceCollectionExtensions
     {
+        /// <summary>
+        /// Adds BlitzCache using an options configuration delegate. Future-proof single overload.
+        /// </summary>
+        /// <param name="services">Service collection</param>
+        /// <param name="configure">Configuration action for <see cref="BlitzCacheOptions"/></param>
+        /// <returns>The service collection for chaining.</returns>
+        public static IServiceCollection AddBlitzCache(this IServiceCollection services, Action<BlitzCacheOptions> configure)
+        {
+            if (services == null) throw new ArgumentNullException(nameof(services));
+            if (configure == null) throw new ArgumentNullException(nameof(configure));
+            // Use standard options pipeline to allow external configuration binding.
+            services.Configure(configure);
+            services.AddBlitzCache(); // ensure base registration if not already executed
+            return services;
+        }
+
+        /// <summary>
+        /// Adds BlitzCache using any previously registered BlitzCacheOptions (via Configure / configuration binding).
+        /// If options are not configured yet, default values are used.
+        /// </summary>
+        public static IServiceCollection AddBlitzCache(this IServiceCollection services)
+        {
+            if (services == null) throw new ArgumentNullException(nameof(services));
+            OptionsServiceCollectionExtensions.AddOptions(services);
+            ServiceCollectionDescriptorExtensions.TryAdd(services, ServiceDescriptor.Singleton<IBlitzCache>(sp =>
+            {
+                var opts = sp.GetService<IOptions<BlitzCacheOptions>>()?.Value ?? new BlitzCacheOptions();
+                opts.Validate();
+                return new BlitzCache(opts);
+            }));
+            return services;
+        }
+
         /// <summary>
         /// Adds BlitzCache as a singleton service to the dependency injection container.
         /// Uses the global BlitzCache singleton to maintain backward compatibility with the original behavior.
@@ -26,6 +60,30 @@ namespace BlitzCacheCore.Extensions
 
             OptionsServiceCollectionExtensions.AddOptions(services);
             ServiceCollectionDescriptorExtensions.TryAdd(services, ServiceDescriptor.Singleton<IBlitzCache>(_ => new BlitzCache(defaultMilliseconds, maxTopSlowest: maxTopSlowest, maxTopHeaviest: maxTopHeaviest, maxCacheSizeBytes: maxCacheSizeBytes)));
+
+            return services;
+        }
+
+        /// <summary>
+        /// Adds automatic periodic logging of BlitzCache statistics using an options configuration delegate.
+        /// </summary>
+        /// <param name="services">Service collection</param>
+        /// <param name="configure">Configuration action for <see cref="Logging.BlitzCacheLoggingOptions"/></param>
+        /// <returns>The service collection for chaining.</returns>
+        public static IServiceCollection AddBlitzCacheLogging(this IServiceCollection services, Action<BlitzCacheCore.Logging.BlitzCacheLoggingOptions> configure)
+        {
+            if (services == null) throw new ArgumentNullException(nameof(services));
+            if (configure == null) throw new ArgumentNullException(nameof(configure));
+
+            var options = new BlitzCacheCore.Logging.BlitzCacheLoggingOptions();
+            configure(options);
+            options.Validate();
+
+            services.AddHostedService(provider => new BlitzCacheLoggingService(
+                provider.GetRequiredService<ILogger<BlitzCacheLoggingService>>(),
+                provider.GetService<IBlitzCache>(),
+                options.GlobalCacheIdentifier,
+                options.LogInterval));
 
             return services;
         }

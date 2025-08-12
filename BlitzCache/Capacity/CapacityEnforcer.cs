@@ -40,12 +40,14 @@ namespace BlitzCacheCore.Capacity
                     CapacityEvictionStrategy.LargestFirst => sizes.OrderByDescending(k => k.Value),
                     _ => sizes.OrderBy(k => k.Value)
                 };
+
+                // Use a local projection of remaining bytes to avoid race with asynchronous eviction callbacks.
+                long simulatedRemaining = statistics.ApproximateMemoryBytes;
+
                 foreach (var kvp in ordered)
                 {
-                    if (statistics.ApproximateMemoryBytes <= sizeLimitBytes) break;
-                    // Remove the entry. We intentionally DO NOT call statistics.OnExternalRemoval here because
-                    // MemoryCache.Remove triggers the eviction callback registered in CacheStatistics.CreateEntryOptions
-                    // which already updates memory + eviction counters. Calling OnExternalRemoval caused double counting.
+                    if (simulatedRemaining <= sizeLimitBytes) break;
+                    simulatedRemaining -= kvp.Value; // simulate removal immediately
                     memoryCache.Remove(kvp.Key);
                 }
             }

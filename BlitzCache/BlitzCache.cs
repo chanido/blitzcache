@@ -32,7 +32,41 @@ namespace BlitzCacheCore
             }
         }
 
-        [Obsolete("Prefer using the extended constructor to enable sizing and capacity features. This overload remains for binary compatibility.")]
+        /// <summary>
+        /// Preferred constructor accepting <see cref="BlitzCacheOptions"/> for forward-compatible configuration.
+        /// </summary>
+        /// <param name="options">Configuration options.</param>
+        public BlitzCache(BlitzCacheOptions options)
+        {
+            if (options == null) throw new ArgumentNullException(nameof(options));
+            options.Validate();
+            // NOTE: ValueSizer and EvictionStrategy currently applied at BlitzCacheInstance level when globalInstance created.
+            // To remain backward compatible (global singleton lazily created), we only consider extended parameters if instance is still null.
+            // If global instance does not yet exist and extended sizing options are provided, rebuild it using BlitzCacheInstance options-based constructor.
+            if (globalInstance is null)
+            {
+                lock (globalLock)
+                {
+                    if (globalInstance is null)
+                    {
+                        var instOptions = new BlitzCacheOptions
+                        {
+                            DefaultMilliseconds = options.DefaultMilliseconds,
+                            CleanupInterval = options.CleanupInterval,
+                            MaxTopSlowest = options.MaxTopSlowest,
+                            MaxTopHeaviest = options.MaxTopHeaviest,
+                            MaxCacheSizeBytes = options.MaxCacheSizeBytes,
+                            SizeComputationMode = options.SizeComputationMode,
+                            EvictionStrategy = options.EvictionStrategy,
+                            EnableStatistics = options.EnableStatistics
+                        };
+                        globalInstance = new BlitzCacheInstance(instOptions);
+                    }
+                }
+            }
+        }
+
+        [Obsolete("Prefer using the Configuration options constructor to enable sizing and capacity features. This overload remains for binary compatibility.")]
         public BlitzCache(long? defaultMilliseconds, TimeSpan? cleanupInterval, int? maxTopSlowest)
             : this(defaultMilliseconds, cleanupInterval, maxTopSlowest, 5, null)
         {

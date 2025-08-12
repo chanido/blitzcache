@@ -1,3 +1,22 @@
+# [2.1.1] - 2025-08-12
+
+### Added
+- Zero-overhead conditional statistics: when `maxTopSlowest < 1` or `maxTopHeaviest < 1`, their tracking logic is completely skipped (no allocations or timers for those lists).
+- Automatic skip of per-entry size computation and capacity enforcement when no `maxCacheSizeBytes` is configured (removes all sizing overhead in that mode).
+- Deterministic capacity eviction algorithm using simulated remaining byte accounting to prevent transient over-eviction caused by asynchronous eviction callbacks.
+- Tests validating disabled tracking produces zero memory accounting work and logger omission behavior.
+
+### Changed
+- `BlitzLoggerInstance` now omits (instead of printing empty placeholders for) Top Slowest / Top Heaviest sections when their tracking is disabled.
+- README updated with a new "Zero‑Overhead When Disabled" section explaining how to turn off features safely for maximal performance.
+
+### Fixed
+- Potential over-removal during capacity enforcement under concurrent eviction scenarios (now uses simulated remaining budget for precision).
+
+### Notes
+- No breaking changes. This is a performance & ergonomics release.
+- Disabling tracking now truly removes related CPU & memory cost.
+
 # [2.1.0] - 2025-08-09
 
 ### Added

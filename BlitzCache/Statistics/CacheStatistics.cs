@@ -26,6 +26,7 @@ namespace BlitzCacheCore.Statistics
         private readonly TopNTracker<HeavyEntry>? topHeaviestEntries;
         private readonly IValueSizer valueSizer;
         private readonly ConcurrentDictionary<string, long> keySizes = new ConcurrentDictionary<string, long>();
+    private readonly bool sizeTrackingEnabled; // true when we must compute/value sizes (heaviest tracking or capacity limit)
 
         public long HitCount => Interlocked.Read(ref hitCount);
         public long MissCount => Interlocked.Read(ref missCount);
@@ -36,6 +37,8 @@ namespace BlitzCacheCore.Statistics
         public IEnumerable<SlowQuery> TopSlowestQueries => topSlowestQueries is null ? Array.Empty<SlowQuery>() : topSlowestQueries.Get();
         public long ApproximateMemoryBytes => Interlocked.Read(ref approximateMemoryBytes);
         public IEnumerable<HeavyEntry> TopHeaviestEntries => topHeaviestEntries is null ? Array.Empty<HeavyEntry>() : topHeaviestEntries.Get();
+    internal bool SlowestTrackingEnabled => topSlowestQueries != null; // for internal consumers like logger
+    internal bool HeaviestTrackingEnabled => topHeaviestEntries != null;
         public double HitRatio
         {
             get
@@ -53,7 +56,7 @@ namespace BlitzCacheCore.Statistics
         /// <param name="maxTopSlowest">Max number of top slowest queries to store (0 disables it for improved performance)</param>
         /// <param name="maxTopHeaviest">Max number of top heaviest entries to track (0 disables tracking)</param>
         /// <param name="valueSizer">Strategy for estimating value sizes</param>
-        public CacheStatistics(Func<int> getActiveSemaphoreCount, int maxTopSlowest, int maxTopHeaviest = 5, BlitzCacheCore.Statistics.Memory.IValueSizer? valueSizer = null)
+        public CacheStatistics(Func<int> getActiveSemaphoreCount, int maxTopSlowest, int maxTopHeaviest = 5, BlitzCacheCore.Statistics.Memory.IValueSizer? valueSizer = null, bool capacityLimitEnabled = false)
         {
             this.getActiveSemaphoreCount = getActiveSemaphoreCount ?? throw new ArgumentNullException(nameof(getActiveSemaphoreCount));
             // Default to object graph sizer for improved estimation accuracy
@@ -67,6 +70,9 @@ namespace BlitzCacheCore.Statistics
             {
                 topHeaviestEntries = new TopNTracker<HeavyEntry>(maxTopHeaviest, (key, size) => new HeavyEntry(key, size));
             }
+
+            // We only need to perform size computations if either heaviest tracking is enabled OR a capacity limit is active.
+            sizeTrackingEnabled = topHeaviestEntries != null || capacityLimitEnabled;
         }
 
         /// <summary>
@@ -102,8 +108,11 @@ namespace BlitzCacheCore.Statistics
                 Interlocked.Increment(ref entryCount);
 
             // Update total bytes delta
-            var delta = newSizeBytes - (oldSizeBytes ?? 0);
-            Interlocked.Add(ref approximateMemoryBytes, delta);
+            if (sizeTrackingEnabled)
+            {
+                var delta = newSizeBytes - (oldSizeBytes ?? 0);
+                Interlocked.Add(ref approximateMemoryBytes, delta);
+            }
 
             // Track heaviest list
             topHeaviestEntries?.AddOrUpdate(cacheKey, newSizeBytes);
@@ -113,7 +122,10 @@ namespace BlitzCacheCore.Statistics
         {
             // Entry count and eviction are handled by the MemoryCache eviction callback.
             // Here we only adjust memory accounting and heaviest list.
-            Interlocked.Add(ref approximateMemoryBytes, -sizeBytes);
+            if (sizeTrackingEnabled)
+            {
+                Interlocked.Add(ref approximateMemoryBytes, -sizeBytes);
+            }
             topHeaviestEntries?.Remove(cacheKey);
         }
 
@@ -182,21 +194,31 @@ namespace BlitzCacheCore.Statistics
         /// </summary>
         internal void RecordSetOrUpdate(string cacheKey, object value, bool existedInCache)
         {
-            var newSize = valueSizer.GetSizeBytes(value);
+            var newSize = sizeTrackingEnabled ? valueSizer.GetSizeBytes(value) : 0L;
             long? oldSize = null;
             // Only treat as update if the entry truly existed in cache prior to the Set operation.
             if (existedInCache && keySizes.TryGetValue(cacheKey, out var prev)) oldSize = prev;
 
-            keySizes[cacheKey] = newSize;
-            RecordAddOrUpdate(cacheKey, newSize, oldSize);
+            if (sizeTrackingEnabled)
+            {
+                keySizes[cacheKey] = newSize;
+                RecordAddOrUpdate(cacheKey, newSize, oldSize);
+            }
+            else if (!existedInCache)
+            {
+                // When size tracking is disabled we still need to maintain entry count.
+                RecordAddOrUpdate(cacheKey, 0, null);
+            }
         }
 
         /// <summary>
         /// Tracks a new cache entry timing.
         /// </summary>
-        internal void TrackEntry(string cacheKey, Stopwatch stopwatch) =>
+        internal void TrackEntry(string cacheKey, Stopwatch stopwatch)
+        {
             // Entry count is handled in RecordAddOrUpdate. Only record query duration here.
             topSlowestQueries?.AddOrUpdate(cacheKey, stopwatch.ElapsedMilliseconds);
+        }
 
         /// <summary>
         /// No-op: entry count handled in RecordAddOrUpdate.
@@ -206,7 +228,7 @@ namespace BlitzCacheCore.Statistics
         /// <summary>
         /// Provides a snapshot of current key sizes for capacity enforcement.
         /// </summary>
-        internal KeyValuePair<string, long>[] GetKeySizesSnapshot() => keySizes.ToArray();
+    internal KeyValuePair<string, long>[] GetKeySizesSnapshot() => sizeTrackingEnabled ? keySizes.ToArray() : Array.Empty<KeyValuePair<string, long>>();
 
         /// <summary>
         /// Resets all statistics counters to zero. Thread-safe.

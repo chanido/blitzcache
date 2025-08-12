@@ -85,6 +85,7 @@ Top Slowest Queries:
 ✅ **Approximate Memory Usage** - As of v2.1.0, statistics include approximate memory usage for better monitoring  
 ✅ **Top Heaviest Entries** - As of v2.1.0, easily identify the largest cached items with the top heaviest entries feature  
 ✅ **Capacity-Based Size Limit (Optional)** - As of v2.1.0, set `maxCacheSizeBytes` to enable automatic eviction when the cache exceeds a size budget
+✅ **Zero-Overhead When Disabled** - Set `MaxTopSlowest` or `MaxTopHeaviest` to `0` (or pass `maxTopSlowest: 0`, `maxTopHeaviest: 0` to constructors) to completely skip tracking logic for those features. If both are disabled and no `MaxCacheSizeBytes` is configured, BlitzCache now skips all per-entry sizing for maximum throughput.
 
 ## 📋 Table of Contents
 
@@ -97,6 +98,7 @@ Top Slowest Queries:
 - [Real-World Examples](#-real-world-examples)
 - [Advanced Usage](#-advanced-usage)
   - [Cache Statistics and Monitoring](#cache-statistics-and-monitoring)
+    - [Configuration via appsettings.json](#-configuration-via-appsettingsjson)
 - [API Reference](#-api-reference)
 - [Comparison](#-comparison-with-alternatives)
 - [Contributing](#-contributing)
@@ -166,13 +168,14 @@ services.AddBlitzCache(maxCacheSizeBytes: 100 * 1024 * 1024);
 ```
 
 How it works:
-- Each entry is assigned an approximate size using a lightweight IValueSizer.
+- Each entry is assigned an approximate size using an internal lightweight sizing strategy (selectable via `SizeComputationMode`).
 - MemoryCache evicts entries (LRU-like with priority) when inserting would exceed SizeLimit.
 - Enforced regardless of whether statistics are enabled.
 
 Notes:
 - Sizing is best-effort and optimized for common types (string, byte[], primitive arrays). Other types use a conservative default.
 - You can still use expiration times; capacity-based eviction works in addition to them.
+- If you do NOT set `maxCacheSizeBytes` and also disable `MaxTopHeaviest` (set to 0), BlitzCache skips object sizing entirely for faster performance.
 
 ### Automatic Cache Key Generation
 BlitzCache can automatically generate cache keys based on the calling method and file:
@@ -250,6 +253,9 @@ static string FormatBytes(long bytes)
 Notes:
 - Memory accounting is best-effort and uses a lightweight sizer for common types (strings, byte[] and primitive arrays). Custom sizing can be added in future versions.
 - Heaviest list size is configurable via AddBlitzCache(..., maxTopHeaviest: 5).
+- Set `MaxTopHeaviest = 0` to disable tracking and memory sizing overhead (unless a capacity limit is configured).
+- Set `MaxTopSlowest = 0` to disable slow query timing aggregation.
+- When both are disabled AND no capacity limit is set, BlitzCache avoids computing object sizes for minimal overhead.
 
 **Available Statistics:**
 - **`HitCount`**: Total cache hits since instance creation
@@ -268,6 +274,64 @@ Practical guidance:
 - Use BlitzGet/BlitzUpdate APIs; they set AbsoluteExpiration and wire eviction callbacks for you.
 - For manual removals via Remove, statistics are updated through the eviction callback automatically—no extra work needed.
 - In tests, very small delays are used to allow callbacks to run; in production these callbacks execute automatically on the thread pool.
+
+### 🛠 Configuration via appsettings.json
+From v2.1.x you can configure BlitzCache using the standard .NET Options pattern. This allows central configuration, environment overrides, and future expansion without API changes.
+
+1. Add a BlitzCache section to your appsettings.json:
+```json
+{
+    "BlitzCache": {
+        "DefaultMilliseconds": 10000,
+        "MaxTopSlowest": 10,
+        "MaxTopHeaviest": 5,
+        "MaxCacheSizeBytes": 104857600,
+        "EvictionStrategy": "SmallestFirst",
+        "SizeComputationMode": "Balanced" // Fast | Balanced | Accurate | Adaptive
+    }
+}
+```
+
+2. Wire it up in Program.cs / Startup.cs:
+```csharp
+builder.Services.Configure<BlitzCacheOptions>(builder.Configuration.GetSection("BlitzCache"));
+builder.Services.AddBlitzCache();              // registers using configured options
+builder.Services.AddBlitzCacheLogging(o =>     // optional logging via options delegate
+{
+        o.LogInterval = TimeSpan.FromMinutes(30);
+        o.GlobalCacheIdentifier = "OrdersService-API";
+});
+```
+
+3. Inject and use:
+```csharp
+public class OrdersService
+{
+        private readonly IBlitzCache _cache;
+        public OrdersService(IBlitzCache cache) => _cache = cache;
+
+        public Task<Order> GetOrder(int id) => _cache.BlitzGet($"order_{id}", () => LoadOrder(id));
+}
+```
+
+4. Override per environment (e.g. appsettings.Production.json) without code changes.
+
+5. Optional: configure inline instead of JSON:
+```csharp
+services.AddBlitzCache(o =>
+{
+        o.DefaultMilliseconds = 5000;
+        o.MaxCacheSizeBytes = 50 * 1024 * 1024;
+        o.MaxTopSlowest = 8;
+        o.SizeComputationMode = SizeComputationMode.Fast;
+});
+```
+
+Notes:
+- If both Configure<BlitzCacheOptions> and AddBlitzCache(Action<BlitzCacheOptions>) are used, the configurations are additive; later settings overwrite earlier ones.
+- Dynamic reload (IOptionsMonitor) is supported at the configuration layer, but the current global cache instance does not hot‑swap its internal sizing/eviction strategy. For runtime reconfiguration you would introduce a proxy cache in a future version.
+- All newly added option fields will automatically flow without changing registration code.
+- Performance tip: set `MaxTopSlowest = 0` or `MaxTopHeaviest = 0` to completely skip their tracking logic. If both are `0` and `MaxCacheSizeBytes` is null, BlitzCache skips all size computation for the leanest possible operation.
 
 ## 📖 API Reference
 
