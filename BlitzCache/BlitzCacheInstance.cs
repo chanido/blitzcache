@@ -1,5 +1,6 @@
 ﻿using BlitzCacheCore.LockDictionaries;
 using BlitzCacheCore.Statistics;
+using BlitzCacheCore.Statistics.Memory;
 using Microsoft.Extensions.Caching.Memory;
 using System;
 using System.Diagnostics;
@@ -16,7 +17,7 @@ namespace BlitzCacheCore
         private readonly int maxTopSlowest;
         private readonly BlitzSemaphoreDictionary semaphoreDictionary;
         private CacheStatistics? statistics;
-        private readonly IValueSizer valueSizer;
+    private readonly BlitzCacheCore.Statistics.Memory.IValueSizer valueSizer;
         private readonly int maxTopHeaviest;
         private readonly long? configuredSizeLimitBytes; // store configured capacity for proactive compaction
 
@@ -29,7 +30,7 @@ namespace BlitzCacheCore
         /// <param name="valueSizer">Strategy to estimate value sizes for memory accounting. If null, a default approximate sizer will be used.</param>
         /// <param name="maxTopHeaviest">Max number of heaviest entries to track (0 disables). Default 5.</param>
         /// <param name="maxCacheSizeBytes">Optional maximum cache size in bytes. When specified, MemoryCache enforces this limit via capacity-based eviction.</param>
-        public BlitzCacheInstance(long? defaultMilliseconds = 60000, TimeSpan? cleanupInterval = null, int? maxTopSlowest = null, IValueSizer? valueSizer = null, int? maxTopHeaviest = 5, long? maxCacheSizeBytes = null)
+    public BlitzCacheInstance(long? defaultMilliseconds = 60000, TimeSpan? cleanupInterval = null, int? maxTopSlowest = null, BlitzCacheCore.Statistics.Memory.IValueSizer? valueSizer = null, int? maxTopHeaviest = 5, long? maxCacheSizeBytes = null)
         {
             if (defaultMilliseconds < 1) throw new ArgumentOutOfRangeException(nameof(defaultMilliseconds), "Default milliseconds must be non-negative");
 
@@ -42,7 +43,8 @@ namespace BlitzCacheCore
             memoryCache = new MemoryCache(options);
             semaphoreDictionary = new BlitzSemaphoreDictionary(cleanupInterval);
             this.maxTopSlowest = maxTopSlowest ?? 5;
-            this.valueSizer = valueSizer ?? new ApproximateValueSizer();
+            // Use the more accurate bounded object graph sizer by default
+            this.valueSizer = valueSizer ?? new ObjectGraphValueSizer();
             this.maxTopHeaviest = maxTopHeaviest ?? 5;
             this.configuredSizeLimitBytes = maxCacheSizeBytes; // remember for proactive compaction
         }
@@ -89,7 +91,23 @@ namespace BlitzCacheCore
                 foreach (var kvp in sizes.OrderBy(k => k.Value))
                 {
                     if (statistics.ApproximateMemoryBytes <= limit) break;
+                    // Pre-adjust statistics since manual Remove won't invoke eviction callback reasons we rely on
                     memoryCache.Remove(kvp.Key);
+                    // Manually mirror eviction accounting (if still over limit or removal occurred)
+                    try
+                    {
+                        // RecordRemove adjusts memory bytes and heaviest list; RecordEviction increments counts
+                        var stats = statistics as BlitzCacheCore.Statistics.CacheStatistics; // same assembly internal access
+                        if (stats != null)
+                        {
+                            // Use reflection to invoke internal methods without changing visibility if needed
+                            var recordRemove = typeof(BlitzCacheCore.Statistics.CacheStatistics).GetMethod("RecordRemove", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+                            var recordEviction = typeof(BlitzCacheCore.Statistics.CacheStatistics).GetMethod("RecordEviction", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+                            recordRemove?.Invoke(stats, new object[] { kvp.Key, kvp.Value });
+                            recordEviction?.Invoke(stats, Array.Empty<object>());
+                        }
+                    }
+                    catch { }
                 }
             }
 

@@ -1,4 +1,5 @@
 using BlitzCacheCore.Statistics;
+using BlitzCacheCore.Statistics.Speed;
 using NUnit.Framework;
 using System;
 using System.Collections.Generic;

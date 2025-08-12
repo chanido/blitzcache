@@ -1,9 +1,10 @@
+using BlitzCacheCore.Statistics.Memory;
+using BlitzCacheCore.Statistics.Speed;
 using Microsoft.Extensions.Caching.Memory;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Diagnostics;
-using System.Linq;
 using System.Threading;
 
 namespace BlitzCacheCore.Statistics
@@ -23,7 +24,7 @@ namespace BlitzCacheCore.Statistics
         private readonly Func<int> getActiveSemaphoreCount;
         private readonly TopNTracker<SlowQuery>? topSlowestQueries;
         private readonly TopNTracker<HeavyEntry>? topHeaviestEntries;
-        private readonly IValueSizer valueSizer;
+        private readonly BlitzCacheCore.Statistics.Memory.IValueSizer valueSizer;
         private readonly ConcurrentDictionary<string, long> keySizes = new ConcurrentDictionary<string, long>();
 
         public long HitCount => Interlocked.Read(ref hitCount);
@@ -52,10 +53,11 @@ namespace BlitzCacheCore.Statistics
         /// <param name="maxTopSlowest">Max number of top slowest queries to store (0 disables it for improved performance)</param>
         /// <param name="maxTopHeaviest">Max number of top heaviest entries to track (0 disables tracking)</param>
         /// <param name="valueSizer">Strategy for estimating value sizes</param>
-        public CacheStatistics(Func<int> getActiveSemaphoreCount, int maxTopSlowest, int maxTopHeaviest = 5, IValueSizer? valueSizer = null)
+        public CacheStatistics(Func<int> getActiveSemaphoreCount, int maxTopSlowest, int maxTopHeaviest = 5, BlitzCacheCore.Statistics.Memory.IValueSizer? valueSizer = null)
         {
             this.getActiveSemaphoreCount = getActiveSemaphoreCount ?? throw new ArgumentNullException(nameof(getActiveSemaphoreCount));
-            this.valueSizer = valueSizer ?? new ApproximateValueSizer();
+            // Default to object graph sizer for improved estimation accuracy
+            this.valueSizer = valueSizer ?? new ObjectGraphValueSizer();
 
             if (maxTopSlowest > 0)
             {
@@ -176,11 +178,9 @@ namespace BlitzCacheCore.Statistics
         /// <summary>
         /// Tracks a new cache entry timing.
         /// </summary>
-        internal void TrackEntry(string cacheKey, Stopwatch stopwatch)
-        {
+        internal void TrackEntry(string cacheKey, Stopwatch stopwatch) =>
             // Entry count is handled in RecordAddOrUpdate. Only record query duration here.
             topSlowestQueries?.AddOrUpdate(cacheKey, stopwatch.ElapsedMilliseconds);
-        }
 
         /// <summary>
         /// No-op: entry count handled in RecordAddOrUpdate.

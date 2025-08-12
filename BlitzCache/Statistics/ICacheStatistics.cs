@@ -1,3 +1,4 @@
+using BlitzCacheCore.Statistics.Speed;
 using System.Collections.Generic;
 
 namespace BlitzCacheCore.Statistics

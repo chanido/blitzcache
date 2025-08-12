@@ -1,16 +1,7 @@
 using System;
 
-namespace BlitzCacheCore.Statistics
+namespace BlitzCacheCore.Statistics.Memory
 {
-    /// <summary>
-    /// Strategy to estimate the approximate size in bytes of a value to be cached.
-    /// Implementations should be fast and allocation-friendly; the result is best-effort.
-    /// </summary>
-    public interface IValueSizer
-    {
-        long GetSizeBytes(object? value);
-    }
-
     /// <summary>
     /// A basic, zero-dependency, best-effort sizer for common .NET types.
     /// </summary>
@@ -24,8 +15,7 @@ namespace BlitzCacheCore.Statistics
             switch (value)
             {
                 case string s:
-                    // UTF-16: 2 bytes/char; add small object/header overhead approximation
-                    return (s.Length * 2L) + 24;
+                    return (s.Length * 2L) + 24; // UTF-16 + overhead
                 case byte[] b:
                     return b.LongLength + 24;
                 case Array arr when arr.Length > 0 && arr.GetType().GetElementType() == typeof(int):
@@ -37,8 +27,6 @@ namespace BlitzCacheCore.Statistics
                 case Array arr4 when arr4.Length > 0 && arr4.GetType().GetElementType() == typeof(float):
                     return (arr4.Length * 4L) + 24;
                 default:
-                    // Fallback: rough estimate using string serialization length if available
-                    // but avoid heavy serialization to keep it cheap; use type name overhead
                     return FallbackSizeBytes;
             }
         }

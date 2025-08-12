@@ -1,6 +1,6 @@
-﻿using System;
+using System;
 
-namespace BlitzCacheCore.Statistics
+namespace BlitzCacheCore.Statistics.Speed
 {
     public class SlowQuery : IComparable, IStatisticalEntry
     {
@@ -23,19 +23,15 @@ namespace BlitzCacheCore.Statistics
 
         public SlowQuery Update(long currentExecution)
         {
-            // Update the worst case, best case, and average based on the new slow query
             WorstCaseMs = Math.Max(currentExecution, WorstCaseMs);
             BestCaseMs = Math.Min(currentExecution, BestCaseMs);
             AverageMs = ((AverageMs * Occurrences) + currentExecution) / (Occurrences + 1);
             Occurrences++;
-
             return this;
         }
 
         void IStatisticalEntry.Update(long value) => Update(value);
-
         public bool IsFasterThan(long durationMilliseconds) => WorstCaseMs < durationMilliseconds;
-
         public override bool Equals(object obj) => obj is SlowQuery other && CacheKey == other.CacheKey;
         public override int GetHashCode() => CacheKey.GetHashCode();
         public override string ToString() => $"{CacheKey} - Worse: {Formatters.FormatDuration(WorstCaseMs)} | Best: {Formatters.FormatDuration(BestCaseMs)} | Avg: {Formatters.FormatDuration(AverageMs)} | Occurrences: {Occurrences}";
