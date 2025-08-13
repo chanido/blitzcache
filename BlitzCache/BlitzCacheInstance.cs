@@ -22,6 +22,7 @@ namespace BlitzCacheCore
         private readonly long? configuredSizeLimitBytes; // store configured capacity for proactive compaction
         private CapacityEnforcer? capacityEnforcer;
         private readonly CapacityEvictionStrategy evictionStrategy; // selected eviction ordering strategy
+        private readonly bool capacityEnabled;
 
         /// <summary>
         /// Creates a new BlitzCache instance.
@@ -37,11 +38,9 @@ namespace BlitzCacheCore
             if (defaultMilliseconds < 1) throw new ArgumentOutOfRangeException(nameof(defaultMilliseconds), "Default milliseconds must be positive");
 
             this.defaultMilliseconds = defaultMilliseconds!.Value;
+            capacityEnabled = maxCacheSizeBytes.HasValue && maxCacheSizeBytes.Value > 0;
             var options = new MemoryCacheOptions();
-            if (maxCacheSizeBytes.HasValue && maxCacheSizeBytes.Value > 0)
-            {
-                options.SizeLimit = maxCacheSizeBytes.Value;
-            }
+            if (capacityEnabled) options.SizeLimit = maxCacheSizeBytes!.Value;
             memoryCache = new MemoryCache(options);
             semaphoreDictionary = new BlitzSemaphoreDictionary(cleanupInterval);
             this.maxTopSlowest = maxTopSlowest ?? 5;
@@ -89,7 +88,6 @@ namespace BlitzCacheCore
         {
             if (statistics == null)
             {
-                var capacityEnabled = configuredSizeLimitBytes.HasValue && configuredSizeLimitBytes.Value > 0;
                 statistics = new CacheStatistics(() => semaphoreDictionary.GetNumberOfLocks(), maxTopSlowest, maxTopHeaviest, valueSizer, capacityEnabled);
                 if (capacityEnabled)
                 {
@@ -153,13 +151,7 @@ namespace BlitzCacheCore
             // Determine if the key existed in the cache before this Set (for accurate entry count)
             var existed = memoryCache.TryGetValue(cacheKey, out _);
 
-            // Compute size only if capacity enforcement is enabled (MemoryCache.SizeLimit is set)
-            var cacheEntryOptions = statistics?.CreateEntryOptions(expirationTime) ?? new MemoryCacheEntryOptions { AbsoluteExpiration = expirationTime };
-            if (configuredSizeLimitBytes.HasValue && configuredSizeLimitBytes.Value > 0)
-            {
-                var newSize = valueSizer.GetSizeBytes(computedResult!);
-                cacheEntryOptions.Size = newSize;
-            }
+            var cacheEntryOptions = CreateEntryOptions(expirationTime, computedResult!);
 
             memoryCache.Set(cacheKey, computedResult, cacheEntryOptions);
             statistics?.RecordSetOrUpdate(cacheKey, computedResult!, existed);
@@ -200,13 +192,7 @@ namespace BlitzCacheCore
             // Determine if the key existed in the cache before this Set (for accurate entry count)
             var existed = memoryCache.TryGetValue(cacheKey, out _);
 
-            // Compute size only if capacity enforcement is enabled (MemoryCache.SizeLimit is set)
-            var cacheEntryOptions = statistics?.CreateEntryOptions(expirationTime) ?? new MemoryCacheEntryOptions { AbsoluteExpiration = expirationTime };
-            if (configuredSizeLimitBytes.HasValue && configuredSizeLimitBytes.Value > 0)
-            {
-                var newSize = valueSizer.GetSizeBytes(computedResult!);
-                cacheEntryOptions.Size = newSize;
-            }
+            var cacheEntryOptions = CreateEntryOptions(expirationTime, computedResult!);
 
             memoryCache.Set(cacheKey, computedResult, cacheEntryOptions);
             statistics?.RecordSetOrUpdate(cacheKey, computedResult!, existed);
@@ -248,14 +234,7 @@ namespace BlitzCacheCore
         {
             var existsInCache = memoryCache.TryGetValue(cacheKey, out _);
             var expirationTime = DateTime.UtcNow.AddMilliseconds(milliseconds);
-
-            // Compute size only if capacity enforcement is enabled (MemoryCache.SizeLimit is set)
-            var cacheEntryOptions = statistics?.CreateEntryOptions(expirationTime) ?? new MemoryCacheEntryOptions { AbsoluteExpiration = expirationTime };
-            if (configuredSizeLimitBytes.HasValue && configuredSizeLimitBytes.Value > 0)
-            {
-                var newSize = valueSizer.GetSizeBytes(value!);
-                cacheEntryOptions.Size = newSize;
-            }
+            var cacheEntryOptions = CreateEntryOptions(expirationTime, value!);
 
             memoryCache.Set(cacheKey, value, cacheEntryOptions);
 
@@ -288,6 +267,19 @@ namespace BlitzCacheCore
             semaphoreDictionary?.Dispose();
             memoryCache?.Dispose();
             statistics?.Reset();
+        }
+
+        // Helper centralizing creation of MemoryCacheEntryOptions + optional Size assignment
+        private MemoryCacheEntryOptions CreateEntryOptions(DateTime expirationTime, object value)
+        {
+            var opts = statistics?.CreateEntryOptions(expirationTime) ?? new MemoryCacheEntryOptions { AbsoluteExpiration = expirationTime };
+            if (capacityEnabled)
+            {
+                // valueSizer may be more expensive (object graph). Called only when sizing features needed.
+                var size = valueSizer.GetSizeBytes(value);
+                if (size > 0) opts.Size = size; // avoid zero-size which would disallow eviction cost modeling
+            }
+            return opts;
         }
     }
 }

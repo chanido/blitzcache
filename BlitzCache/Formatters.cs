@@ -4,8 +4,8 @@ namespace BlitzCacheCore
     {
         internal static string FormatDuration(long milliseconds)
         {
-            if (milliseconds < 1000)
-                return $"{milliseconds}ms";
+            if (milliseconds < 0) return "0ms"; // clamp negative
+            if (milliseconds < 1000) return $"{milliseconds}ms";
 
             var ts = System.TimeSpan.FromMilliseconds(milliseconds);
 
@@ -29,13 +29,17 @@ namespace BlitzCacheCore
 
         internal static string FormatBytes(long bytes)
         {
-            if (bytes < 1024) return $"{bytes} bytes";
-            var kb = bytes / 1024.0;
-            if (kb < 1024) return $"{kb:0.##} KB";
-            var mb = kb / 1024.0;
-            if (mb < 1024) return $"{mb:0.##} MB";
-            var gb = mb / 1024.0;
-            return $"{gb:0.##} GB";
+            if (bytes < 0) bytes = 0;
+            const double K = 1024.0;
+            if (bytes < K) return $"{bytes} bytes";
+            var kb = bytes / K;
+            if (kb < K) return $"{kb:0.##} KB"; // < 1 MB
+            var mb = kb / K;
+            if (mb < K) return $"{mb:0.##} MB"; // < 1 GB
+            var gb = mb / K;
+            if (gb < K) return $"{gb:0.##} GB"; // < 1 TB
+            var tb = gb / K;
+            return $"{tb:0.##} TB";
         }
     }
 }

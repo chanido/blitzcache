@@ -7,9 +7,9 @@ namespace BlitzCacheCore
 {
     public class BlitzCache : IBlitzCache
     {
-        private static IBlitzCacheInstance? globalInstance;
-
-        private static readonly object globalLock = new object();
+        private static IBlitzCacheInstance? globalInstance; // global singleton instance
+        private static readonly object globalLock = new object(); // protects lazy initialization
+        private const string KeyDelimiter = "|"; // unify delimiter with BlitzCacheInstance construction style
 
         /// <summary>
         /// Creates a new BlitzCache instance.
@@ -23,13 +23,7 @@ namespace BlitzCacheCore
         {
             if (defaultMilliseconds < 1) throw new ArgumentOutOfRangeException(nameof(defaultMilliseconds), "Default milliseconds must be non-negative");
 
-            if (globalInstance is null)
-            {
-                lock (globalLock)
-                {
-                    globalInstance ??= new BlitzCacheInstance(defaultMilliseconds, cleanupInterval, maxTopSlowest, null, maxTopHeaviest, maxCacheSizeBytes);
-                }
-            }
+            EnsureGlobalInstance(defaultMilliseconds, cleanupInterval, maxTopSlowest, maxTopHeaviest, maxCacheSizeBytes, null);
         }
 
         /// <summary>
@@ -40,30 +34,8 @@ namespace BlitzCacheCore
         {
             if (options == null) throw new ArgumentNullException(nameof(options));
             options.Validate();
-            // NOTE: ValueSizer and EvictionStrategy currently applied at BlitzCacheInstance level when globalInstance created.
-            // To remain backward compatible (global singleton lazily created), we only consider extended parameters if instance is still null.
-            // If global instance does not yet exist and extended sizing options are provided, rebuild it using BlitzCacheInstance options-based constructor.
-            if (globalInstance is null)
-            {
-                lock (globalLock)
-                {
-                    if (globalInstance is null)
-                    {
-                        var instOptions = new BlitzCacheOptions
-                        {
-                            DefaultMilliseconds = options.DefaultMilliseconds,
-                            CleanupInterval = options.CleanupInterval,
-                            MaxTopSlowest = options.MaxTopSlowest,
-                            MaxTopHeaviest = options.MaxTopHeaviest,
-                            MaxCacheSizeBytes = options.MaxCacheSizeBytes,
-                            SizeComputationMode = options.SizeComputationMode,
-                            EvictionStrategy = options.EvictionStrategy,
-                            EnableStatistics = options.EnableStatistics
-                        };
-                        globalInstance = new BlitzCacheInstance(instOptions);
-                    }
-                }
-            }
+            
+            EnsureGlobalInstance(options.DefaultMilliseconds, options.CleanupInterval, options.MaxTopSlowest, options.MaxTopHeaviest, options.MaxCacheSizeBytes, options);
         }
 
         [Obsolete("Prefer using the Configuration options constructor to enable sizing and capacity features. This overload remains for binary compatibility.")]
@@ -87,20 +59,20 @@ namespace BlitzCacheCore
         public void InitializeStatistics() => globalInstance?.InitializeStatistics();
 
         public T BlitzGet<T>(Func<T> function, long? milliseconds = null, [CallerMemberName] string callerMemberName = "", [CallerFilePath] string sourceFilePath = "") =>
-            globalInstance!.BlitzGet(callerMemberName + sourceFilePath, nuances => function(), milliseconds);
+            globalInstance!.BlitzGet(callerMemberName + KeyDelimiter + sourceFilePath, nuances => function(), milliseconds);
 
         public T BlitzGet<T>(Func<Nuances, T> function, long? milliseconds = null, [CallerMemberName] string callerMemberName = "", [CallerFilePath] string sourceFilePath = "") =>
-            globalInstance!.BlitzGet(callerMemberName + sourceFilePath, function, milliseconds);
+            globalInstance!.BlitzGet(callerMemberName + KeyDelimiter + sourceFilePath, function, milliseconds);
 
         public T BlitzGet<T>(string cacheKey, Func<T> function, long? milliseconds = null) => globalInstance!.BlitzGet(cacheKey, nuances => function(), milliseconds);
 
         public T BlitzGet<T>(string cacheKey, Func<Nuances, T> function, long? milliseconds = null) => globalInstance!.BlitzGet(cacheKey, function, milliseconds);
 
         public Task<T> BlitzGet<T>(Func<Task<T>> function, long? milliseconds = null, [CallerMemberName] string callerMemberName = "", [CallerFilePath] string sourceFilePath = "") =>
-            globalInstance!.BlitzGet(callerMemberName + sourceFilePath, nuances => function(), milliseconds);
+            globalInstance!.BlitzGet(callerMemberName + KeyDelimiter + sourceFilePath, nuances => function(), milliseconds);
 
         public Task<T> BlitzGet<T>(Func<Nuances, Task<T>> function, long? milliseconds = null, [CallerMemberName] string callerMemberName = "", [CallerFilePath] string sourceFilePath = "") =>
-            globalInstance!.BlitzGet(callerMemberName + sourceFilePath, function, milliseconds);
+            globalInstance!.BlitzGet(callerMemberName + KeyDelimiter + sourceFilePath, function, milliseconds);
 
         public Task<T> BlitzGet<T>(string cacheKey, Func<Task<T>> function, long? milliseconds = null) =>
             globalInstance!.BlitzGet(cacheKey, nuances => function(), milliseconds);
@@ -116,6 +88,7 @@ namespace BlitzCacheCore
 
 #if DEBUG
         internal IBlitzCacheInstance? GetInternalInstance() => globalInstance;
+        internal static bool IsInitialized => globalInstance != null;
 
         internal static void ClearGlobalForTesting()
         {
@@ -125,5 +98,25 @@ namespace BlitzCacheCore
             globalInstance = null;
         }
 #endif
+
+        private static void EnsureGlobalInstance(long? defaultMs, TimeSpan? cleanupInterval, int? maxTopSlowest, int? maxTopHeaviest, long? maxCacheSizeBytes, BlitzCacheOptions? options)
+        {
+            // NOTE: ValueSizer and EvictionStrategy currently applied at BlitzCacheInstance level when globalInstance created.
+            // To remain backward compatible (global singleton lazily created), we only consider extended parameters if instance is still null.
+            // If global instance does not yet exist and extended sizing options are provided, rebuild it using BlitzCacheInstance options-based constructor.
+            if (globalInstance != null) return;
+            lock (globalLock)
+            {
+                if (globalInstance != null) return;
+                if (options != null)
+                {
+                    globalInstance = new BlitzCacheInstance(options);
+                }
+                else
+                {
+                    globalInstance = new BlitzCacheInstance(defaultMs, cleanupInterval, maxTopSlowest, null, maxTopHeaviest, maxCacheSizeBytes);
+                }
+            }
+        }
     }
 }
