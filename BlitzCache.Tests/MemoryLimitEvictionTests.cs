@@ -35,7 +35,7 @@ namespace BlitzCacheCore.Tests
             }
 
             // Give eviction callbacks a moment
-            TestDelays.WaitForStandardExpiration();
+            TestDelays.WaitUntil(() => cache.Statistics!.EvictionCount > 0);
 
             var stats = cache.Statistics!;
             Assert.Greater(stats.EvictionCount, 0, "Capacity limit should trigger evictions");

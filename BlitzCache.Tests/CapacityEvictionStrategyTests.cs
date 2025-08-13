@@ -44,7 +44,7 @@ namespace BlitzCacheCore.Tests
                 largestFirstCache.BlitzGet($"lf{s}", () => bytes);
             }
 
-            TestDelays.WaitForStandardExpiration().GetAwaiter().GetResult();
+            TestDelays.WaitUntil(() => smallestFirstCache.Statistics!.EvictionCount > 0 && largestFirstCache.Statistics!.EvictionCount > 0);
 
             var sfStats = smallestFirstCache.Statistics!;
             var lfStats = largestFirstCache.Statistics!;
