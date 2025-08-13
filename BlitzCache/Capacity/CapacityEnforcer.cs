@@ -1,7 +1,7 @@
 using BlitzCacheCore.Statistics;
 using Microsoft.Extensions.Caching.Memory;
 using System;
-using System.Linq;
+using System.Collections.Generic;
 
 namespace BlitzCacheCore.Capacity
 {
@@ -30,46 +30,65 @@ namespace BlitzCacheCore.Capacity
         /// </summary>
         public void EnsureUnderLimit()
         {
-            if (statistics.ApproximateMemoryBytes <= sizeLimitBytes) return;
+            // Fast path: already under limit.
+            var current = statistics.ApproximateMemoryBytes;
+            if (current <= sizeLimitBytes) return;
+            if (sizeLimitBytes <= 0) return; // defensive; capacity feature disabled or misconfigured
+
+            var overBytes = current - sizeLimitBytes;
+            if (overBytes <= 0) return; // race – another thread already corrected
 
             var sizes = statistics.GetKeySizesSnapshot();
-            if (sizes.Length > 0)
+            if (sizes.Length != 0)
             {
-                var ordered = strategy switch
+                // Sort in-place to avoid LINQ allocations; O(n log n) worst case. If this becomes hot we can switch
+                // to a partial selection (quickselect) to remove just enough. For now keep code simple & deterministic.
+                if (strategy == CapacityEvictionStrategy.LargestFirst)
                 {
-                    CapacityEvictionStrategy.LargestFirst => sizes.OrderByDescending(k => k.Value),
-                    _ => sizes.OrderBy(k => k.Value)
-                };
-
-                // Use a local projection of remaining bytes to avoid race with asynchronous eviction callbacks.
-                long simulatedRemaining = statistics.ApproximateMemoryBytes;
-
-                foreach (var kvp in ordered)
+                    Array.Sort(sizes, DescendingValueComparer.Instance);
+                }
+                else
                 {
-                    if (simulatedRemaining <= sizeLimitBytes) break;
-                    simulatedRemaining -= kvp.Value; // simulate removal immediately
+                    Array.Sort(sizes, AscendingValueComparer.Instance);
+                }
+
+                long simulatedRemaining = current; // local view; we optimistically subtract removed sizes
+                for (int i = 0; i < sizes.Length && simulatedRemaining > sizeLimitBytes; i++)
+                {
+                    ref readonly var kvp = ref sizes[i];
+                    simulatedRemaining -= kvp.Value;
+                    statistics.OnExternalRemoval(kvp.Key, kvp.Value, countAsEviction: true); // adjust stats first
                     memoryCache.Remove(kvp.Key);
                 }
             }
 
-            if (memoryCache is MemoryCache concrete && statistics.ApproximateMemoryBytes > sizeLimitBytes)
+            // After proactive removals, if still above limit (due to estimation error or concurrent adds), compact.
+            var after = statistics.ApproximateMemoryBytes;
+            if (memoryCache is MemoryCache concrete && after > sizeLimitBytes)
             {
-                var approx = statistics.ApproximateMemoryBytes;
-                if (approx > 0)
+                var over = after - sizeLimitBytes;
+                if (after > 0)
                 {
-                    var over = approx - sizeLimitBytes;
-                    var percent = Math.Min(1.0, Math.Max(0.02, (double)over / approx));
+                    // Compact proportional to overage, bounded to avoid overly small no-op or full wipe.
+                    var percent = Math.Min(1.0, Math.Max(0.02, (double)over / after));
                     concrete.Compact(percent);
                 }
             }
 
-            // Safety clamp: in case of any race conditions leading to slightly negative accounting, normalize to zero.
-            if (statistics.ApproximateMemoryBytes < 0)
-            {
-                // This is defensive; should not happen after removal of double accounting.
-                // If needed we could expose a method on CacheStatistics to clamp, but for now we rely on its atomic adds.
-                // (Leaving as comment: expose ClampApproximateMemory() if future strategies mutate accounting directly.)
-            }
+            // (Optional clamp) We intentionally do not clamp negative values here; atomic accounting should prevent them.
+        }
+
+        // Local comparers to avoid allocations each enforcement.
+        private sealed class AscendingValueComparer : IComparer<KeyValuePair<string, long>>
+        {
+            internal static readonly AscendingValueComparer Instance = new AscendingValueComparer();
+            public int Compare(KeyValuePair<string, long> x, KeyValuePair<string, long> y) => x.Value.CompareTo(y.Value);
+        }
+
+        private sealed class DescendingValueComparer : IComparer<KeyValuePair<string, long>>
+        {
+            internal static readonly DescendingValueComparer Instance = new DescendingValueComparer();
+            public int Compare(KeyValuePair<string, long> x, KeyValuePair<string, long> y) => y.Value.CompareTo(x.Value);
         }
     }
 }

@@ -25,8 +25,11 @@ namespace BlitzCacheCore.Statistics
         private readonly TopNTracker<SlowQuery>? topSlowestQueries;
         private readonly TopNTracker<HeavyEntry>? topHeaviestEntries;
         private readonly IValueSizer valueSizer;
-        private readonly ConcurrentDictionary<string, long> keySizes = new ConcurrentDictionary<string, long>();
+    private readonly ConcurrentDictionary<string, long> keySizes = new ConcurrentDictionary<string, long>();
     private readonly bool sizeTrackingEnabled; // true when we must compute/value sizes (heaviest tracking or capacity limit)
+    // Tracks keys proactively removed (capacity enforcement, manual) whose stats have already been accounted for.
+    // Prevents the subsequent MemoryCache eviction callback from double-counting removals / evictions.
+    private readonly ConcurrentDictionary<string, byte> externallyRemoved = new ConcurrentDictionary<string, byte>();
 
         public long HitCount => Interlocked.Read(ref hitCount);
         public long MissCount => Interlocked.Read(ref missCount);
@@ -138,11 +141,18 @@ namespace BlitzCacheCore.Statistics
         /// <param name="countAsEviction">Whether to increment eviction counters (true for policy-driven removals).</param>
         internal void OnExternalRemoval(string cacheKey, long sizeBytes, bool countAsEviction)
         {
-            RecordRemove(cacheKey, sizeBytes);
-            if (countAsEviction)
+            // Mark so eviction callback can short-circuit.
+            externallyRemoved[cacheKey] = 0;
+
+            // Remove from key size tracking immediately to avoid future enforcement passes seeing stale entries.
+            if (sizeTrackingEnabled)
             {
-                RecordEviction();
+                keySizes.TryRemove(cacheKey, out _);
             }
+
+            // Synchronously account for memory + heaviest tracking.
+            RecordRemove(cacheKey, sizeBytes);
+            if (countAsEviction) RecordEviction();
         }
 
         /// <summary>
@@ -169,9 +179,11 @@ namespace BlitzCacheCore.Statistics
                 {
                     // Track automatic evictions (expiration, memory pressure, etc.)
                     // Don't count Replaced as eviction since it's just an update
-                    if (reason != EvictionReason.Replaced)
+                    if (reason != EvictionReason.Replaced && key is string k)
                     {
-                        if (key is string k && keySizes.TryRemove(k, out var s))
+                        // If we already accounted for this via proactive (external) removal, skip adjustments.
+                        if (externallyRemoved.TryRemove(k, out _)) return; // already accounted synchronously
+                        if (sizeTrackingEnabled && keySizes.TryRemove(k, out var s))
                         {
                             RecordRemove(k, s);
                         }
@@ -241,6 +253,7 @@ namespace BlitzCacheCore.Statistics
             Interlocked.Exchange(ref entryCount, 0);
             Interlocked.Exchange(ref approximateMemoryBytes, 0);
             keySizes.Clear();
+            externallyRemoved.Clear();
             topSlowestQueries?.Clear();
             topHeaviestEntries?.Clear();
         }
