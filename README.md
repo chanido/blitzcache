@@ -358,6 +358,31 @@ Cleans up resources (implements IDisposable).
 - 💬 [Discussions](https://github.com/chanido/blitzcache/discussions)
 - 📊 [Performance Details & Test Results](IMPROVEMENTS.md)
 
+## 📊 **Benchmarks**
+
+BlitzCache includes comprehensive benchmarks comparing performance against popular caching libraries like `MemoryCache` and `LazyCache`. These benchmarks demonstrate BlitzCache's effectiveness in preventing the thundering herd problem and its competitive performance.
+
+### Running Benchmarks
+
+```bash
+cd BlitzCache.Benchmarks
+dotnet run -c Release
+```
+
+### Benchmark Categories
+
+1. **Concurrent Same Key**: Tests BlitzCache's strength in preventing duplicate execution when multiple threads access the same cache key simultaneously
+2. **Concurrent Different Keys**: Measures performance when accessing different cache keys concurrently  
+3. **Cache Expiration**: Evaluates behavior and performance when cache entries expire and need refreshing
+
+### Key Findings
+
+- **BlitzCache excels in high-concurrency scenarios** where multiple threads request the same expensive operation
+- **Automatic deduplication** prevents redundant work and reduces system load
+- **Competitive performance** in standard caching scenarios while providing superior thundering herd protection
+
+*Run the benchmarks yourself to see detailed performance metrics for your specific hardware and workload patterns.*
+
 ## 🎯 **Production-Ready Caching Solution**
 
 BlitzCache delivers enterprise-grade performance and reliability:
