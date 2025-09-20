@@ -7,6 +7,8 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "BlitzCacheCore", "BlitzCach
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "BlitzCacheCore.Tests", "BlitzCache.Tests\BlitzCacheCore.Tests.csproj", "{3A890571-5FB5-4366-A402-76ABEA8A6CEC}"
 EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "BlitzCache.Benchmarks", "BlitzCache.Benchmarks\BlitzCache.Benchmarks.csproj", "{B8F7A1D4-E23C-4A2E-9F8B-1C3D4E5F6G7H}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -21,6 +23,10 @@ Global
 		{3A890571-5FB5-4366-A402-76ABEA8A6CEC}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{3A890571-5FB5-4366-A402-76ABEA8A6CEC}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{3A890571-5FB5-4366-A402-76ABEA8A6CEC}.Release|Any CPU.Build.0 = Release|Any CPU
+		{B8F7A1D4-E23C-4A2E-9F8B-1C3D4E5F6G7H}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{B8F7A1D4-E23C-4A2E-9F8B-1C3D4E5F6G7H}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{B8F7A1D4-E23C-4A2E-9F8B-1C3D4E5F6G7H}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{B8F7A1D4-E23C-4A2E-9F8B-1C3D4E5F6G7H}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
