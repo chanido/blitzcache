@@ -25,7 +25,14 @@ namespace BlitzCacheCore.Statistics.Speed
         {
             WorstCaseMs = Math.Max(currentExecution, WorstCaseMs);
             BestCaseMs = Math.Min(currentExecution, BestCaseMs);
-            AverageMs = ((AverageMs * Occurrences) + currentExecution) / (Occurrences + 1);
+            try
+            {
+                AverageMs = checked(((AverageMs * Occurrences) + currentExecution) / (Occurrences + 1));
+            }
+            catch (OverflowException)
+            {
+                AverageMs = long.MaxValue;
+            }
             Occurrences++;
             return this;
         }
