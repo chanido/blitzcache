@@ -30,30 +30,46 @@ namespace BlitzCacheCore.Logging
 
                 var stats = instance.Statistics!;
 
-                logger.LogInformation(
-                "***[{Identifier}] BlitzCache Statistics***\n" +
-                "Hits: {HitCount}\n" +
-                "Misses: {MissCount}\n" +
-                "Hit Ratio: {HitRatio:P2}\n" +
-                "Entries: {EntryCount}\n" +
-                "Evictions: {EvictionCount}\n" +
-                "Active Semaphores: {ActiveSemaphoreCount}\n" +
-                "Total Operations: {TotalOperations}\n" +
-                "Approx. Memory: {ApproxMemory}\n" +
-                "Top Heaviest: {TopHeaviest}\n" +
-                "Top Slowest Queries: {TopSlowestQueries}",
-                Identifier,
-                stats.HitCount,
-                stats.MissCount,
-                stats.HitRatio,
-                stats.EntryCount,
-                stats.EvictionCount,
-                stats.ActiveSemaphoreCount,
-                stats.TotalOperations,
-                Formatters.FormatBytes(stats.ApproximateMemoryBytes),
-                stats.TopHeaviestEntries != null && stats.TopHeaviestEntries.Any() ? string.Concat(stats.TopHeaviestEntries.Select(q => $"\n\t{q}")) : "Not available",
-                stats.TopSlowestQueries != null && stats.TopSlowestQueries.Count() > 0 ? string.Concat(stats.TopSlowestQueries.Select(q => $"\n\t{q}")) : "Not available"
-            );
+                // Build the log dynamically so we can omit sections entirely when disabled (<1) for performance clarity.
+                var message = $"***[{Identifier}] BlitzCache Statistics***\n" +
+                              $"Hits: {stats.HitCount}\n" +
+                              $"Misses: {stats.MissCount}\n" +
+                              $"Hit Ratio: {stats.HitRatio:P2}\n" +
+                              $"Entries: {stats.EntryCount}\n" +
+                              $"Evictions: {stats.EvictionCount}\n" +
+                              $"Active Semaphores: {stats.ActiveSemaphoreCount}\n" +
+                              $"Total Operations: {stats.TotalOperations}\n" +
+                              $"Approx. Memory: {Formatters.FormatBytes(stats.ApproximateMemoryBytes)}";
+
+                // Attempt to detect internal tracking flags (available when concrete type is CacheStatistics)
+                var cacheStatsType = stats.GetType();
+                bool heaviestEnabled = false;
+                bool slowestEnabled = false;
+                try
+                {
+                    var heaviestProp = cacheStatsType.GetProperty("HeaviestTrackingEnabled", BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.Public);
+                    var slowestProp = cacheStatsType.GetProperty("SlowestTrackingEnabled", BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.Public);
+                    heaviestEnabled = heaviestProp?.GetValue(stats) as bool? == true;
+                    slowestEnabled = slowestProp?.GetValue(stats) as bool? == true;
+                }
+                catch { }
+
+                if (heaviestEnabled)
+                {
+                    var heaviest = stats.TopHeaviestEntries != null && stats.TopHeaviestEntries.Any()
+                        ? string.Concat(stats.TopHeaviestEntries.Select(q => $"\n\t{q}"))
+                        : "\n\t<none>";
+                    message += $"\nTop Heaviest:{heaviest}";
+                }
+                if (slowestEnabled)
+                {
+                    var slowest = stats.TopSlowestQueries != null && stats.TopSlowestQueries.Any()
+                        ? string.Concat(stats.TopSlowestQueries.Select(q => $"\n\t{q}"))
+                        : "\n\t<none>";
+                    message += $"\nTop Slowest Queries:{slowest}";
+                }
+
+                logger.LogInformation(message);
 
                 lastLogTime = DateTime.UtcNow;
             }

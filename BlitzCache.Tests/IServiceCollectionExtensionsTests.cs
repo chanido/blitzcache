@@ -35,6 +35,49 @@ namespace BlitzCacheCore.Tests.Extensions
         }
 
         [Test]
+        public async Task AddBlitzCache_WithOptionsDelegate_RegistersGlobalSingleton()
+        {
+            serviceProvider = new ServiceCollection()
+                .AddBlitzCache(o => { o.DefaultMilliseconds = 5000; o.MaxTopSlowest = 3; o.MaxTopHeaviest = 2; })
+                .BuildServiceProvider();
+
+            var cache = serviceProvider.GetRequiredService<IBlitzCache>();
+            await AssertCacheWorksAsync(cache);
+        }
+
+        [Test]
+        public async Task BlitzCache_DirectOptionsConstructor_Works()
+        {
+            BlitzCache.ClearGlobalForTesting();
+            var cache = new BlitzCache(new BlitzCacheOptions { DefaultMilliseconds = 2500, MaxTopSlowest = 2, MaxTopHeaviest = 2 });
+            await AssertCacheWorksAsync(cache);
+        }
+
+        [Test]
+        public async Task AddBlitzCache_WithConfigurePipeline_UsesConfiguredOptions()
+        {
+            BlitzCache.ClearGlobalForTesting();
+            serviceProvider = new ServiceCollection()
+                .Configure<BlitzCacheOptions>(o => { o.DefaultMilliseconds = 3333; o.MaxTopSlowest = 4; })
+                .AddBlitzCache() // picks up configured options
+                .BuildServiceProvider();
+
+            var cache = serviceProvider.GetRequiredService<IBlitzCache>();
+            await AssertCacheWorksAsync(cache);
+        }
+
+        [Test]
+        public async Task AddBlitzCache_ActionConfigure_ComposesWithOptionsPattern()
+        {
+            BlitzCache.ClearGlobalForTesting();
+            serviceProvider = new ServiceCollection()
+                .AddBlitzCache(o => { o.DefaultMilliseconds = 4444; o.MaxTopSlowest = 1; })
+                .BuildServiceProvider();
+            var cache = serviceProvider.GetRequiredService<IBlitzCache>();
+            await AssertCacheWorksAsync(cache);
+        }
+
+        [Test]
         public void AddBlitzCache_ThrowsOnNull() => Assert.Throws<ArgumentNullException>(() => IServiceCollectionExtensions.AddBlitzCache(null));
 
         [Test]
@@ -73,6 +116,21 @@ namespace BlitzCacheCore.Tests.Extensions
             // Should not throw, and should log a warning (cannot assert log output here)
             var cache = serviceProvider.GetService<IBlitzCache>();
 
+            await AssertCacheWorksAsync(cache);
+        }
+
+        [Test]
+        public async Task AddBlitzCacheLogging_WithOptionsDelegate_RegistersHostedService()
+        {
+            serviceProvider = new ServiceCollection()
+                .AddBlitzCache()
+                .AddLogging(b => b.AddDebug())
+                .AddBlitzCacheLogging(o => { o.LogInterval = TimeSpan.FromMilliseconds(10); o.GlobalCacheIdentifier = "TestAppOpt"; })
+                .BuildServiceProvider();
+
+            var hostedServices = serviceProvider.GetServices<IHostedService>();
+            Assert.IsTrue(hostedServices.Any(s => s.GetType().Name.Contains("BlitzCacheLoggingService")), "Should register BlitzCacheLoggingService via options overload");
+            var cache = serviceProvider.GetService<IBlitzCache>();
             await AssertCacheWorksAsync(cache);
         }
 

@@ -1,9 +1,10 @@
+using BlitzCacheCore.Statistics.Memory;
+using BlitzCacheCore.Statistics.Speed;
 using Microsoft.Extensions.Caching.Memory;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Diagnostics;
-using System.Linq;
 using System.Threading;
 
 namespace BlitzCacheCore.Statistics
@@ -24,7 +25,11 @@ namespace BlitzCacheCore.Statistics
         private readonly TopNTracker<SlowQuery>? topSlowestQueries;
         private readonly TopNTracker<HeavyEntry>? topHeaviestEntries;
         private readonly IValueSizer valueSizer;
-        private readonly ConcurrentDictionary<string, long> keySizes = new ConcurrentDictionary<string, long>();
+    private readonly ConcurrentDictionary<string, long> keySizes = new ConcurrentDictionary<string, long>();
+    private readonly bool sizeTrackingEnabled; // true when we must compute/value sizes (heaviest tracking or capacity limit)
+    // Tracks keys proactively removed (capacity enforcement, manual) whose stats have already been accounted for.
+    // Prevents the subsequent MemoryCache eviction callback from double-counting removals / evictions.
+    private readonly ConcurrentDictionary<string, byte> externallyRemoved = new ConcurrentDictionary<string, byte>();
 
         public long HitCount => Interlocked.Read(ref hitCount);
         public long MissCount => Interlocked.Read(ref missCount);
@@ -35,6 +40,8 @@ namespace BlitzCacheCore.Statistics
         public IEnumerable<SlowQuery> TopSlowestQueries => topSlowestQueries is null ? Array.Empty<SlowQuery>() : topSlowestQueries.Get();
         public long ApproximateMemoryBytes => Interlocked.Read(ref approximateMemoryBytes);
         public IEnumerable<HeavyEntry> TopHeaviestEntries => topHeaviestEntries is null ? Array.Empty<HeavyEntry>() : topHeaviestEntries.Get();
+    internal bool SlowestTrackingEnabled => topSlowestQueries != null; // for internal consumers like logger
+    internal bool HeaviestTrackingEnabled => topHeaviestEntries != null;
         public double HitRatio
         {
             get
@@ -52,10 +59,11 @@ namespace BlitzCacheCore.Statistics
         /// <param name="maxTopSlowest">Max number of top slowest queries to store (0 disables it for improved performance)</param>
         /// <param name="maxTopHeaviest">Max number of top heaviest entries to track (0 disables tracking)</param>
         /// <param name="valueSizer">Strategy for estimating value sizes</param>
-        public CacheStatistics(Func<int> getActiveSemaphoreCount, int maxTopSlowest, int maxTopHeaviest = 5, IValueSizer? valueSizer = null)
+        public CacheStatistics(Func<int> getActiveSemaphoreCount, int maxTopSlowest, int maxTopHeaviest = 5, BlitzCacheCore.Statistics.Memory.IValueSizer? valueSizer = null, bool capacityLimitEnabled = false)
         {
             this.getActiveSemaphoreCount = getActiveSemaphoreCount ?? throw new ArgumentNullException(nameof(getActiveSemaphoreCount));
-            this.valueSizer = valueSizer ?? new ApproximateValueSizer();
+            // Default to object graph sizer for improved estimation accuracy
+            this.valueSizer = valueSizer ?? new ObjectGraphValueSizer();
 
             if (maxTopSlowest > 0)
             {
@@ -65,6 +73,9 @@ namespace BlitzCacheCore.Statistics
             {
                 topHeaviestEntries = new TopNTracker<HeavyEntry>(maxTopHeaviest, (key, size) => new HeavyEntry(key, size));
             }
+
+            // We only need to perform size computations if either heaviest tracking is enabled OR a capacity limit is active.
+            sizeTrackingEnabled = topHeaviestEntries != null || capacityLimitEnabled;
         }
 
         /// <summary>
@@ -100,8 +111,11 @@ namespace BlitzCacheCore.Statistics
                 Interlocked.Increment(ref entryCount);
 
             // Update total bytes delta
-            var delta = newSizeBytes - (oldSizeBytes ?? 0);
-            Interlocked.Add(ref approximateMemoryBytes, delta);
+            if (sizeTrackingEnabled)
+            {
+                var delta = newSizeBytes - (oldSizeBytes ?? 0);
+                Interlocked.Add(ref approximateMemoryBytes, delta);
+            }
 
             // Track heaviest list
             topHeaviestEntries?.AddOrUpdate(cacheKey, newSizeBytes);
@@ -111,8 +125,34 @@ namespace BlitzCacheCore.Statistics
         {
             // Entry count and eviction are handled by the MemoryCache eviction callback.
             // Here we only adjust memory accounting and heaviest list.
-            Interlocked.Add(ref approximateMemoryBytes, -sizeBytes);
+            if (sizeTrackingEnabled)
+            {
+                Interlocked.Add(ref approximateMemoryBytes, -sizeBytes);
+            }
             topHeaviestEntries?.Remove(cacheKey);
+        }
+
+        /// <summary>
+        /// Used when an entry is manually removed outside the normal eviction callback path
+        /// (e.g., proactive capacity enforcement). Ensures statistics stay consistent.
+        /// </summary>
+        /// <param name="cacheKey">Key removed.</param>
+        /// <param name="sizeBytes">Previously recorded size in bytes.</param>
+        /// <param name="countAsEviction">Whether to increment eviction counters (true for policy-driven removals).</param>
+        internal void OnExternalRemoval(string cacheKey, long sizeBytes, bool countAsEviction)
+        {
+            // Mark so eviction callback can short-circuit.
+            externallyRemoved[cacheKey] = 0;
+
+            // Remove from key size tracking immediately to avoid future enforcement passes seeing stale entries.
+            if (sizeTrackingEnabled)
+            {
+                keySizes.TryRemove(cacheKey, out _);
+            }
+
+            // Synchronously account for memory + heaviest tracking.
+            RecordRemove(cacheKey, sizeBytes);
+            if (countAsEviction) RecordEviction();
         }
 
         /// <summary>
@@ -139,9 +179,11 @@ namespace BlitzCacheCore.Statistics
                 {
                     // Track automatic evictions (expiration, memory pressure, etc.)
                     // Don't count Replaced as eviction since it's just an update
-                    if (reason != EvictionReason.Replaced)
+                    if (reason != EvictionReason.Replaced && key is string k)
                     {
-                        if (key is string k && keySizes.TryRemove(k, out var s))
+                        // If we already accounted for this via proactive (external) removal, skip adjustments.
+                        if (externallyRemoved.TryRemove(k, out _)) return; // already accounted synchronously
+                        if (sizeTrackingEnabled && keySizes.TryRemove(k, out var s))
                         {
                             RecordRemove(k, s);
                         }
@@ -164,13 +206,21 @@ namespace BlitzCacheCore.Statistics
         /// </summary>
         internal void RecordSetOrUpdate(string cacheKey, object value, bool existedInCache)
         {
-            var newSize = valueSizer.GetSizeBytes(value);
+            var newSize = sizeTrackingEnabled ? valueSizer.GetSizeBytes(value) : 0L;
             long? oldSize = null;
             // Only treat as update if the entry truly existed in cache prior to the Set operation.
             if (existedInCache && keySizes.TryGetValue(cacheKey, out var prev)) oldSize = prev;
 
-            keySizes[cacheKey] = newSize;
-            RecordAddOrUpdate(cacheKey, newSize, oldSize);
+            if (sizeTrackingEnabled)
+            {
+                keySizes[cacheKey] = newSize;
+                RecordAddOrUpdate(cacheKey, newSize, oldSize);
+            }
+            else if (!existedInCache)
+            {
+                // When size tracking is disabled we still need to maintain entry count.
+                RecordAddOrUpdate(cacheKey, 0, null);
+            }
         }
 
         /// <summary>
@@ -190,7 +240,7 @@ namespace BlitzCacheCore.Statistics
         /// <summary>
         /// Provides a snapshot of current key sizes for capacity enforcement.
         /// </summary>
-        internal KeyValuePair<string, long>[] GetKeySizesSnapshot() => keySizes.ToArray();
+    internal KeyValuePair<string, long>[] GetKeySizesSnapshot() => sizeTrackingEnabled ? keySizes.ToArray() : Array.Empty<KeyValuePair<string, long>>();
 
         /// <summary>
         /// Resets all statistics counters to zero. Thread-safe.
@@ -203,6 +253,7 @@ namespace BlitzCacheCore.Statistics
             Interlocked.Exchange(ref entryCount, 0);
             Interlocked.Exchange(ref approximateMemoryBytes, 0);
             keySizes.Clear();
+            externallyRemoved.Clear();
             topSlowestQueries?.Clear();
             topHeaviestEntries?.Clear();
         }

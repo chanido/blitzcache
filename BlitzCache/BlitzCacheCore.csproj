@@ -15,24 +15,21 @@
     <RepositoryBranch>master</RepositoryBranch>
     <PackageValidationBaselineVersion>1.0.0</PackageValidationBaselineVersion>
     <PackageTags>caching;performance;threading;async;concurrency;enterprise;dotnet;thundering-herd;duplicate-prevention;memory-cache;thread-safe;zero-configuration;blazing-fast;production-ready;sql-protection;cache-invalidation;logging;monitoring;statistics;microservices</PackageTags>
-    <Version>2.1.0</Version>
-    <AssemblyVersion>2.1.0.0</AssemblyVersion>
-    <FileVersion>2.1.0.0</FileVersion>
-    <PackageReleaseNotes>BlitzCache v2.1.0 - Capacity-Based Size Limit (Optional)
+  <Version>2.1.1</Version>
+  <AssemblyVersion>2.1.1.0</AssemblyVersion>
+  <FileVersion>2.1.1.0</FileVersion>
+  <PackageReleaseNotes>BlitzCache v2.1.1 - Zero-Overhead Conditional Features
 
-NEW IN v2.1.0:
-• Approximate memory usage tracking (Statistics.ApproximateMemoryBytes)
-• TopHeaviestEntries to identify largest cached items
-• Logging includes Approx. Memory and Top Heaviest sections
-• Optional maxCacheSizeBytes to enable capacity-based eviction using MemoryCache.SizeLimit
-• Automatic per-entry sizing via lightweight IValueSizer so the limit is enforced
-• Works even when statistics are disabled
-• DI: AddBlitzCache now accepts maxCacheSizeBytes
-• New tests ensuring eviction occurs and memory stays within the limit
+NEW IN v2.1.1:
+• Conditional statistics: When maxTopSlowest or maxTopHeaviest &lt; 1 the related tracking is fully disabled (no allocations / updates).
+• Automatic skip of per-entry size calculation &amp; capacity enforcement when no maxCacheSizeBytes configured.
+• Deterministic capacity enforcement using simulated remaining bytes to avoid transient over-eviction.
+• Logger now omits disabled Top sections entirely for cleaner output.
+• Additional tests covering disabled tracking &amp; eviction precision.
 
 Notes:
-• Sizing is best-effort and designed to be lightweight for common types.
-• Capacity-based eviction relies on Microsoft.Extensions.Caching.Memory heuristics.</PackageReleaseNotes>
+• Performance-focused release with no breaking changes.
+• Disabling features now truly removes their runtime cost.</PackageReleaseNotes>
     <PackageId>BlitzCache</PackageId>
     <PackageIcon>icon.png</PackageIcon>
     <PackageReadmeFile>README.md</PackageReadmeFile>
@@ -63,11 +60,12 @@ Notes:
     <None Include="icon.png" Pack="true" PackagePath="\" Condition="Exists('$(MSBuildProjectDirectory)/icon.png')" />
   </ItemGroup>
 
+  <!-- Copy icon early so it exists for both build and pack; keep legacy Pack-time copy as safety -->
+  <Target Name="CopyIconEarly" BeforeTargets="PrepareForBuild">
+    <Copy SourceFiles="$(MSBuildProjectDirectory)/../icon.png" DestinationFiles="$(MSBuildProjectDirectory)/icon.png" SkipUnchangedFiles="true" Condition="Exists('$(MSBuildProjectDirectory)/../icon.png')" />
+  </Target>
   <Target Name="EnsureIconInProject" BeforeTargets="Pack">
-    <Message Text="Ensuring icon.png exists in project directory for packing" Importance="high" />
-    <Copy SourceFiles="$(MSBuildProjectDirectory)/../icon.png"
-          DestinationFiles="$(MSBuildProjectDirectory)/icon.png"
-          SkipUnchangedFiles="true"
-          Condition="Exists('$(MSBuildProjectDirectory)/../icon.png')" />
+    <Message Text="Ensuring icon.png exists in project directory for packing" Importance="low" />
+    <Copy SourceFiles="$(MSBuildProjectDirectory)/../icon.png" DestinationFiles="$(MSBuildProjectDirectory)/icon.png" SkipUnchangedFiles="true" Condition="Exists('$(MSBuildProjectDirectory)/../icon.png')" />
   </Target>
 </Project>

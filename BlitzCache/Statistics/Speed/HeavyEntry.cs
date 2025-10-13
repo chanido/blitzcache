@@ -1,4 +1,4 @@
-namespace BlitzCacheCore.Statistics
+namespace BlitzCacheCore.Statistics.Speed
 {
     /// <summary>
     /// Represents a cache entry approximate size for reporting purposes.

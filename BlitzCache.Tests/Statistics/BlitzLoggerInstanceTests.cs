@@ -91,8 +91,8 @@ namespace BlitzCacheCore.Tests.Statistics
 
             // Assert
             Assert.That(logs.Count, Is.GreaterThan(0));
-            Assert.That(joinedLogs, Does.Contain("Top Slowest Queries"));
-            Assert.That(joinedLogs, Does.Contain("Not available").Or.Not.Contains("q1"), "Should indicate no slow queries tracked");
+            // New behavior: section omitted entirely when tracking disabled for performance
+            Assert.That(joinedLogs, Does.Not.Contain("Top Slowest Queries"), "Section should be omitted when disabled");
         }
     }
 }
