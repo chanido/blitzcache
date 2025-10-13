@@ -1,4 +1,4 @@
-# [2.1.1] - 2025-08-12
+# [2.1.1] - 2025-10-13
 
 ### Added
 - Zero-overhead conditional statistics: when `maxTopSlowest < 1` or `maxTopHeaviest < 1`, their tracking logic is completely skipped (no allocations or timers for those lists).
