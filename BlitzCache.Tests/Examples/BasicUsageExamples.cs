@@ -285,11 +285,108 @@ namespace BlitzCacheCore.Tests.Examples
         }
 
         /// <summary>
-        /// Example 11: Accessing Top Slowest Queries statistics
+        /// Example 11: Thundering Herd / Cache Stampede Prevention
+        /// DEMONSTRATES THE CORE PROBLEM BLITZCACHE SOLVES:
+        /// Without BlitzCache: 100 concurrent requests = 100 database executions
+        /// With BlitzCache: 100 concurrent requests = 1 database execution, 99 wait for result
+        /// This is the "cache stampede" or "thundering herd" problem that BlitzCache automatically prevents.
+        /// </summary>
+        [Test]
+        public async Task Example11_ThunderingHerdPrevention()
+        {
+            var databaseCallCount = 0;
+            var executionTimes = new System.Collections.Generic.List<DateTime>();
+
+            async Task<string> ExpensiveDatabaseQuery()
+            {
+                // Record when this executes
+                lock (executionTimes)
+                {
+                    executionTimes.Add(DateTime.Now);
+                }
+                
+                System.Threading.Interlocked.Increment(ref databaseCallCount);
+                await Task.Delay(100); // Simulate slow database query (100ms)
+                return $"Expensive database result (execution #{databaseCallCount})";
+            }
+
+            Console.WriteLine("=== Thundering Herd / Cache Stampede Prevention Demo ===");
+            Console.WriteLine("Simulating 100 concurrent requests for the same data...");
+            Console.WriteLine();
+
+            // THE PROBLEM SCENARIO:
+            // Imagine 100 users hit your API at the exact same moment requesting the same data
+            // Without proper protection, all 100 would execute your expensive database query
+            // This is called "cache stampede", "thundering herd", or "dog-pile effect"
+
+            var concurrentRequestCount = 100; // 100 concurrent requests
+            var tasks = new Task<string>[concurrentRequestCount];
+
+            var startTime = DateTime.Now;
+
+            // Launch 100 concurrent requests for the same cache key
+            for (int i = 0; i < concurrentRequestCount; i++)
+            {
+                var requestNumber = i + 1;
+                tasks[i] = Task.Run(async () =>
+                {
+                    // Each request tries to get the same data
+                    // WITHOUT BlitzCache: All 100 would hit the database
+                    // WITH BlitzCache: Only 1 hits the database, 99 wait and share the result
+                    var result = await cache.BlitzGet("shared_expensive_data", ExpensiveDatabaseQuery, TestConstants.StandardTimeoutMs);
+                    return result;
+                });
+            }
+
+            // Wait for all concurrent requests to complete
+            var results = await Task.WhenAll(tasks);
+            var endTime = DateTime.Now;
+            var totalTime = (endTime - startTime).TotalMilliseconds;
+
+            Console.WriteLine($"✅ All {concurrentRequestCount} concurrent requests completed in {totalTime:F0}ms");
+            Console.WriteLine();
+            Console.WriteLine("=== BlitzCache Thundering Herd Protection Results ===");
+            Console.WriteLine($"Total concurrent requests: {concurrentRequestCount}");
+            Console.WriteLine($"Actual database executions: {databaseCallCount}");
+            Console.WriteLine($"Database queries prevented: {concurrentRequestCount - databaseCallCount}");
+            Console.WriteLine($"Efficiency gain: {((concurrentRequestCount - databaseCallCount) / (double)concurrentRequestCount * 100):F1}% reduction in database load");
+            Console.WriteLine();
+
+            // VERIFICATION: BlitzCache ensures only ONE execution despite concurrent requests
+            Assert.AreEqual(1, databaseCallCount, 
+                $"THUNDERING HERD PREVENTION: Only 1 database call should execute despite {concurrentRequestCount} concurrent requests!");
+            
+            Assert.AreEqual(1, executionTimes.Count, 
+                "Only one execution timestamp should exist");
+
+            // All requests should return the exact same result
+            Assert.IsTrue(results.All(r => r == results[0]), 
+                "All concurrent requests should receive identical results");
+            
+            Assert.AreEqual("Expensive database result (execution #1)", results[0],
+                "Result should be from the single execution");
+
+            Console.WriteLine("✨ BlitzCache successfully prevented cache stampede!");
+            Console.WriteLine($"   Instead of {concurrentRequestCount} expensive database queries,");
+            Console.WriteLine("   only 1 executed while the other 99 waited and shared the result.");
+            Console.WriteLine();
+            Console.WriteLine("💡 This is what BlitzCache does automatically:");
+            Console.WriteLine("   - Prevents duplicate execution under concurrent load");
+            Console.WriteLine("   - Protects your database/API from being overwhelmed");
+            Console.WriteLine("   - Eliminates race conditions in cache population");
+            Console.WriteLine("   - Zero configuration, completely thread-safe");
+            Console.WriteLine();
+            Console.WriteLine("🎯 Without BlitzCache, you'd need 15+ lines of SemaphoreSlim");
+            Console.WriteLine("   boilerplate PER CACHED OPERATION to achieve this protection.");
+            Console.WriteLine("   With BlitzCache: Just use BlitzGet() and it works automatically!");
+        }
+
+        /// <summary>
+        /// Example 12: Accessing Top Slowest Queries statistics
         /// Demonstrates how to retrieve and inspect the slowest cache operations using BlitzCache statistics (v2.0.2+)
         /// </summary>
         [Test]
-        public async Task Example11_TopSlowestQueries()
+        public async Task Example12_TopSlowestQueries()
         {
             cache.InitializeStatistics();
             // Simulate several cache operations with varying delays
