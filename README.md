@@ -14,6 +14,14 @@
 
 **BlitzCache is the idiomatic .NET solution for cache stampede prevention.**
 
+### The Blitzkrieg Scenario
+
+> *"Even when a method is cached there are cases when it is called again before it has finished the first time and this results in a new request to the database, and this time much slower. This is what I call **The Blitzkrieg Scenario**. The slower the query, the more likely this happens—and the worse the impact. I have seen too many times SQL Server freeze while struggling to reply to the exact same query that is already being executed..."*
+> 
+> — [Original blog post, May 2020](https://www.codegrimoire.com/2020/05/synchronous-and-asychronous-threadsafe.html)
+
+BlitzCache was born from real production pain. The name comes from the problem it solves: like a blitzkrieg attack overwhelming defenses, concurrent cache misses can overwhelm your database. BlitzCache is your defense—**swift, decisive protection** that ensures only one execution happens, no matter how many requests arrive simultaneously.
+
 Instead of writing custom `IMemoryCache` + `SemaphoreSlim` wrappers (the common but verbose pattern), use BlitzCache's `BlitzGet` as the canonical get-or-add method with built-in concurrency protection. BlitzCache is **syntactic sugar** that eliminates boilerplate while providing enterprise-grade features.
 
 In modern .NET apps, a very common pattern is to combine `IMemoryCache` with `SemaphoreSlim` and a home-grown `GetOrAddAsync` helper to prevent duplicate execution. BlitzCache is designed to replace that entire pattern with a single, idiomatic API: `BlitzGet`.
@@ -141,7 +149,7 @@ Comprehensive guides for mastering BlitzCache:
 | SQL server under load | **Server crashes** 💥 | **Server protected** 🛡️ | **System stability** |
 | Operation speed | Varies | **0.0001ms** | **Lightning fast** |
 
-[Detailed benchmarks and analysis →](http://www.codegrimoire.com/2020/05/synchronous-and-asychronous-threadsafe.html)
+📖 **[Read the origin story: "The Blitzkrieg Scenario" →](https://www.codegrimoire.com/2020/05/synchronous-and-asychronous-threadsafe.html)**
 
 ## 📦 Get Started in 30 Seconds
 
@@ -496,7 +504,7 @@ BlitzCache is designed to replace that whole pattern with a single, idiomatic ca
 
 ### Getting Help
 
-- 📚 [Detailed Blog Post](http://www.codegrimoire.com/2020/05/synchronous-and-asychronous-threadsafe.html)
+- 📚 [Detailed Blog Post](https://www.codegrimoire.com/2020/05/synchronous-and-asychronous-threadsafe.html)
 - 🐛 [Report Issues](https://github.com/chanido/blitzcache/issues)
 - 💬 [Discussions](https://github.com/chanido/blitzcache/discussions)
 - 📊 [Performance Details & Test Results](IMPROVEMENTS.md)
@@ -579,6 +587,7 @@ This project is licensed under the MIT License - see the [LICENSE](licence.txt) 
 
 - Built with ❤️ by [Chan](mailto:aburrio@gmail.com)
 - Thanks to all [contributors](https://github.com/chanido/blitzcache/graphs/contributors)
+- Born from real production experience—read [the origin story](https://www.codegrimoire.com/2020/05/synchronous-and-asychronous-threadsafe.html)
 - Inspired by the need for simple, high-performance caching solutions
 
 ---

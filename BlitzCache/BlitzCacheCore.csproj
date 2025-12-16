@@ -15,21 +15,19 @@
     <RepositoryBranch>master</RepositoryBranch>
     <PackageValidationBaselineVersion>1.0.0</PackageValidationBaselineVersion>
     <PackageTags>caching;performance;threading;async;concurrency;enterprise;dotnet;thundering-herd;duplicate-prevention;memory-cache;thread-safe;zero-configuration;blazing-fast;production-ready;sql-protection;cache-invalidation;logging;monitoring;statistics;microservices</PackageTags>
-  <Version>2.1.1</Version>
-  <AssemblyVersion>2.1.1.0</AssemblyVersion>
-  <FileVersion>2.1.1.0</FileVersion>
-  <PackageReleaseNotes>BlitzCache v2.1.1 - Zero-Overhead Conditional Features
+  <Version>2.2.0</Version>
+  <AssemblyVersion>2.2.0.0</AssemblyVersion>
+  <FileVersion>2.2.0.0</FileVersion>
+  <PackageReleaseNotes>BlitzCache v2.2.0 - Dependency Updates &amp; Continued Maintenance
 
-NEW IN v2.1.1:
-• Conditional statistics: When maxTopSlowest or maxTopHeaviest &lt; 1 the related tracking is fully disabled (no allocations / updates).
-• Automatic skip of per-entry size calculation &amp; capacity enforcement when no maxCacheSizeBytes configured.
-• Deterministic capacity enforcement using simulated remaining bytes to avoid transient over-eviction.
-• Logger now omits disabled Top sections entirely for cleaner output.
-• Additional tests covering disabled tracking &amp; eviction precision.
+NEW IN v2.2.0:
+• Updated all dependencies to latest stable versions (Microsoft.Extensions.* 10.0.1).
+• Ensures compatibility with .NET 9 and latest framework improvements.
+• Continued active maintenance and community support.
 
 Notes:
-• Performance-focused release with no breaking changes.
-• Disabling features now truly removes their runtime cost.</PackageReleaseNotes>
+• No breaking changes.
+• Library remains actively maintained with regular updates.</PackageReleaseNotes>
     <PackageId>BlitzCache</PackageId>
     <PackageIcon>icon.png</PackageIcon>
     <PackageReadmeFile>README.md</PackageReadmeFile>
@@ -47,10 +45,10 @@ Notes:
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="Microsoft.Extensions.Caching.Memory" Version="8.0.1" />
-    <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="8.0.2" />
-    <PackageReference Include="Microsoft.Extensions.Hosting.Abstractions" Version="8.0.1" />
-    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="8.0.2" />
+    <PackageReference Include="Microsoft.Extensions.Caching.Memory" Version="10.0.1" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="10.0.1" />
+    <PackageReference Include="Microsoft.Extensions.Hosting.Abstractions" Version="10.0.1" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.1" />
   </ItemGroup>
 
   <ItemGroup>
