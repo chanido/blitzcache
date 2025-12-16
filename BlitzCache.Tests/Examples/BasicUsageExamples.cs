@@ -1,4 +1,3 @@
-
 using BlitzCacheCore.Tests.Helpers;
 using NUnit.Framework;
 using System;
@@ -45,9 +44,9 @@ namespace BlitzCacheCore.Tests.Examples
             var result2 = cache.BlitzGet("my_key", ExpensiveOperation, TestConstants.StandardTimeoutMs);
 
             // Verify caching worked - same result, function only called once
-            Assert.AreEqual("Computed result #1", result1);
-            Assert.AreEqual("Computed result #1", result2);
-            Assert.AreEqual(1, callCount, "Function should only be called once");
+            Assert.That(result1, Is.EqualTo("Computed result #1"));
+            Assert.That(result2, Is.EqualTo("Computed result #1"));
+            Assert.That(callCount, Is.EqualTo(1), "Function should only be called once");
         }
 
         /// <summary>
@@ -69,9 +68,9 @@ namespace BlitzCacheCore.Tests.Examples
             var result1 = await cache.BlitzGet("async_key", ExpensiveAsyncOperation, TestConstants.StandardTimeoutMs);
             var result2 = await cache.BlitzGet("async_key", ExpensiveAsyncOperation, TestConstants.StandardTimeoutMs);
 
-            Assert.AreEqual("Async result #1", result1);
-            Assert.AreEqual("Async result #1", result2);
-            Assert.AreEqual(1, callCount, "Async function should only be called once");
+            Assert.That(result1, Is.EqualTo("Async result #1"));
+            Assert.That(result2, Is.EqualTo("Async result #1"));
+            Assert.That(callCount, Is.EqualTo(1), "Async function should only be called once");
         }
 
         /// <summary>
@@ -90,9 +89,9 @@ namespace BlitzCacheCore.Tests.Examples
             var user1Data = cache.BlitzGet("user_123", () => GetUserData("123"), TestConstants.StandardTimeoutMs);
             var user2Data = cache.BlitzGet("user_456", () => GetUserData("456"), TestConstants.StandardTimeoutMs);
 
-            Assert.AreEqual("User data for 123", user1Data);
-            Assert.AreEqual("User data for 456", user2Data);
-            Assert.AreNotEqual(user1Data, user2Data);
+            Assert.That(user1Data, Is.EqualTo("User data for 123"));
+            Assert.That(user2Data, Is.EqualTo("User data for 456"));
+            Assert.That(user1Data, Is.Not.EqualTo(user2Data));
         }
 
         /// <summary>
@@ -112,7 +111,7 @@ namespace BlitzCacheCore.Tests.Examples
             // Cache with short expiration for demo purposes
             var result1 = cache.BlitzGet("timestamp", GetTimestamp, TestConstants.VeryShortTimeoutMs);
             var result2 = cache.BlitzGet("timestamp", GetTimestamp, TestConstants.VeryShortTimeoutMs);
-            Assert.AreEqual(result1, result2, "Should return cached value immediately");
+            Assert.That(result2, Is.EqualTo(result1), "Should return cached value immediately");
 
             // Wait for cache to expire
             await TestDelays.WaitForStandardExpiration();
@@ -120,8 +119,8 @@ namespace BlitzCacheCore.Tests.Examples
             // BlitzCache automatically calls function again after expiration
             var result3 = cache.BlitzGet("timestamp", GetTimestamp, TestConstants.VeryShortTimeoutMs);
 
-            Assert.AreNotEqual(result1, result3, "Should return new value after expiration");
-            Assert.AreEqual(2, callCount, "Function should be called twice due to expiration");
+            Assert.That(result3, Is.Not.EqualTo(result1), "Should return new value after expiration");
+            Assert.That(callCount, Is.EqualTo(2), "Function should be called twice due to expiration");
         }
 
         /// <summary>
@@ -141,17 +140,17 @@ namespace BlitzCacheCore.Tests.Examples
             // Cache some data normally
             var result1 = cache.BlitzGet("removable_key", GetData, TestConstants.StandardTimeoutMs);
             var result2 = cache.BlitzGet("removable_key", GetData, TestConstants.StandardTimeoutMs);
-            Assert.AreEqual("Data #1", result1);
-            Assert.AreEqual("Data #1", result2);
-            Assert.AreEqual(1, callCount, "Should still be only one call");
+            Assert.That(result1, Is.EqualTo("Data #1"));
+            Assert.That(result2, Is.EqualTo("Data #1"));
+            Assert.That(callCount, Is.EqualTo(1), "Should still be only one call");
 
             // Manually remove from cache when you need fresh data
             cache.Remove("removable_key");
 
             // Next call executes function again with fresh data
             var result3 = cache.BlitzGet("removable_key", GetData, TestConstants.StandardTimeoutMs);
-            Assert.AreEqual("Data #2", result3);
-            Assert.AreEqual(2, callCount, "Function should be called again after removal");
+            Assert.That(result3, Is.EqualTo("Data #2"));
+            Assert.That(callCount, Is.EqualTo(2), "Function should be called again after removal");
         }
 
         /// <summary>
@@ -174,8 +173,8 @@ namespace BlitzCacheCore.Tests.Examples
 
             var result = cache.BlitzGet("preloaded_key", FallbackFunction, TestConstants.StandardTimeoutMs);
 
-            Assert.AreEqual("Preloaded value", result);
-            Assert.AreEqual(0, callCount, "Fallback function should not be called");
+            Assert.That(result, Is.EqualTo("Preloaded value"));
+            Assert.That(callCount, Is.EqualTo(0), "Fallback function should not be called");
         }
 
         /// <summary>
@@ -187,17 +186,17 @@ namespace BlitzCacheCore.Tests.Examples
         {
             // Cache a number - works perfectly
             var number = cache.BlitzGet("number_key", () => 42, TestConstants.StandardTimeoutMs);
-            Assert.AreEqual(42, number);
+            Assert.That(number, Is.EqualTo(42));
 
             // Cache a complex object - automatic serialization
             var person = cache.BlitzGet("person_key", () => new { Name = "John", Age = 30 }, TestConstants.StandardTimeoutMs);
-            Assert.AreEqual("John", person.Name);
-            Assert.AreEqual(30, person.Age);
+            Assert.That(person.Name, Is.EqualTo("John"));
+            Assert.That(person.Age, Is.EqualTo(30));
 
             // Cache collections - arrays, lists, whatever you need
             var list = cache.BlitzGet("list_key", () => new[] { "a", "b", "c" }, TestConstants.StandardTimeoutMs);
-            Assert.AreEqual(3, list.Length);
-            Assert.AreEqual("a", list[0]);
+            Assert.That(list.Length, Is.EqualTo(3));
+            Assert.That(list[0], Is.EqualTo("a"));
         }
 
         /// <summary>
@@ -219,9 +218,9 @@ namespace BlitzCacheCore.Tests.Examples
             var result1 = cache.BlitzGet("global_key", LoadData, TestConstants.StandardTimeoutMs);
             var result2 = cache.BlitzGet("global_key", LoadData, TestConstants.StandardTimeoutMs);
 
-            Assert.AreEqual("Global data #1", result1);
-            Assert.AreEqual("Global data #1", result2);
-            Assert.AreEqual(1, callCount, "Function should only be called once");
+            Assert.That(result1, Is.EqualTo("Global data #1"));
+            Assert.That(result2, Is.EqualTo("Global data #1"));
+            Assert.That(callCount, Is.EqualTo(1), "Function should only be called once");
 
             // Clean up for this demo
             cache.Remove("global_key");
@@ -245,9 +244,9 @@ namespace BlitzCacheCore.Tests.Examples
             var result1 = cache.BlitzGet(GetData, TestConstants.StandardTimeoutMs);
             var result2 = cache.BlitzGet(GetData, TestConstants.StandardTimeoutMs);
 
-            Assert.AreEqual("Method data #1", result1);
-            Assert.AreEqual("Method data #1", result2);
-            Assert.AreEqual(1, callCount, "Function should only be called once with automatic key");
+            Assert.That(result1, Is.EqualTo("Method data #1"));
+            Assert.That(result2, Is.EqualTo("Method data #1"));
+            Assert.That(callCount, Is.EqualTo(1), "Function should only be called once with automatic key");
         }
 
         /// <summary>
@@ -271,17 +270,17 @@ namespace BlitzCacheCore.Tests.Examples
             var profile3 = cache.BlitzGet("user_profile_123", () => SimulateExpensiveDatabaseCall(123), TestConstants.StandardTimeoutMs);
 
             // All requests return the same cached data
-            Assert.AreEqual("User profile for ID: 123 (DB call #1)", profile1);
-            Assert.AreEqual("User profile for ID: 123 (DB call #1)", profile2);
-            Assert.AreEqual("User profile for ID: 123 (DB call #1)", profile3);
+            Assert.That(profile1, Is.EqualTo("User profile for ID: 123 (DB call #1)"));
+            Assert.That(profile2, Is.EqualTo("User profile for ID: 123 (DB call #1)"));
+            Assert.That(profile3, Is.EqualTo("User profile for ID: 123 (DB call #1)"));
 
             // Database was only called once despite 3 requests - huge performance gain!
-            Assert.AreEqual(1, databaseCallCount, "Database should only be called once thanks to caching!");
+            Assert.That(databaseCallCount, Is.EqualTo(1), "Database should only be called once thanks to caching!");
 
             // Different user = different cache entry
             var otherProfile = cache.BlitzGet("user_profile_456", () => SimulateExpensiveDatabaseCall(456), TestConstants.StandardTimeoutMs);
-            Assert.AreEqual("User profile for ID: 456 (DB call #2)", otherProfile);
-            Assert.AreEqual(2, databaseCallCount, "Different user should trigger new database call");
+            Assert.That(otherProfile, Is.EqualTo("User profile for ID: 456 (DB call #2)"));
+            Assert.That(databaseCallCount, Is.EqualTo(2), "Different user should trigger new database call");
         }
 
         /// <summary>
@@ -353,17 +352,17 @@ namespace BlitzCacheCore.Tests.Examples
             Console.WriteLine();
 
             // VERIFICATION: BlitzCache ensures only ONE execution despite concurrent requests
-            Assert.AreEqual(1, databaseCallCount, 
+            Assert.That(databaseCallCount, Is.EqualTo(1), 
                 $"THUNDERING HERD PREVENTION: Only 1 database call should execute despite {concurrentRequestCount} concurrent requests!");
             
-            Assert.AreEqual(1, executionTimes.Count, 
+            Assert.That(executionTimes.Count, Is.EqualTo(1), 
                 "Only one execution timestamp should exist");
 
             // All requests should return the exact same result
-            Assert.IsTrue(results.All(r => r == results[0]), 
+            Assert.That(results.All(r => r == results[0]), Is.True, 
                 "All concurrent requests should receive identical results");
             
-            Assert.AreEqual("Expensive database result (execution #1)", results[0],
+            Assert.That(results[0], Is.EqualTo("Expensive database result (execution #1)"),
                 "Result should be from the single execution");
 
             Console.WriteLine("✨ BlitzCache successfully prevented cache stampede!");
@@ -401,13 +400,13 @@ namespace BlitzCacheCore.Tests.Examples
 
             // Access the TopSlowestQueries statistics
             var stats = cache.Statistics;
-            Assert.IsNotNull(stats, "Statistics should not be null");
-            Assert.IsNotNull(stats.TopSlowestQueries, "TopSlowestQueries should not be null");
-            Assert.IsTrue(stats.TopSlowestQueries.Count() > 0, "TopSlowestQueries should contain entries");
+            Assert.That(stats, Is.Not.Null, "Statistics should not be null");
+            Assert.That(stats.TopSlowestQueries, Is.Not.Null, "TopSlowestQueries should not be null");
+            Assert.That(stats.TopSlowestQueries.Count() > 0, Is.True, "TopSlowestQueries should contain entries");
 
             // Optionally, check that the slowest query is the one with the highest delay
             var slowest = stats.TopSlowestQueries.First();
-            StringAssert.Contains("slow_key_2", slowest.ToString());
+            Assert.That(slowest.ToString(), Does.Contain("slow_key_2"));
         }
     }
 }

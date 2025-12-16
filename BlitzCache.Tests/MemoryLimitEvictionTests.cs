@@ -31,15 +31,15 @@ namespace BlitzCacheCore.Tests
             {
                 var key = $"k{i}";
                 var val = cache.BlitzGet(key, () => new byte[valueBytes]);
-                Assert.AreEqual(valueBytes, val.Length);
+                Assert.That(val.Length, Is.EqualTo(valueBytes));
             }
 
             // Give eviction callbacks a moment
             TestDelays.WaitUntil(() => cache.Statistics!.EvictionCount > 0);
 
             var stats = cache.Statistics!;
-            Assert.Greater(stats.EvictionCount, 0, "Capacity limit should trigger evictions");
-            Assert.LessOrEqual(stats.ApproximateMemoryBytes, maxCacheSizeBytes, "Approximate memory should be within configured limit");
+            Assert.That(stats.EvictionCount, Is.GreaterThan(0), "Capacity limit should trigger evictions");
+            Assert.That(stats.ApproximateMemoryBytes, Is.LessThanOrEqualTo(maxCacheSizeBytes), "Approximate memory should be within configured limit");
 
             // Verify that at least one key was evicted by scanning all inserted keys
             int recomputed = 0;
@@ -48,11 +48,11 @@ namespace BlitzCacheCore.Tests
                 var key = $"k{i}";
                 int calls = 0;
                 var result = cache.BlitzGet(key, () => { calls++; return new byte[valueBytes]; });
-                Assert.AreEqual(valueBytes, result.Length);
+                Assert.That(result.Length, Is.EqualTo(valueBytes));
                 if (calls > 0) recomputed++;
             }
 
-            Assert.GreaterOrEqual(recomputed, 1, "At least one of the entries should have been evicted and recomputed");
+            Assert.That(recomputed, Is.GreaterThanOrEqualTo(1), "At least one of the entries should have been evicted and recomputed");
         }
 
         [Test]
@@ -77,14 +77,14 @@ namespace BlitzCacheCore.Tests
             {
                 var key = $"ak{i}";
                 var val = await cache.BlitzGet(key, async () => await Task.FromResult(new byte[valueBytes]));
-                Assert.AreEqual(valueBytes, val.Length);
+                Assert.That(val.Length, Is.EqualTo(valueBytes));
             }
 
             await TestDelays.WaitForStandardExpiration();
 
             var stats = cache.Statistics!;
-            Assert.Greater(stats.EvictionCount, 0, "Capacity limit should trigger evictions (async)");
-            Assert.LessOrEqual(stats.ApproximateMemoryBytes, maxCacheSizeBytes, "Approximate memory should be within configured limit (async)");
+            Assert.That(stats.EvictionCount, Is.GreaterThan(0), "Capacity limit should trigger evictions (async)");
+            Assert.That(stats.ApproximateMemoryBytes, Is.LessThanOrEqualTo(maxCacheSizeBytes), "Approximate memory should be within configured limit (async)");
 
             // Verify that at least one key was evicted by scanning all inserted keys
             int recomputed = 0;
@@ -93,11 +93,11 @@ namespace BlitzCacheCore.Tests
                 var key = $"ak{i}";
                 int calls = 0;
                 var result = await cache.BlitzGet(key, async () => { calls++; return await Task.FromResult(new byte[valueBytes]); });
-                Assert.AreEqual(valueBytes, result.Length);
+                Assert.That(result.Length, Is.EqualTo(valueBytes));
                 if (calls > 0) recomputed++;
             }
 
-            Assert.GreaterOrEqual(recomputed, 1, "At least one of the async entries should have been evicted and recomputed");
+            Assert.That(recomputed, Is.GreaterThanOrEqualTo(1), "At least one of the async entries should have been evicted and recomputed");
         }
 
         [Test]
@@ -121,7 +121,7 @@ namespace BlitzCacheCore.Tests
             {
                 var key = $"ns{i}";
                 var val = cache.BlitzGet(key, () => new byte[valueBytes]);
-                Assert.AreEqual(valueBytes, val.Length);
+                Assert.That(val.Length, Is.EqualTo(valueBytes));
             }
 
             TestDelays.WaitForStandardExpiration();
@@ -134,11 +134,11 @@ namespace BlitzCacheCore.Tests
                 var key = $"ns{i}";
                 int calls = 0;
                 var result = cache.BlitzGet(key, () => { calls++; return new byte[valueBytes]; });
-                Assert.AreEqual(valueBytes, result.Length);
+                Assert.That(result.Length, Is.EqualTo(valueBytes));
                 if (calls > 0) recomputed++;
             }
 
-            Assert.GreaterOrEqual(recomputed, 1, "Eviction should occur even with statistics disabled");
+            Assert.That(recomputed, Is.GreaterThanOrEqualTo(1), "Eviction should occur even with statistics disabled");
         }
 
         [Test]
@@ -176,8 +176,8 @@ namespace BlitzCacheCore.Tests
             {
                 TestDelays.WaitUntil(() => (evictAfter = cache.Statistics!.EvictionCount) > evictBefore);
             }
-            Assert.Greater(evictAfter, evictBefore, "Eviction count should increase");
-            Assert.GreaterOrEqual(memAfter, 0, "Approximate memory must be non-negative");
+            Assert.That(evictAfter, Is.GreaterThan(evictBefore), "Eviction count should increase");
+            Assert.That(memAfter, Is.GreaterThanOrEqualTo(0), "Approximate memory must be non-negative");
             if (!TestDelays.WaitUntil(() => (memAfter = cache.Statistics!.ApproximateMemoryBytes) <= maxCacheSizeBytes))
             {
                 Assert.Fail($"Approximate memory exceeded limit after retries. mem={memAfter} limit={maxCacheSizeBytes}");
@@ -187,7 +187,7 @@ namespace BlitzCacheCore.Tests
             var netIncrease = entryAfter - entryBefore;
             var evicted = evictAfter - evictBefore;
             var expectedEvicted = inserted - netIncrease;
-            Assert.LessOrEqual(Math.Abs(evicted - expectedEvicted), 1, $"Eviction delta mismatch: inserted={inserted} net+={netIncrease} evicted={evicted} expected={expectedEvicted}");
+            Assert.That(Math.Abs(evicted - expectedEvicted), Is.LessThanOrEqualTo(1), $"Eviction delta mismatch: inserted={inserted} net+={netIncrease} evicted={evicted} expected={expectedEvicted}");
         }
 
         [Test]
@@ -225,8 +225,8 @@ namespace BlitzCacheCore.Tests
             {
                 await TestDelays.WaitUntilAsync(() => (evictAfter = cache.Statistics!.EvictionCount) > evictBefore);
             }
-            Assert.Greater(evictAfter, evictBefore, "Eviction count should increase (async)");
-            Assert.GreaterOrEqual(memAfter, 0, "Approximate memory must be non-negative (async)");
+            Assert.That(evictAfter, Is.GreaterThan(evictBefore), "Eviction count should increase (async)");
+            Assert.That(memAfter, Is.GreaterThanOrEqualTo(0), "Approximate memory must be non-negative (async)");
             if (!await TestDelays.WaitUntilAsync(() => (memAfter = cache.Statistics!.ApproximateMemoryBytes) <= maxCacheSizeBytes))
             {
                 Assert.Fail($"Approximate memory exceeded limit after retries (async). mem={memAfter} limit={maxCacheSizeBytes}");
@@ -236,7 +236,7 @@ namespace BlitzCacheCore.Tests
             var netIncrease = entryAfter - entryBefore;
             var evicted = evictAfter - evictBefore;
             var expectedEvicted = inserted - netIncrease;
-            Assert.LessOrEqual(Math.Abs(evicted - expectedEvicted), 1, $"Eviction delta mismatch (async): inserted={inserted} net+={netIncrease} evicted={evicted} expected={expectedEvicted}");
+            Assert.That(Math.Abs(evicted - expectedEvicted), Is.LessThanOrEqualTo(1), $"Eviction delta mismatch (async): inserted={inserted} net+={netIncrease} evicted={evicted} expected={expectedEvicted}");
         }
     }
 }

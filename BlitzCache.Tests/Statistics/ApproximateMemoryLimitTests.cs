@@ -25,14 +25,14 @@ namespace BlitzCacheCore.Tests.Statistics
             TestDelays.WaitForEvictionCallbacksSync();
 
             var approx = cache.Statistics!.ApproximateMemoryBytes;
-            Assert.LessOrEqual(approx, maxCacheSizeBytes, "Approximate memory should respect the configured limit");
+            Assert.That(approx, Is.LessThanOrEqualTo(maxCacheSizeBytes), "Approximate memory should respect the configured limit");
 
             // Insert a bigger value, expect more evictions
             cache.BlitzGet("big", () => new byte[valueBytes * 2], TestConstants.LongTimeoutMs);
             TestDelays.WaitForEvictionCallbacksSync();
 
             var afterBig = cache.Statistics!.ApproximateMemoryBytes;
-            Assert.LessOrEqual(afterBig, maxCacheSizeBytes, "Even after larger insert, cache should stay within the limit");
+            Assert.That(afterBig, Is.LessThanOrEqualTo(maxCacheSizeBytes), "Even after larger insert, cache should stay within the limit");
         }
     }
 }

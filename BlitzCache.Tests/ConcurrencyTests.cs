@@ -40,7 +40,7 @@ namespace BlitzCacheCore.Tests
             await AsyncRepeater.Go(TestConstants.ConcurrentOperationsCount, () => cache.BlitzGet(cacheKey, slowClassAsync.ProcessQuickly, 10000));
 
             // Assert
-            Assert.AreEqual(1, slowClassAsync.Counter, $"Expensive async operation should only execute once despite {TestConstants.ConcurrentOperationsCount} concurrent calls");
+            Assert.That(slowClassAsync.Counter, Is.EqualTo(1), $"Expensive async operation should only execute once despite {TestConstants.ConcurrentOperationsCount} concurrent calls");
         }
 
         [Test]
@@ -53,10 +53,10 @@ namespace BlitzCacheCore.Tests
             var testResult = await AsyncRepeater.GoWithResults(TestConstants.SmallLoopCount, () => cache.BlitzGet(cacheKey, slowClassAsync.ProcessSlowly, TestConstants.LongTimeoutMs));
 
             // Assert
-            Assert.AreEqual(1, slowClassAsync.Counter, "Expensive operation should only execute once");
-            Assert.AreEqual(TestConstants.SmallLoopCount, testResult.ResultCount, $"Should have {TestConstants.SmallLoopCount} results (one per concurrent call)");
-            Assert.AreEqual(1, testResult.UniqueResultCount, "All calls should receive the same result");
-            Assert.IsTrue(testResult.AllResultsIdentical, "All results should be identical");
+            Assert.That(slowClassAsync.Counter, Is.EqualTo(1), "Expensive operation should only execute once");
+            Assert.That(testResult.ResultCount, Is.EqualTo(TestConstants.SmallLoopCount), $"Should have {TestConstants.SmallLoopCount} results (one per concurrent call)");
+            Assert.That(testResult.UniqueResultCount, Is.EqualTo(1), "All calls should receive the same result");
+            Assert.That(testResult.AllResultsIdentical, Is.True, "All results should be identical");
         }
 
         [Test]
@@ -71,8 +71,8 @@ namespace BlitzCacheCore.Tests
                 staggerDelayMs: TestConstants.VeryShortTimeoutMs);
 
             // Assert
-            Assert.AreEqual(1, slowClassAsync.Counter, "Only one execution should have occurred");
-            Assert.IsTrue(testResult.AllResultsIdentical, "All results should be identical");
+            Assert.That(slowClassAsync.Counter, Is.EqualTo(1), "Only one execution should have occurred");
+            Assert.That(testResult.AllResultsIdentical, Is.True, "All results should be identical");
             Assert.That(testResult.ElapsedMilliseconds, Is.LessThan(1300),
                 "Total time should be close to single execution time, indicating queuing worked");
         }
@@ -90,7 +90,7 @@ namespace BlitzCacheCore.Tests
             });
 
             // Assert
-            Assert.AreEqual(1, slowClass.Counter, $"Expensive sync operation should only execute once despite {TestConstants.ConcurrentOperationsCount} concurrent calls");
+            Assert.That(slowClass.Counter, Is.EqualTo(1), $"Expensive sync operation should only execute once despite {TestConstants.ConcurrentOperationsCount} concurrent calls");
         }
 
         [Test]
@@ -103,10 +103,10 @@ namespace BlitzCacheCore.Tests
             var testResult = AsyncRepeater.GoSyncWithResults(8, () => cache.BlitzGet(cacheKey, slowClass.ProcessSlowly, 10000));
 
             // Assert
-            Assert.AreEqual(1, slowClass.Counter, "Expensive sync operation should only execute once");
-            Assert.AreEqual(8, testResult.ResultCount, "Should have 8 results");
-            Assert.AreEqual(1, testResult.UniqueResultCount, "All sync calls should receive the same result");
-            Assert.IsTrue(testResult.AllResultsIdentical, "All results should be identical");
+            Assert.That(slowClass.Counter, Is.EqualTo(1), "Expensive sync operation should only execute once");
+            Assert.That(testResult.ResultCount, Is.EqualTo(8), "Should have 8 results");
+            Assert.That(testResult.UniqueResultCount, Is.EqualTo(1), "All sync calls should receive the same result");
+            Assert.That(testResult.AllResultsIdentical, Is.True, "All results should be identical");
         }
 
         [Test]

@@ -19,8 +19,8 @@ namespace BlitzCacheCore.Tests.Statistics
             TestDelays.WaitForEvictionCallbacksSync();
 
             var stats = cache.Statistics!;
-            Assert.AreEqual(0, stats.ApproximateMemoryBytes, "Memory bytes should remain zero when size tracking is disabled");
-            Assert.IsFalse(stats.TopHeaviestEntries.Any(), "TopHeaviestEntries should be empty when disabled");
+            Assert.That(stats.ApproximateMemoryBytes, Is.EqualTo(0), "Memory bytes should remain zero when size tracking is disabled");
+            Assert.That(stats.TopHeaviestEntries.Any(), Is.False, "TopHeaviestEntries should be empty when disabled");
         }
 
         [Test]
@@ -37,8 +37,8 @@ namespace BlitzCacheCore.Tests.Statistics
             loggerInstance.Log(testLogger);
             var output = string.Join("\n", testLogger.GetLogs());
 
-            Assert.IsFalse(output.Contains("Top Heaviest:"), "Log should omit Top Heaviest section when disabled");
-            Assert.IsFalse(output.Contains("Top Slowest Queries:"), "Log should omit Top Slowest Queries section when disabled");
+            Assert.That(output.Contains("Top Heaviest:"), Is.False, "Log should omit Top Heaviest section when disabled");
+            Assert.That(output.Contains("Top Slowest Queries:"), Is.False, "Log should omit Top Slowest Queries section when disabled");
         }
     }
 }

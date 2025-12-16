@@ -25,7 +25,7 @@ namespace BlitzCacheCore.Tests
         public void Sizes_Primitive_String()
         {
             long size = sizer.GetSizeBytes("hello");
-            Assert.Greater(size, 0);
+            Assert.That(size, Is.GreaterThan(0));
         }
 
         [Test]
@@ -34,7 +34,7 @@ namespace BlitzCacheCore.Tests
             var root = new Node { Name = new string('x', 10), Child = new Node { Name = new string('y', 5) } };
             long size = sizer.GetSizeBytes(root);
             long shallow = sizer.GetSizeBytes(root.Name);
-            Assert.Greater(size, shallow);
+            Assert.That(size, Is.GreaterThan(shallow));
         }
 
         [Test]
@@ -43,7 +43,7 @@ namespace BlitzCacheCore.Tests
             var list = new List<string>();
             for (int i = 0; i < 100; i++) list.Add("item" + i);
             long size = sizer.GetSizeBytes(list);
-            Assert.Greater(size, 0);
+            Assert.That(size, Is.GreaterThan(0));
         }
 
         [Test]
@@ -53,7 +53,7 @@ namespace BlitzCacheCore.Tests
             var b = new Cycle();
             a.Next = b; b.Next = a;
             long size = sizer.GetSizeBytes(a);
-            Assert.Greater(size, 0);
+            Assert.That(size, Is.GreaterThan(0));
         }
 
         [Test]
@@ -61,7 +61,7 @@ namespace BlitzCacheCore.Tests
         {
             var deep = new Node { Name = "root", Child = new Node { Name = "child", Child = new Node { Name = "grandchild" } } };
             long size = sizer.GetSizeBytes(deep);
-            Assert.Greater(size, 0);
+            Assert.That(size, Is.GreaterThan(0));
         }
     }
 }

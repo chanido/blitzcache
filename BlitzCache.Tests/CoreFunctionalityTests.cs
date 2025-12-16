@@ -42,7 +42,7 @@ namespace BlitzCacheCore.Tests
 
             await AsyncRepeater.Go(numberOfTests, () => cache.BlitzGet(slowClass.ProcessQuickly));
 
-            Assert.AreEqual(1, slowClass.Counter);
+            Assert.That(slowClass.Counter, Is.EqualTo(1));
         }
 
         [Test]
@@ -56,7 +56,7 @@ namespace BlitzCacheCore.Tests
             var key2 = Guid.NewGuid().ToString();
             await AsyncRepeater.Go(numberOfTests, () => cache.BlitzGet(key2, slowClass.ProcessQuickly));
 
-            Assert.AreEqual(2, slowClass.Counter);
+            Assert.That(slowClass.Counter, Is.EqualTo(2));
         }
 
         [Test]
@@ -69,7 +69,7 @@ namespace BlitzCacheCore.Tests
                 cache.BlitzGet(slowClass.ProcessQuickly);
             });
 
-            Assert.AreEqual(1, slowClass.Counter);
+            Assert.That(slowClass.Counter, Is.EqualTo(1));
         }
 
         [Test]
@@ -82,7 +82,7 @@ namespace BlitzCacheCore.Tests
             var key2 = Guid.NewGuid().ToString();
             Parallel.For(0, numberOfTests, (i) => { cache.BlitzGet(key2, slowClass.ProcessQuickly); });
 
-            Assert.AreEqual(2, slowClass.Counter);
+            Assert.That(slowClass.Counter, Is.EqualTo(2));
         }
 
         [Test]
@@ -125,7 +125,7 @@ namespace BlitzCacheCore.Tests
                     cache.BlitzGet(GetKey(i), (n) => GetValueWithDifferentCacheRetention(n, i));
                 });
 
-                Assert.AreEqual(calls, slowClass.Counter, $"Failed: {message}");
+                Assert.That(slowClass.Counter, Is.EqualTo(calls), $"Failed: {message}");
             }
 
             void CleanCache()
@@ -163,14 +163,14 @@ namespace BlitzCacheCore.Tests
             }, TestConstants.StandardTimeoutMs);
 
             // Assert - Should return Task and complete successfully
-            Assert.IsInstanceOf<Task>(updateTask, "BlitzUpdate should return Task");
+            Assert.That(updateTask, Is.InstanceOf<Task>(), "BlitzUpdate should return Task");
             await updateTask; // Should complete without error
 
             // Verify the value was cached using AsyncRepeater
             var testResult = await AsyncRepeater.GoWithResults(5, () => cache.BlitzGet("async_update_key", () => Task.FromResult("fallback"), TestConstants.StandardTimeoutMs));
 
-            Assert.IsTrue(testResult.AllResultsIdentical, "All calls should get same cached value");
-            Assert.AreEqual("async_update_value", testResult.FirstResult, "Should return cached async value");
+            Assert.That(testResult.AllResultsIdentical, Is.True, "All calls should get same cached value");
+            Assert.That(testResult.FirstResult, Is.EqualTo("async_update_value"), "Should return cached async value");
         }
 
         [Test]
@@ -191,11 +191,11 @@ namespace BlitzCacheCore.Tests
             var result2_cached = cache.BlitzGet("isolation_key2", TestFunction, TestConstants.StandardTimeoutMs);
 
             // Assert
-            Assert.AreEqual("result_1", result1, "First key should get first result");
-            Assert.AreEqual("result_2", result2, "Second key should get second result");
-            Assert.AreEqual("result_1", result1_cached, "First key should return cached result");
-            Assert.AreEqual("result_2", result2_cached, "Second key should return cached result");
-            Assert.AreEqual(2, counter, "Function should only be called twice");
+            Assert.That(result1, Is.EqualTo("result_1"), "First key should get first result");
+            Assert.That(result2, Is.EqualTo("result_2"), "Second key should get second result");
+            Assert.That(result1_cached, Is.EqualTo("result_1"), "First key should return cached result");
+            Assert.That(result2_cached, Is.EqualTo("result_2"), "Second key should return cached result");
+            Assert.That(counter, Is.EqualTo(2), "Function should only be called twice");
 
             // Cleanup
             cache.Remove("isolation_key1");
@@ -219,9 +219,9 @@ namespace BlitzCacheCore.Tests
             var result2 = cache.BlitzGet("expiration_key", TestFunction, TestConstants.StandardTimeoutMs);
 
             // Assert
-            Assert.AreEqual("result_1", result1, "First call should get first result");
-            Assert.AreEqual("result_2", result2, "Second call after expiration should get new result");
-            Assert.AreEqual(2, counter, "Function should be called twice due to expiration");
+            Assert.That(result1, Is.EqualTo("result_1"), "First call should get first result");
+            Assert.That(result2, Is.EqualTo("result_2"), "Second call after expiration should get new result");
+            Assert.That(counter, Is.EqualTo(2), "Function should be called twice due to expiration");
         }
 
         [Test]
@@ -241,9 +241,9 @@ namespace BlitzCacheCore.Tests
             var result2 = cache.BlitzGet("remove_key", TestFunction, TestConstants.StandardTimeoutMs);
 
             // Assert
-            Assert.AreEqual("result_1", result1, "First call should get first result");
-            Assert.AreEqual("result_2", result2, "Second call after remove should get new result");
-            Assert.AreEqual(2, counter, "Function should be called twice due to removal");
+            Assert.That(result1, Is.EqualTo("result_1"), "First call should get first result");
+            Assert.That(result2, Is.EqualTo("result_2"), "Second call after remove should get new result");
+            Assert.That(counter, Is.EqualTo(2), "Function should be called twice due to removal");
 
             // Cleanup
             cache.Remove("remove_key");
@@ -267,9 +267,9 @@ namespace BlitzCacheCore.Tests
             var result2 = await cache.BlitzGet("async_core_key", AsyncTestFunction, TestConstants.StandardTimeoutMs);
 
             // Assert
-            Assert.AreEqual("async_result_1", result1, "First async call should get first result");
-            Assert.AreEqual("async_result_1", result2, "Second async call should get cached result");
-            Assert.AreEqual(1, counter, "Async function should only be called once");
+            Assert.That(result1, Is.EqualTo("async_result_1"), "First async call should get first result");
+            Assert.That(result2, Is.EqualTo("async_result_1"), "Second async call should get cached result");
+            Assert.That(counter, Is.EqualTo(1), "Async function should only be called once");
         }
     }
 }

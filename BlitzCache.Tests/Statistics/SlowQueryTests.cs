@@ -12,11 +12,11 @@ namespace BlitzCacheCore.Tests.Statistics
         public void Constructor_InitializesPropertiesCorrectly()
         {
             var sq = new SlowQuery("key1", 100);
-            Assert.AreEqual("key1", sq.CacheKey);
-            Assert.AreEqual(100, sq.WorstCaseMs);
-            Assert.AreEqual(100, sq.BestCaseMs);
-            Assert.AreEqual(100, sq.AverageMs);
-            Assert.AreEqual(1, sq.Occurrences);
+            Assert.That(sq.CacheKey, Is.EqualTo("key1"));
+            Assert.That(sq.WorstCaseMs, Is.EqualTo(100));
+            Assert.That(sq.BestCaseMs, Is.EqualTo(100));
+            Assert.That(sq.AverageMs, Is.EqualTo(100));
+            Assert.That(sq.Occurrences, Is.EqualTo(1));
         }
 
         [Test]
@@ -26,10 +26,10 @@ namespace BlitzCacheCore.Tests.Statistics
 
             sq1.Update(200);
 
-            Assert.AreEqual(200, sq1.WorstCaseMs);
-            Assert.AreEqual(100, sq1.BestCaseMs);
-            Assert.AreEqual(150, sq1.AverageMs);
-            Assert.AreEqual(2, sq1.Occurrences);
+            Assert.That(sq1.WorstCaseMs, Is.EqualTo(200));
+            Assert.That(sq1.BestCaseMs, Is.EqualTo(100));
+            Assert.That(sq1.AverageMs, Is.EqualTo(150));
+            Assert.That(sq1.Occurrences, Is.EqualTo(2));
         }
 
         [Test]
@@ -38,10 +38,10 @@ namespace BlitzCacheCore.Tests.Statistics
             var sq1 = new SlowQuery("key1", 100);
             var sq2 = new SlowQuery("key1", 200);
             var sq3 = new SlowQuery("key2", 100);
-            Assert.True(sq1.Equals(sq2));
-            Assert.False(sq1.Equals(sq3));
-            Assert.AreEqual(sq1.GetHashCode(), sq2.GetHashCode());
-            Assert.AreNotEqual(sq1.GetHashCode(), sq3.GetHashCode());
+            Assert.That(sq1.Equals(sq2), Is.True);
+            Assert.That(sq1.Equals(sq3), Is.False);
+            Assert.That(sq1.GetHashCode(), Is.EqualTo(sq2.GetHashCode()));
+            Assert.That(sq1.GetHashCode(), Is.Not.EqualTo(sq3.GetHashCode()));
         }
 
         [Test]
@@ -49,11 +49,11 @@ namespace BlitzCacheCore.Tests.Statistics
         {
             var sq = new SlowQuery("key1", 100);
             var str = sq.ToString();
-            Assert.True(str.Contains("key1"));
-            Assert.True(str.Contains("Worse: 100ms"));
-            Assert.True(str.Contains("Best: 100ms"));
-            Assert.True(str.Contains("Avg: 100"));
-            Assert.True(str.Contains("Occurrences: 1"));
+            Assert.That(str.Contains("key1"), Is.True);
+            Assert.That(str.Contains("Worse: 100ms"), Is.True);
+            Assert.That(str.Contains("Best: 100ms"), Is.True);
+            Assert.That(str.Contains("Avg: 100"), Is.True);
+            Assert.That(str.Contains("Occurrences: 1"), Is.True);
         }
 
         [Test]
@@ -61,9 +61,9 @@ namespace BlitzCacheCore.Tests.Statistics
         {
             var sq1 = new SlowQuery("key1", 100);
 
-            Assert.False(sq1.IsFasterThan(99));
-            Assert.False(sq1.IsFasterThan(100));
-            Assert.True(sq1.IsFasterThan(200));
+            Assert.That(sq1.IsFasterThan(99), Is.False);
+            Assert.That(sq1.IsFasterThan(100), Is.False);
+            Assert.That(sq1.IsFasterThan(200), Is.True);
         }
 
         [Test]
@@ -73,9 +73,9 @@ namespace BlitzCacheCore.Tests.Statistics
             var sq2 = new SlowQuery("key2", 200);
             var sq3 = new SlowQuery("key3", 100);
 
-            Assert.AreEqual(-1, sq1.CompareTo(sq2));
-            Assert.AreEqual(0, sq1.CompareTo(sq3));
-            Assert.AreEqual(1, sq2.CompareTo(sq1));
+            Assert.That(sq1.CompareTo(sq2), Is.EqualTo(-1));
+            Assert.That(sq1.CompareTo(sq3), Is.EqualTo(0));
+            Assert.That(sq2.CompareTo(sq1), Is.EqualTo(1));
         }
     }
 }

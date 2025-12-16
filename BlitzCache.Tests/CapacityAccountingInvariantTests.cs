@@ -44,9 +44,9 @@ namespace BlitzCacheCore.Tests
             long evictionCountAfter = after.EvictionCount;
             long memoryAfter = after.ApproximateMemoryBytes;
 
-            Assert.Greater(evictionCountAfter, evictionCountBefore, "Eviction count should have increased");
-            Assert.GreaterOrEqual(memoryAfter, 0, "Approximate memory should never be negative");
-            Assert.LessOrEqual(memoryAfter, maxCacheSizeBytes, "Approximate memory should be within limit");
+            Assert.That(evictionCountAfter, Is.GreaterThan(evictionCountBefore), "Eviction count should have increased");
+            Assert.That(memoryAfter, Is.GreaterThanOrEqualTo(0), "Approximate memory should never be negative");
+            Assert.That(memoryAfter, Is.LessThanOrEqualTo(maxCacheSizeBytes), "Approximate memory should be within limit");
 
             var inserted = totalInsert; // each call creates a new key
             var netEntryIncrease = entryCountAfter - entryCountBefore;
@@ -54,7 +54,7 @@ namespace BlitzCacheCore.Tests
             var expectedEvicted = inserted - netEntryIncrease;
 
             // Allow small race tolerance (+/-1) for timing of eviction callbacks
-            Assert.LessOrEqual(Math.Abs(evicted - expectedEvicted), 1, $"Eviction delta mismatch. Inserted={inserted} NetIncrease={netEntryIncrease} Evicted={evicted} Expected={expectedEvicted}");
+            Assert.That(Math.Abs(evicted - expectedEvicted), Is.LessThanOrEqualTo(1), $"Eviction delta mismatch. Inserted={inserted} NetIncrease={netEntryIncrease} Evicted={evicted} Expected={expectedEvicted}");
         }
 
         [Test]
@@ -90,15 +90,15 @@ namespace BlitzCacheCore.Tests
             long evictionCountAfter = after.EvictionCount;
             long memoryAfter = after.ApproximateMemoryBytes;
 
-            Assert.Greater(evictionCountAfter, evictionCountBefore, "Eviction count should have increased (async)");
-            Assert.GreaterOrEqual(memoryAfter, 0, "Approximate memory should never be negative (async)");
-            Assert.LessOrEqual(memoryAfter, maxCacheSizeBytes, "Approximate memory should be within limit (async)");
+            Assert.That(evictionCountAfter, Is.GreaterThan(evictionCountBefore), "Eviction count should have increased (async)");
+            Assert.That(memoryAfter, Is.GreaterThanOrEqualTo(0), "Approximate memory should never be negative (async)");
+            Assert.That(memoryAfter, Is.LessThanOrEqualTo(maxCacheSizeBytes), "Approximate memory should be within limit (async)");
 
             var inserted = totalInsert;
             var netEntryIncrease = entryCountAfter - entryCountBefore;
             var evicted = evictionCountAfter - evictionCountBefore;
             var expectedEvicted = inserted - netEntryIncrease;
-            Assert.LessOrEqual(Math.Abs(evicted - expectedEvicted), 1, $"Eviction delta mismatch (async). Inserted={inserted} NetIncrease={netEntryIncrease} Evicted={evicted} Expected={expectedEvicted}");
+            Assert.That(Math.Abs(evicted - expectedEvicted), Is.LessThanOrEqualTo(1), $"Eviction delta mismatch (async). Inserted={inserted} NetIncrease={netEntryIncrease} Evicted={evicted} Expected={expectedEvicted}");
         }
     }
 }

@@ -77,11 +77,11 @@ namespace BlitzCacheCore.Tests.Statistics
             Console.WriteLine($"Hit ratio: {stats.HitRatio:P2}");
 
             // Performance should still be excellent even with statistics
-            Assert.Less(avgTimePerOpWithStatistics, 0.1, "Average operation time should be less than 0.1ms even with statistics");
+            Assert.That(avgTimePerOpWithStatistics, Is.LessThan(0.1), "Average operation time should be less than 0.1ms even with statistics");
 
             // We expect: 1 miss (pre-population) + 1000 hits (warmup) + 5000 hits (test) = 6000 hits, 1 miss
-            Assert.AreEqual(1, stats.MissCount, "Should have exactly 1 miss from pre-population");
-            Assert.AreEqual(6000, stats.HitCount, $"Should record {1000} warmup + {5000} test hits");
+            Assert.That(stats.MissCount, Is.EqualTo(1), "Should have exactly 1 miss from pre-population");
+            Assert.That(stats.HitCount, Is.EqualTo(6000), $"Should record {1000} warmup + {5000} test hits");
 
             Console.WriteLine($"Without Statistics is: {(totalTimeMsWithStatistics - totalTimeMsWithoutStatistics) / iterations:F6}ms faster");
             Console.WriteLine($"Without Statistics is: {totalTimeMsWithStatistics / totalTimeMsWithoutStatistics * 100:F2}% faster");
@@ -145,13 +145,13 @@ namespace BlitzCacheCore.Tests.Statistics
             Console.WriteLine($"Cache entries created: {stats.EntryCount:N0}");
 
             // Performance should still be excellent even with statistics
-            Assert.Less(avgTimePerOpWithStatistics, 0.2, "Average operation time should be less than 0.2ms even with statistics");
+            Assert.That(avgTimePerOpWithStatistics, Is.LessThan(0.2), "Average operation time should be less than 0.2ms even with statistics");
 
             // Verify accuracy
-            Assert.AreEqual(iterations, stats.MissCount, "Should record all misses accurately");
-            Assert.AreEqual(iterations, executionCountWithStats, "Should execute function for each miss (with stats)");
-            Assert.AreEqual(iterations, stats.EntryCount, "Should create entry for each miss");
-            Assert.AreEqual(iterations, executionCountWithoutStats, "Should execute function for each miss (without stats)");
+            Assert.That(stats.MissCount, Is.EqualTo(iterations), "Should record all misses accurately");
+            Assert.That(executionCountWithStats, Is.EqualTo(iterations), "Should execute function for each miss (with stats)");
+            Assert.That(stats.EntryCount, Is.EqualTo(iterations), "Should create entry for each miss");
+            Assert.That(executionCountWithoutStats, Is.EqualTo(iterations), "Should execute function for each miss (without stats)");
 
             Console.WriteLine($"Without Statistics is: {(totalTimeMsWithStatistics - totalTimeMsWithoutStatistics) / iterations:F6}ms faster");
             Console.WriteLine($"Without Statistics is: {totalTimeMsWithStatistics / totalTimeMsWithoutStatistics * 100:F2}% faster");
@@ -229,9 +229,9 @@ namespace BlitzCacheCore.Tests.Statistics
             Console.WriteLine($"Total operations: {stats.TotalOperations:N0}");
 
             // Verify accuracy under concurrency - we expect 1 miss (pre-population) + iterations hits
-            Assert.AreEqual(1, stats.MissCount, "Should have exactly 1 miss from pre-population");
-            Assert.AreEqual(iterations, stats.HitCount, "Should have all concurrent operations as hits");
-            Assert.AreEqual(iterations + 1, stats.TotalOperations, "Should accurately count total operations");
+            Assert.That(stats.MissCount, Is.EqualTo(1), "Should have exactly 1 miss from pre-population");
+            Assert.That(stats.HitCount, Is.EqualTo(iterations), "Should have all concurrent operations as hits");
+            Assert.That(stats.TotalOperations, Is.EqualTo(iterations + 1), "Should accurately count total operations");
 
             Console.WriteLine($"Without Statistics is: {(totalTimeMsWithStatistics - totalTimeMsWithoutStatistics) / iterations:F6}ms faster");
             Console.WriteLine($"Without Statistics is: {totalTimeMsWithStatistics / totalTimeMsWithoutStatistics * 100:F2}% faster");
@@ -311,9 +311,9 @@ namespace BlitzCacheCore.Tests.Statistics
             Console.WriteLine($"Total operations recorded: {finalStats.TotalOperations:N0}");
 
             // Verify thread safety and accuracy
-            Assert.AreEqual(totalOperations, finalStats.TotalOperations, "Should accurately count all operations under concurrency");
-            Assert.Greater(finalStats.HitCount, 0, "Should have some hits due to key repetition");
-            Assert.Greater(finalStats.MissCount, 0, "Should have some misses");
+            Assert.That(finalStats.TotalOperations, Is.EqualTo(totalOperations), "Should accurately count all operations under concurrency");
+            Assert.That(finalStats.HitCount, Is.GreaterThan(0), "Should have some hits due to key repetition");
+            Assert.That(finalStats.MissCount, Is.GreaterThan(0), "Should have some misses");
 
             Console.WriteLine($"Without Statistics is: {(totalTimeMsWithStatistics - totalTimeMsWithoutStatistics) / totalOperations:F6}ms faster");
             Console.WriteLine($"Without Statistics is: {totalTimeMsWithStatistics / totalTimeMsWithoutStatistics * 100:F2}% faster");
@@ -375,8 +375,8 @@ namespace BlitzCacheCore.Tests.Statistics
             Console.WriteLine($"Statistics, TopSlowestQueries({topSlowestQueries}): {avgStatsTop5:F6}ms/op");
 
             // Assert that all are performant, and TopSlowestQueries does not add excessive overhead
-            Assert.Less(avgStatsNoTop, avgNoStats * 5, "Statistics overhead should be reasonable");
-            Assert.Less(avgStatsTop5, avgStatsNoTop * 5, "TopSlowestQueries overhead should be reasonable");
+            Assert.That(avgStatsNoTop, Is.LessThan(avgNoStats * 5), "Statistics overhead should be reasonable");
+            Assert.That(avgStatsTop5, Is.LessThan(avgStatsNoTop * 5), "TopSlowestQueries overhead should be reasonable");
         }
     }
 }

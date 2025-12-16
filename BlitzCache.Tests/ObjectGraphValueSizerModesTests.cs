@@ -19,7 +19,7 @@ namespace BlitzCacheCore.Tests
             var obj = new Complex();
             var fast = new ObjectGraphValueSizer(new ObjectGraphSizerOptions { Mode = SizeComputationMode.Fast });
             var size = fast.GetSizeBytes(obj);
-            Assert.Greater(size, 0);
+            Assert.That(size, Is.GreaterThan(0));
         }
 
         [Test]
@@ -36,10 +36,10 @@ namespace BlitzCacheCore.Tests
             long ad = adaptive.GetSizeBytes(obj);
             long a = accurate.GetSizeBytes(obj);
 
-            Assert.LessOrEqual(f, b, "Fast should be <= Balanced");
-            Assert.LessOrEqual(f, ad, "Fast should be <= Adaptive");
-            Assert.LessOrEqual(b, a, "Balanced should be <= Accurate");
-            Assert.LessOrEqual(ad, a, "Adaptive should be <= Accurate");
+            Assert.That(f, Is.LessThanOrEqualTo(b), "Fast should be <= Balanced");
+            Assert.That(f, Is.LessThanOrEqualTo(ad), "Fast should be <= Adaptive");
+            Assert.That(b, Is.LessThanOrEqualTo(a), "Balanced should be <= Accurate");
+            Assert.That(ad, Is.LessThanOrEqualTo(a), "Adaptive should be <= Accurate");
         }
 
         [Test]
@@ -47,7 +47,7 @@ namespace BlitzCacheCore.Tests
         {
             var obj = new Complex();
             var adaptive = new ObjectGraphValueSizer(new ObjectGraphSizerOptions { Mode = SizeComputationMode.Adaptive });
-            Assert.Greater(adaptive.GetSizeBytes(obj), 0);
+            Assert.That(adaptive.GetSizeBytes(obj), Is.GreaterThan(0));
         }
     }
 }
