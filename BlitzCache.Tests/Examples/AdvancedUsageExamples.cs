@@ -53,20 +53,20 @@ namespace BlitzCacheCore.Tests.Examples
 
             // First call - gets temporary data with short cache
             var result1 = await cache.BlitzGet("smart_key", GetDataWithSmartCaching);
-            Assert.AreEqual("Temporary data", result1);
+            Assert.That(result1, Is.EqualTo("Temporary data"));
 
             // Wait for short cache to expire
             await TestDelays.WaitForStandardExpiration();
 
             // Second call - gets stable data with longer cache
             var result2 = await cache.BlitzGet("smart_key", GetDataWithSmartCaching);
-            Assert.AreEqual("Stable data", result2);
+            Assert.That(result2, Is.EqualTo("Stable data"));
 
             // Immediate third call - returns cached stable data
             var result3 = await cache.BlitzGet("smart_key", GetDataWithSmartCaching);
-            Assert.AreEqual("Stable data", result3);
+            Assert.That(result3, Is.EqualTo("Stable data"));
 
-            Assert.AreEqual(2, callCount, "BlitzCache adapts caching strategy automatically");
+            Assert.That(callCount, Is.EqualTo(2), "BlitzCache adapts caching strategy automatically");
         }
 
         /// <summary>
@@ -102,9 +102,9 @@ namespace BlitzCacheCore.Tests.Examples
             var results = await Task.WhenAll(tasks);
 
             // Verify BlitzCache's automatic thread safety
-            Assert.AreEqual(1, callCount, "Only one execution despite concurrent access");
-            Assert.IsTrue(results.All(r => r == results[0]), "All threads get identical results");
-            Assert.AreEqual(1, executionTimes.Count, "Function executes only once");
+            Assert.That(callCount, Is.EqualTo(1), "Only one execution despite concurrent access");
+            Assert.That(results.All(r => r == results[0]), Is.True, "All threads get identical results");
+            Assert.That(executionTimes.Count, Is.EqualTo(1), "Function executes only once");
         }
 
         /// <summary>
@@ -144,7 +144,7 @@ namespace BlitzCacheCore.Tests.Examples
 
             // Now calls succeed normally
             var result = await cache.BlitzGet("service_key", CallExternalService);
-            Assert.AreEqual("Service response: Success!", result);
+            Assert.That(result, Is.EqualTo("Service response: Success!"));
         }
 
         /// <summary>
@@ -181,13 +181,13 @@ namespace BlitzCacheCore.Tests.Examples
             var apiResult2 = cache.BlitzGet("api_weather", () => GetFromApi("weather"), TestConstants.StandardTimeoutMs);
 
             // Verify caching works perfectly for both data types
-            Assert.AreEqual("DB_Data_123", dbResult1);
-            Assert.AreEqual("DB_Data_123", dbResult2);
-            Assert.AreEqual(1, databaseCallCount, "Database called once, then cached");
+            Assert.That(dbResult1, Is.EqualTo("DB_Data_123"));
+            Assert.That(dbResult2, Is.EqualTo("DB_Data_123"));
+            Assert.That(databaseCallCount, Is.EqualTo(1), "Database called once, then cached");
 
-            Assert.AreEqual("API_Data_weather", apiResult1);
-            Assert.AreEqual("API_Data_weather", apiResult2);
-            Assert.AreEqual(1, apiCallCount, "API called once, then cached");
+            Assert.That(apiResult1, Is.EqualTo("API_Data_weather"));
+            Assert.That(apiResult2, Is.EqualTo("API_Data_weather"));
+            Assert.That(apiCallCount, Is.EqualTo(1), "API called once, then cached");
         }
 
         /// <summary>
@@ -218,10 +218,10 @@ namespace BlitzCacheCore.Tests.Examples
             var profile2 = cache.BlitzGet("profile_user_2", () => GetUserProfile("user_2"), TestConstants.LongTimeoutMs);
             var profile3 = cache.BlitzGet("profile_user_3", () => GetUserProfile("user_3"), TestConstants.LongTimeoutMs);
 
-            Assert.AreEqual("Profile for user user_1", profile1);
-            Assert.AreEqual("Profile for user user_2", profile2);
-            Assert.AreEqual("Profile for user user_3", profile3);
-            Assert.AreEqual(3, actualCallCount, "Only called during warmup - instant user experience!");
+            Assert.That(profile1, Is.EqualTo("Profile for user user_1"));
+            Assert.That(profile2, Is.EqualTo("Profile for user user_2"));
+            Assert.That(profile3, Is.EqualTo("Profile for user user_3"));
+            Assert.That(actualCallCount, Is.EqualTo(3), "Only called during warmup - instant user experience!");
         }
 
         /// <summary>
@@ -259,9 +259,9 @@ namespace BlitzCacheCore.Tests.Examples
             var result1 = await cache.BlitzGet("unstable_service", UnstableServiceCall);
             var result2 = await cache.BlitzGet("unstable_service", UnstableServiceCall);
 
-            Assert.AreEqual("Service success!", result1);
-            Assert.AreEqual("Service success!", result2);
-            Assert.AreEqual(3, attemptCount, "Retries failures, caches successes - intelligent behavior!");
+            Assert.That(result1, Is.EqualTo("Service success!"));
+            Assert.That(result2, Is.EqualTo("Service success!"));
+            Assert.That(attemptCount, Is.EqualTo(3), "Retries failures, caches successes - intelligent behavior!");
         }
 
         /// <summary>
@@ -280,15 +280,15 @@ namespace BlitzCacheCore.Tests.Examples
             var independentCache2 = new BlitzCacheInstance(TestConstants.LongTimeoutMs);
 
             // Global cache share data across your entire application
-            Assert.AreSame(globalCache1.GetInternalInstance(), globalCache2.GetInternalInstance(), "Global instances are the same singleton");
+            Assert.That(globalCache1.GetInternalInstance(), Is.SameAs(globalCache2.GetInternalInstance()), "Global instances are the same singleton");
             globalCache1.BlitzUpdate("global_shared_key", () => "Global data", TestConstants.StandardTimeoutMs);
             var globalResult = globalCache2.BlitzGet("global_shared_key", () => "Should not be called", TestConstants.StandardTimeoutMs);
-            Assert.AreEqual("Global data", globalResult);
+            Assert.That(globalResult, Is.EqualTo("Global data"));
 
             // Independent caches maintain complete isolation
             independentCache1.BlitzUpdate("independent_key", () => "Cache1 data", TestConstants.StandardTimeoutMs);
             var independentResult = independentCache2.BlitzGet("independent_key", () => "Cache2 data", TestConstants.StandardTimeoutMs);
-            Assert.AreEqual("Cache2 data", independentResult); // Gets its own data, not from cache1
+            Assert.That(independentResult, Is.EqualTo("Cache2 data")); // Gets its own data, not from cache1
 
             // Clean up independent instances
             independentCache1.Dispose();
@@ -317,7 +317,7 @@ namespace BlitzCacheCore.Tests.Examples
 
             // Monitor initial state - starts clean
             var initialSemaphores = cache.GetSemaphoreCount();
-            Assert.AreEqual(0, initialSemaphores, "Starts with no semaphores");
+            Assert.That(initialSemaphores, Is.EqualTo(0), "Starts with no semaphores");
 
             // Perform operations - watch semaphore creation per unique key
             await cache.BlitzGet("key1", () => MonitoredOperation("key1"), TestConstants.LongTimeoutMs);
@@ -325,15 +325,15 @@ namespace BlitzCacheCore.Tests.Examples
             await cache.BlitzGet("key3", () => MonitoredOperation("key3"), TestConstants.LongTimeoutMs);
 
             var semaphoresAfterOps = cache.GetSemaphoreCount();
-            Assert.GreaterOrEqual(semaphoresAfterOps, 3, "Creates semaphores for thread safety");
+            Assert.That(semaphoresAfterOps, Is.GreaterThanOrEqualTo(3), "Creates semaphores for thread safety");
 
             // Repeated calls reuse existing infrastructure efficiently
             await cache.BlitzGet("key1", () => MonitoredOperation("key1"), TestConstants.LongTimeoutMs);
             await cache.BlitzGet("key2", () => MonitoredOperation("key2"), TestConstants.LongTimeoutMs);
 
             var semaphoresAfterRepeats = cache.GetSemaphoreCount();
-            Assert.AreEqual(semaphoresAfterOps, semaphoresAfterRepeats, "Reuses existing semaphores efficiently");
-            Assert.AreEqual(3, operationCount, "Caching eliminates redundant operations");
+            Assert.That(semaphoresAfterRepeats, Is.EqualTo(semaphoresAfterOps), "Reuses existing semaphores efficiently");
+            Assert.That(operationCount, Is.EqualTo(3), "Caching eliminates redundant operations");
         }
 
         /// <summary>
@@ -349,11 +349,11 @@ namespace BlitzCacheCore.Tests.Examples
             var globalCache1 = new BlitzCache();
             var globalCache2 = new BlitzCache();
 
-            Assert.AreSame(globalCache1.GetInternalInstance(), globalCache2.GetInternalInstance(), "Global cache is singleton");
+            Assert.That(globalCache1.GetInternalInstance(), Is.SameAs(globalCache2.GetInternalInstance()), "Global cache is singleton");
 
             globalCache1.BlitzGet("shared_data", () => "Global cached value");
             var sharedResult = globalCache2.BlitzGet("shared_data", () => "Won't be called");
-            Assert.AreEqual("Global cached value", sharedResult);
+            Assert.That(sharedResult, Is.EqualTo("Global cached value"));
 
             // === PATTERN 2: Dedicated Cache Instances (Microservices) ===
             // Setup: services.AddBlitzCacheInstance(TestFactory.DefaultTimeoutMs);
@@ -361,11 +361,11 @@ namespace BlitzCacheCore.Tests.Examples
             var dedicatedCache1 = new BlitzCacheInstance(TestConstants.LongTimeoutMs);
             var dedicatedCache2 = new BlitzCacheInstance(TestConstants.LongTimeoutMs);
 
-            Assert.AreNotSame(dedicatedCache1, dedicatedCache2, "Dedicated instances are separate");
+            Assert.That(dedicatedCache1, Is.Not.SameAs(dedicatedCache2), "Dedicated instances are separate");
 
             dedicatedCache1.BlitzGet("isolated_data", () => "Cache1 data");
             var separateResult = dedicatedCache2.BlitzGet("isolated_data", () => "Cache2 data");
-            Assert.AreEqual("Cache2 data", separateResult, "Complete cache isolation");
+            Assert.That(separateResult, Is.EqualTo("Cache2 data"), "Complete cache isolation");
 
             // === PATTERN 3: Hybrid Strategy (Best of Both) ===
             // Global for shared reference data, dedicated for sensitive data
@@ -382,9 +382,9 @@ namespace BlitzCacheCore.Tests.Examples
                 monitoredCache.BlitzGet($"data_{i % 3}", () => $"Computed value {i % 3}");
 
             var stats = monitoredCache.Statistics;
-            Assert.IsNotNull(stats, "Statistics available for monitoring");
-            Assert.AreEqual(TestConstants.SmallLoopCount, stats.TotalOperations, "Tracks all operations");
-            Assert.AreEqual(0.7, stats.HitRatio, 0.01, "70% hit ratio achieved");
+            Assert.That(stats, Is.Not.Null, "Statistics available for monitoring");
+            Assert.That(stats.TotalOperations, Is.EqualTo(TestConstants.SmallLoopCount), "Tracks all operations");
+            Assert.That(stats.HitRatio, Is.EqualTo(0.7).Within(0.01), "70% hit ratio achieved");
 
             // Cleanup
             dedicatedCache1.Dispose();
@@ -429,7 +429,7 @@ namespace BlitzCacheCore.Tests.Examples
             TestDelays.WaitForEvictionCallbacksSync();
 
             var finalStats = cacheWithStats.Statistics;
-            Assert.IsNotNull(finalStats, "Statistics should be enabled");
+            Assert.That(finalStats, Is.Not.Null, "Statistics should be enabled");
 
             Console.WriteLine("\n=== Detailed Performance Analysis ===");
             Console.WriteLine($"Total Operations: {finalStats.TotalOperations}");
@@ -442,12 +442,12 @@ namespace BlitzCacheCore.Tests.Examples
             Console.WriteLine($"Actual Database Calls: {databaseCallCount}");
 
             // Performance verification
-            Assert.AreEqual(4, finalStats.TotalOperations, "Should track all 4 operations");
-            Assert.AreEqual(2, finalStats.HitCount, "Should have 2 cache hits");
-            Assert.AreEqual(2, finalStats.MissCount, "Should have 2 cache misses");
-            Assert.AreEqual(0.5, finalStats.HitRatio, 0.001, "Hit ratio should be 50%");
-            Assert.AreEqual(2, finalStats.EntryCount, "Should have 2 distinct cached entries");
-            Assert.AreEqual(2, databaseCallCount, "Database calls should match cache misses");
+            Assert.That(finalStats.TotalOperations, Is.EqualTo(4), "Should track all 4 operations");
+            Assert.That(finalStats.HitCount, Is.EqualTo(2), "Should have 2 cache hits");
+            Assert.That(finalStats.MissCount, Is.EqualTo(2), "Should have 2 cache misses");
+            Assert.That(finalStats.HitRatio, Is.EqualTo(0.5).Within(0.001), "Hit ratio should be 50%");
+            Assert.That(finalStats.EntryCount, Is.EqualTo(2), "Should have 2 distinct cached entries");
+            Assert.That(databaseCallCount, Is.EqualTo(2), "Database calls should match cache misses");
 
             // Demonstrate cache eviction impact on statistics
             var evictionsBeforeRemoval = finalStats.EvictionCount;
@@ -459,8 +459,8 @@ namespace BlitzCacheCore.Tests.Examples
             var statsAfterRemoval = cacheWithStats.Statistics;
             Console.WriteLine($"\nAfter manual eviction: {statsAfterRemoval?.EvictionCount} total evictions, {statsAfterRemoval?.EntryCount} active entries");
 
-            Assert.AreEqual(evictionsBeforeRemoval + 1, statsAfterRemoval?.EvictionCount, "Should increment eviction count");
-            Assert.AreEqual(entriesBeforeRemoval - 1, statsAfterRemoval?.EntryCount, "Should decrease active entries");
+            Assert.That(statsAfterRemoval?.EvictionCount, Is.EqualTo(evictionsBeforeRemoval + 1), "Should increment eviction count");
+            Assert.That(statsAfterRemoval?.EntryCount, Is.EqualTo(entriesBeforeRemoval - 1), "Should decrease active entries");
 
             // Statistics reset for monitoring specific time periods
             cacheWithStats.Statistics?.Reset();
@@ -469,8 +469,8 @@ namespace BlitzCacheCore.Tests.Examples
             var resetStats = cacheWithStats.Statistics;
             Console.WriteLine($"After reset: {resetStats?.TotalOperations ?? 0} operations, {resetStats?.HitRatio ?? 0:P1} hit ratio");
 
-            Assert.AreEqual(0, resetStats?.TotalOperations ?? -1, "Operations should reset to zero");
-            Assert.AreEqual(0.0, resetStats?.HitRatio ?? -1, 0.001, "Hit ratio should reset to zero");
+            Assert.That(resetStats?.TotalOperations ?? -1, Is.EqualTo(0), "Operations should reset to zero");
+            Assert.That(resetStats?.HitRatio ?? -1, Is.EqualTo(0.0).Within(0.001), "Hit ratio should reset to zero");
 
             cacheWithStats.Dispose();
         }
@@ -492,11 +492,11 @@ namespace BlitzCacheCore.Tests.Examples
             var globalCache1 = new BlitzCache();
             var globalCache2 = new BlitzCache();
 
-            Assert.AreSame(globalCache1.GetInternalInstance(), globalCache2.GetInternalInstance(), "Global cache is singleton");
+            Assert.That(globalCache1.GetInternalInstance(), Is.SameAs(globalCache2.GetInternalInstance()), "Global cache is singleton");
 
             globalCache1.BlitzGet("shared_config", () => "Application configuration", TestConstants.LongTimeoutMs);
             var sharedResult = globalCache2.BlitzGet("shared_config", () => "Should not be called", TestConstants.LongTimeoutMs);
-            Assert.AreEqual("Application configuration", sharedResult);
+            Assert.That(sharedResult, Is.EqualTo("Application configuration"));
 
             // === PATTERN 2: Dedicated Instances (Microservices/Isolation) ===
             // In Startup.cs: services.AddBlitzCacheInstance();
@@ -505,11 +505,11 @@ namespace BlitzCacheCore.Tests.Examples
             var dedicatedCache1 = new BlitzCacheInstance(TestConstants.LongTimeoutMs);
             var dedicatedCache2 = new BlitzCacheInstance(TestConstants.LongTimeoutMs);
 
-            Assert.AreNotSame(dedicatedCache1, dedicatedCache2, "Dedicated instances are separate");
+            Assert.That(dedicatedCache1, Is.Not.SameAs(dedicatedCache2), "Dedicated instances are separate");
 
             dedicatedCache1.BlitzGet("service_data", () => "Service A data");
             var isolatedResult = dedicatedCache2.BlitzGet("service_data", () => "Service B data");
-            Assert.AreEqual("Service B data", isolatedResult);
+            Assert.That(isolatedResult, Is.EqualTo("Service B data"));
 
             // === PATTERN 3: Hybrid Strategy (Enterprise) ===
             globalCache1.BlitzGet("reference_data", () => "Global reference lookup", TestConstants.LongTimeoutMs);
@@ -528,9 +528,9 @@ namespace BlitzCacheCore.Tests.Examples
             }
 
             var prodStats = productionCache.Statistics;
-            Assert.IsNotNull(prodStats, "Production statistics enabled");
-            Assert.AreEqual(20, prodStats.TotalOperations, "Tracks all operations");
-            Assert.AreEqual(0.75, prodStats.HitRatio, 0.01, "75% hit ratio achieved");
+            Assert.That(prodStats, Is.Not.Null, "Production statistics enabled");
+            Assert.That(prodStats.TotalOperations, Is.EqualTo(20), "Tracks all operations");
+            Assert.That(prodStats.HitRatio, Is.EqualTo(0.75).Within(0.01), "75% hit ratio achieved");
 
             Console.WriteLine($"Production Performance: {prodStats.HitRatio:P1} hit ratio");
 
@@ -554,15 +554,15 @@ namespace BlitzCacheCore.Tests.Examples
             var userResult = SimulateUserService(123);
             var productResult = SimulateProductService(dedicatedCache1, 456);
 
-            Assert.AreEqual("Database user profile for 123", userResult);
-            Assert.AreEqual("Database product data for 456", productResult);
+            Assert.That(userResult, Is.EqualTo("Database user profile for 123"));
+            Assert.That(productResult, Is.EqualTo("Database product data for 456"));
 
             // Verify caching works in service layer
             var userResult2 = SimulateUserService(123);
             var productResult2 = SimulateProductService(dedicatedCache1, 456);
 
-            Assert.AreEqual(userResult, userResult2, "User service returns cached data");
-            Assert.AreEqual(productResult, productResult2, "Product service returns cached data");
+            Assert.That(userResult2, Is.EqualTo(userResult), "User service returns cached data");
+            Assert.That(productResult2, Is.EqualTo(productResult), "Product service returns cached data");
 
             dedicatedCache1.Dispose();
             dedicatedCache2.Dispose();

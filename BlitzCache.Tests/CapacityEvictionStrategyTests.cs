@@ -49,13 +49,13 @@ namespace BlitzCacheCore.Tests
             var sfStats = smallestFirstCache.Statistics!;
             var lfStats = largestFirstCache.Statistics!;
 
-            Assert.Greater(sfStats.EvictionCount, 0, "Smallest-first should have evictions");
-            Assert.Greater(lfStats.EvictionCount, 0, "Largest-first should have evictions");
-            Assert.LessOrEqual(sfStats.ApproximateMemoryBytes, maxCacheSizeBytes);
-            Assert.LessOrEqual(lfStats.ApproximateMemoryBytes, maxCacheSizeBytes);
+            Assert.That(sfStats.EvictionCount, Is.GreaterThan(0), "Smallest-first should have evictions");
+            Assert.That(lfStats.EvictionCount, Is.GreaterThan(0), "Largest-first should have evictions");
+            Assert.That(sfStats.ApproximateMemoryBytes, Is.LessThanOrEqualTo(maxCacheSizeBytes));
+            Assert.That(lfStats.ApproximateMemoryBytes, Is.LessThanOrEqualTo(maxCacheSizeBytes));
 
             // Largest-first should usually require fewer evictions (allow equality to avoid flakiness from overhead)
-            Assert.LessOrEqual(lfStats.EvictionCount, sfStats.EvictionCount, $"Expected largest-first to evict fewer or equal entries (sf={sfStats.EvictionCount}, lf={lfStats.EvictionCount})");
+            Assert.That(lfStats.EvictionCount, Is.LessThanOrEqualTo(sfStats.EvictionCount), $"Expected largest-first to evict fewer or equal entries (sf={sfStats.EvictionCount}, lf={lfStats.EvictionCount})");
         }
     } 
 }

@@ -28,8 +28,8 @@ namespace BlitzCacheCore.Tests.Extensions
             var cache1 = serviceProvider.GetService<IBlitzCache>();
             var cache2 = serviceProvider.GetService<IBlitzCache>();
 
-            Assert.IsNotNull(cache1);
-            Assert.AreSame(cache1, cache2, "Should resolve the same global singleton instance");
+            Assert.That(cache1, Is.Not.Null);
+            Assert.That(cache1, Is.SameAs(cache2), "Should resolve the same global singleton instance");
             await AssertCacheWorksAsync(cache1);
             await AssertCacheWorksAsync(cache2, true);
         }
@@ -95,8 +95,8 @@ namespace BlitzCacheCore.Tests.Extensions
             var cache1 = serviceProvider.GetService<IBlitzCache>();
             var cache2 = serviceProvider.GetService<IBlitzCache>();
 
-            Assert.IsNotNull(cache1);
-            Assert.AreSame(cache1, cache2, "Multiple AddBlitzCache calls should still resolve the same singleton instance");
+            Assert.That(cache1, Is.Not.Null);
+            Assert.That(cache1, Is.SameAs(cache2), "Multiple AddBlitzCache calls should still resolve the same singleton instance");
             await AssertCacheWorksAsync(cache1);
             await AssertCacheWorksAsync(cache2, true);
         }
@@ -112,7 +112,7 @@ namespace BlitzCacheCore.Tests.Extensions
 
             var hostedServices = serviceProvider.GetServices<IHostedService>();
 
-            Assert.IsTrue(Enumerable.Any(hostedServices, s => s.GetType().Name.Contains("BlitzCacheLoggingService")), "Should register BlitzCacheLoggingService as a hosted service");
+            Assert.That(Enumerable.Any(hostedServices, s => s.GetType().Name.Contains("BlitzCacheLoggingService")), Is.True, "Should register BlitzCacheLoggingService as a hosted service");
             // Should not throw, and should log a warning (cannot assert log output here)
             var cache = serviceProvider.GetService<IBlitzCache>();
 
@@ -129,7 +129,7 @@ namespace BlitzCacheCore.Tests.Extensions
                 .BuildServiceProvider();
 
             var hostedServices = serviceProvider.GetServices<IHostedService>();
-            Assert.IsTrue(hostedServices.Any(s => s.GetType().Name.Contains("BlitzCacheLoggingService")), "Should register BlitzCacheLoggingService via options overload");
+            Assert.That(hostedServices.Any(s => s.GetType().Name.Contains("BlitzCacheLoggingService")), Is.True, "Should register BlitzCacheLoggingService via options overload");
             var cache = serviceProvider.GetService<IBlitzCache>();
             await AssertCacheWorksAsync(cache);
         }
@@ -145,8 +145,8 @@ namespace BlitzCacheCore.Tests.Extensions
             var cache = serviceProvider.GetService<IBlitzCache>() as BlitzCache;
 
             await AssertCacheWorksAsync(cache);
-            Assert.IsNotNull(cache, "Cache should not be null");
-            Assert.IsNull(cache.Statistics, "Statistics should not be null for the global singleton, even if requested");
+            Assert.That(cache, Is.Not.Null, "Cache should not be null");
+            Assert.That(cache.Statistics, Is.Null, "Statistics should not be null for the global singleton, even if requested");
         }
 
         private static async Task AssertCacheWorksAsync(IBlitzCache cache, bool isSingletonOnSecondCall = false)
@@ -154,8 +154,8 @@ namespace BlitzCacheCore.Tests.Extensions
             var slow = new Helpers.SlowClassAsync();
             var result1 = await cache.BlitzGet(slow.ProcessQuickly);
             var result2 = await cache.BlitzGet(slow.ProcessQuickly);
-            Assert.AreEqual(result1, result2, "Cached value should be returned on second call");
-            Assert.AreEqual(isSingletonOnSecondCall ? 0 : 1, slow.Counter, "SlowClassAsync.Counter should be 1 if cache is working");
+            Assert.That(result2, Is.EqualTo(result1), "Cached value should be returned on second call");
+            Assert.That(slow.Counter, Is.EqualTo(isSingletonOnSecondCall ? 0 : 1), "SlowClassAsync.Counter should be 1 if cache is working");
         }
     }
 }

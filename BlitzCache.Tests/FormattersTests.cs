@@ -23,7 +23,7 @@ namespace BlitzCacheCore.Tests
         public void FormatDuration_Produces_Expected_Output(long inputMs, string expected)
         {
             var actual = Formatters.FormatDuration(inputMs);
-            Assert.AreEqual(expected, actual);
+            Assert.That(actual, Is.EqualTo(expected));
         }
 
         [TestCase(0L, "0 bytes")]
@@ -41,7 +41,7 @@ namespace BlitzCacheCore.Tests
         public void FormatBytes_Produces_Expected_Output(long inputBytes, string expected)
         {
             var actual = Formatters.FormatBytes(inputBytes);
-            Assert.AreEqual(expected, actual);
+            Assert.That(actual, Is.EqualTo(expected));
         }
     }
 }

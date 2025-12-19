@@ -86,7 +86,7 @@ namespace BlitzCacheCore.Tests
                 exceptionThrown = true;
             }
 
-            Assert.IsTrue(exceptionThrown, "NullReferenceException should be thrown with null async function");
+            Assert.That(exceptionThrown, Is.True, "NullReferenceException should be thrown with null async function");
         }
 
         [Test]

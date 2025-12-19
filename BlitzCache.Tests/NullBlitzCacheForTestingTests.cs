@@ -30,10 +30,10 @@ namespace BlitzCacheCore.Tests
             var result3 = cache.BlitzGet("key", TestFunction, 1000);
 
             // Assert
-            Assert.AreEqual(3, callCount, "NullCache should execute function every time");
-            Assert.AreEqual("result_1", result1);
-            Assert.AreEqual("result_2", result2);
-            Assert.AreEqual("result_3", result3);
+            Assert.That(callCount, Is.EqualTo(3), "NullCache should execute function every time");
+            Assert.That(result1, Is.EqualTo("result_1"));
+            Assert.That(result2, Is.EqualTo("result_2"));
+            Assert.That(result3, Is.EqualTo("result_3"));
         }
 
         [Test]
@@ -55,10 +55,10 @@ namespace BlitzCacheCore.Tests
             var result3 = await cache.BlitzGet("async_key", TestFunctionAsync, 1000);
 
             // Assert
-            Assert.AreEqual(3, callCount, "NullCache should execute async function every time");
-            Assert.AreEqual("async_result_1", result1);
-            Assert.AreEqual("async_result_2", result2);
-            Assert.AreEqual("async_result_3", result3);
+            Assert.That(callCount, Is.EqualTo(3), "NullCache should execute async function every time");
+            Assert.That(result1, Is.EqualTo("async_result_1"));
+            Assert.That(result2, Is.EqualTo("async_result_2"));
+            Assert.That(result3, Is.EqualTo("async_result_3"));
         }
 
         [Test]
@@ -79,10 +79,10 @@ namespace BlitzCacheCore.Tests
             var result3 = cache.BlitzGet("key3", TestFunction, 1000);
 
             // Assert
-            Assert.AreEqual(3, callCount, "NullCache should execute function for each key");
-            Assert.AreEqual("result_1", result1);
-            Assert.AreEqual("result_2", result2);
-            Assert.AreEqual("result_3", result3);
+            Assert.That(callCount, Is.EqualTo(3), "NullCache should execute function for each key");
+            Assert.That(result1, Is.EqualTo("result_1"));
+            Assert.That(result2, Is.EqualTo("result_2"));
+            Assert.That(result3, Is.EqualTo("result_3"));
         }
 
         [Test]
@@ -92,7 +92,7 @@ namespace BlitzCacheCore.Tests
             var cache = new NullBlitzCacheForTesting();
 
             // Act & Assert
-            Assert.IsNull(cache.Statistics, "NullCache should return null statistics by default");
+            Assert.That(cache.Statistics, Is.Null, "NullCache should return null statistics by default");
         }
 
         [Test]
@@ -105,11 +105,11 @@ namespace BlitzCacheCore.Tests
             cache.InitializeStatistics();
 
             // Assert
-            Assert.IsNotNull(cache.Statistics, "After InitializeStatistics, should return NullCacheStatistics instance");
-            Assert.AreEqual(0, cache.Statistics.HitCount);
-            Assert.AreEqual(0, cache.Statistics.MissCount);
-            Assert.AreEqual(0, cache.Statistics.TotalOperations);
-            Assert.AreEqual(0.0, cache.Statistics.HitRatio);
+            Assert.That(cache.Statistics, Is.Not.Null, "After InitializeStatistics, should return NullCacheStatistics instance");
+            Assert.That(cache.Statistics.HitCount, Is.EqualTo(0));
+            Assert.That(cache.Statistics.MissCount, Is.EqualTo(0));
+            Assert.That(cache.Statistics.TotalOperations, Is.EqualTo(0));
+            Assert.That(cache.Statistics.HitRatio, Is.EqualTo(0.0));
         }
 
         [Test]
@@ -125,10 +125,10 @@ namespace BlitzCacheCore.Tests
             cache.BlitzGet("key2", () => "value3", 1000);
 
             // Assert - Statistics remain zero because NullCache doesn't track
-            Assert.AreEqual(0, cache.Statistics.HitCount, "NullCacheStatistics always returns 0");
-            Assert.AreEqual(0, cache.Statistics.MissCount, "NullCacheStatistics always returns 0");
-            Assert.AreEqual(0, cache.Statistics.TotalOperations, "NullCacheStatistics always returns 0");
-            Assert.AreEqual(0, cache.Statistics.EntryCount, "NullCacheStatistics always returns 0");
+            Assert.That(cache.Statistics.HitCount, Is.EqualTo(0), "NullCacheStatistics always returns 0");
+            Assert.That(cache.Statistics.MissCount, Is.EqualTo(0), "NullCacheStatistics always returns 0");
+            Assert.That(cache.Statistics.TotalOperations, Is.EqualTo(0), "NullCacheStatistics always returns 0");
+            Assert.That(cache.Statistics.EntryCount, Is.EqualTo(0), "NullCacheStatistics always returns 0");
         }
 
         [Test]
@@ -147,7 +147,7 @@ namespace BlitzCacheCore.Tests
             cache.BlitzUpdate("key", UpdateFunction, 1000);
 
             // Assert
-            Assert.AreEqual(0, callCount, "BlitzUpdate on NullCache should not execute the function");
+            Assert.That(callCount, Is.EqualTo(0), "BlitzUpdate on NullCache should not execute the function");
         }
 
         [Test]
@@ -167,7 +167,7 @@ namespace BlitzCacheCore.Tests
             await cache.BlitzUpdate("key", UpdateFunctionAsync, 1000);
 
             // Assert
-            Assert.AreEqual(0, callCount, "BlitzUpdate async on NullCache should not execute the function");
+            Assert.That(callCount, Is.EqualTo(0), "BlitzUpdate async on NullCache should not execute the function");
         }
 
         [Test]
@@ -190,7 +190,7 @@ namespace BlitzCacheCore.Tests
             var count = cache.GetSemaphoreCount();
 
             // Assert
-            Assert.AreEqual(0, count, "NullCache should always return 0 semaphores");
+            Assert.That(count, Is.EqualTo(0), "NullCache should always return 0 semaphores");
         }
 
         [Test]
@@ -221,10 +221,10 @@ namespace BlitzCacheCore.Tests
             var result3 = cache.BlitzGet(TestFunction, 1000);
 
             // Assert
-            Assert.AreEqual(3, callCount, "NullCache should execute function every time even with auto keys");
-            Assert.AreEqual("result_1", result1);
-            Assert.AreEqual("result_2", result2);
-            Assert.AreEqual("result_3", result3);
+            Assert.That(callCount, Is.EqualTo(3), "NullCache should execute function every time even with auto keys");
+            Assert.That(result1, Is.EqualTo("result_1"));
+            Assert.That(result2, Is.EqualTo("result_2"));
+            Assert.That(result3, Is.EqualTo("result_3"));
         }
     }
 }

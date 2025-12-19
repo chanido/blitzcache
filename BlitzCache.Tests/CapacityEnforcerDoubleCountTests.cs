@@ -36,9 +36,9 @@ namespace BlitzCacheCore.Tests
             var stats = cache.Statistics!;
             // EntryCount + EvictionCount should be close to totalEntries (allow 1 off for timing races)
             var accounted = stats.EntryCount + stats.EvictionCount;
-            Assert.Greater(stats.EvictionCount, 0, "Should have evictions after exceeding size limit");
-            Assert.LessOrEqual(stats.ApproximateMemoryBytes, maxCacheSizeBytes, "Approximate memory should be within limit");
-            Assert.LessOrEqual(Math.Abs(accounted - totalEntries), 1, $"Inconsistent accounting: entries({stats.EntryCount}) + evictions({stats.EvictionCount}) vs inserted({totalEntries})");
+            Assert.That(stats.EvictionCount, Is.GreaterThan(0), "Should have evictions after exceeding size limit");
+            Assert.That(stats.ApproximateMemoryBytes, Is.LessThanOrEqualTo(maxCacheSizeBytes), "Approximate memory should be within limit");
+            Assert.That(Math.Abs(accounted - totalEntries), Is.LessThanOrEqualTo(1), $"Inconsistent accounting: entries({stats.EntryCount}) + evictions({stats.EvictionCount}) vs inserted({totalEntries})");
         }
 
         [Test]
@@ -68,9 +68,9 @@ namespace BlitzCacheCore.Tests
 
             var stats = cache.Statistics!;
             var accounted = stats.EntryCount + stats.EvictionCount;
-            Assert.Greater(stats.EvictionCount, 0, "Should have evictions after exceeding size limit (async)");
-            Assert.LessOrEqual(stats.ApproximateMemoryBytes, maxCacheSizeBytes, "Approximate memory should be within limit (async)");
-            Assert.LessOrEqual(Math.Abs(accounted - totalEntries), 1, $"Inconsistent accounting (async): entries({stats.EntryCount}) + evictions({stats.EvictionCount}) vs inserted({totalEntries})");
+            Assert.That(stats.EvictionCount, Is.GreaterThan(0), "Should have evictions after exceeding size limit (async)");
+            Assert.That(stats.ApproximateMemoryBytes, Is.LessThanOrEqualTo(maxCacheSizeBytes), "Approximate memory should be within limit (async)");
+            Assert.That(Math.Abs(accounted - totalEntries), Is.LessThanOrEqualTo(1), $"Inconsistent accounting (async): entries({stats.EntryCount}) + evictions({stats.EvictionCount}) vs inserted({totalEntries})");
         }
     }
 }

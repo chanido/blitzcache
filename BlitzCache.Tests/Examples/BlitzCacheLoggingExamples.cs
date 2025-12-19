@@ -1,4 +1,3 @@
-
 using BlitzCacheCore.Extensions;
 using BlitzCacheCore.Logging;
 using BlitzCacheCore.Tests.Helpers;
@@ -100,9 +99,9 @@ namespace BlitzCacheCore.Tests.Examples
 
             await GenerateCacheActivity(cacheInstance);
 
-            Assert.IsNotNull(cacheInstance, "Cache should not be null");
-            Assert.IsNotNull(cacheInstance.Statistics, "Statistics should not be null for the global singleton");
-            Assert.IsTrue(cacheInstance.Statistics.EntryCount > 0, "Statistics should have at least one entry after cache operations");
+            Assert.That(cacheInstance, Is.Not.Null, "Cache should not be null");
+            Assert.That(cacheInstance.Statistics, Is.Not.Null, "Statistics should not be null for the global singleton");
+            Assert.That(cacheInstance.Statistics.EntryCount > 0, Is.True, "Statistics should have at least one entry after cache operations");
         }
 
         [Test]

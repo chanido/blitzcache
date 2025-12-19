@@ -1,5 +1,4 @@
 using BlitzCacheCore.Logging;
-using BlitzCacheCore.Statistics;
 using BlitzCacheCore.Tests.Helpers;
 using NUnit.Framework;
 using System;
@@ -161,7 +160,7 @@ namespace BlitzCacheCore.Tests
             await loggingService.StopAsync(cancellationToken);
 
             var logs = testLogger.GetLogs();
-            Assert.AreEqual(2, logs.Count);
+            Assert.That(logs.Count, Is.EqualTo(2));
             Assert.That(logs.Any(l => l.Contains("BlitzCache statistics logging started")), Is.True);
             Assert.That(logs.Any(l => l.Contains("BlitzCache statistics logging stopped")), Is.True);
         }
@@ -174,7 +173,7 @@ namespace BlitzCacheCore.Tests
             BlitzCacheLoggingService.Add(cacheInstance, "CacheInstance1", testInterval);
             BlitzCacheLoggingService.Add(cacheInstance, "CacheInstance2", testInterval);
 
-            Assert.AreEqual(1, BlitzCacheLoggingService.GetInstances().Count, "Should only register once even with multiple calls");
+            Assert.That(BlitzCacheLoggingService.GetInstances().Count, Is.EqualTo(1), "Should only register once even with multiple calls");
         }
 
         private async Task GenerateCacheActivity()

@@ -1,3 +1,15 @@
+# [2.2.0] - 2025-12-16
+
+### Changed
+- Updated all dependencies to latest stable versions (Microsoft.Extensions.* 10.0.1).
+- Ensures compatibility with .NET 10 and latest framework improvements.
+
+### Notes
+- No breaking changes.
+- Library remains actively maintained with regular updates.
+
+---
+
 # [2.1.1] - 2025-10-13
 
 ### Added

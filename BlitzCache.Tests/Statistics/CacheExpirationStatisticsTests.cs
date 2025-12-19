@@ -25,8 +25,8 @@ namespace BlitzCacheCore.Tests.Statistics
             Console.WriteLine($"After first creation: {statsAfterFirst.EntryCount} entries, {statsAfterFirst.EvictionCount} evictions");
 
             // Verify first entry
-            Assert.AreEqual(1, statsAfterFirst.EntryCount, "Should have 1 cached entry");
-            Assert.AreEqual(0, statsAfterFirst.EvictionCount, "Should have no evictions after first creation");
+            Assert.That(statsAfterFirst.EntryCount, Is.EqualTo(1), "Should have 1 cached entry");
+            Assert.That(statsAfterFirst.EvictionCount, Is.EqualTo(0), "Should have no evictions after first creation");
 
             // Wait for automatic expiration
             await TestDelays.WaitForStandardExpiration(); // Wait longer than expiration
@@ -42,14 +42,14 @@ namespace BlitzCacheCore.Tests.Statistics
             Console.WriteLine($"Total operations: {statsAfterExpiration.TotalOperations}, Hits: {statsAfterExpiration.HitCount}, Misses: {statsAfterExpiration.MissCount}");
 
             // Assert - Verify that evictions were tracked
-            Assert.Greater(statsAfterExpiration.EvictionCount, 0, "Should have tracked automatic evictions");
-            Assert.AreEqual(1, statsAfterExpiration.EntryCount, "Should have 1 new entry after re-creation");
+            Assert.That(statsAfterExpiration.EvictionCount, Is.GreaterThan(0), "Should have tracked automatic evictions");
+            Assert.That(statsAfterExpiration.EntryCount, Is.EqualTo(1), "Should have 1 new entry after re-creation");
 
             // The second BlitzGet call should be a miss since the original entry expired
-            Assert.AreEqual(2, statsAfterExpiration.MissCount, "Should have 2 misses (1 initial + 1 after expiration)");
+            Assert.That(statsAfterExpiration.MissCount, Is.EqualTo(2), "Should have 2 misses (1 initial + 1 after expiration)");
 
             // Verify the new value was set
-            Assert.AreEqual("new_value1", result1);
+            Assert.That(result1, Is.EqualTo("new_value1"));
 
             cache.Dispose();
         }
@@ -84,9 +84,9 @@ namespace BlitzCacheCore.Tests.Statistics
             var evictionsDuringRemoval = evictionCountAfterRemoval - evictionCountAfterCreation;
 
             // Assert - Manual removal should be counted exactly once, no evictions during creation
-            Assert.AreEqual(0, evictionsDuringCreation, "Should have no evictions during creation");
-            Assert.AreEqual(1, evictionsDuringRemoval, "Should have exactly 1 eviction during manual removal");
-            Assert.AreEqual(0, entryCountAfterRemoval, "Should have 0 entries after removal");
+            Assert.That(evictionsDuringCreation, Is.EqualTo(0), "Should have no evictions during creation");
+            Assert.That(evictionsDuringRemoval, Is.EqualTo(1), "Should have exactly 1 eviction during manual removal");
+            Assert.That(entryCountAfterRemoval, Is.EqualTo(0), "Should have 0 entries after removal");
 
             cache.Dispose();
         }
@@ -122,8 +122,8 @@ namespace BlitzCacheCore.Tests.Statistics
             Console.WriteLine($"Final: {finalStats.EntryCount} entries, {finalStats.EvictionCount} evictions");
 
             // Assert - Should track both types of evictions
-            Assert.AreEqual(2, finalStats.EntryCount, "Should have 2 entries (keep_alive + new auto_expire)");
-            Assert.Greater(finalStats.EvictionCount, 1, "Should have tracked both manual and automatic evictions");
+            Assert.That(finalStats.EntryCount, Is.EqualTo(2), "Should have 2 entries (keep_alive + new auto_expire)");
+            Assert.That(finalStats.EvictionCount, Is.GreaterThan(1), "Should have tracked both manual and automatic evictions");
 
             cache.Dispose();
         }
@@ -141,7 +141,7 @@ namespace BlitzCacheCore.Tests.Statistics
             cache.BlitzGet("key3", () => "value3", TestConstants.StandardTimeoutMs);
 
             var entryCountAfter3Adds = cache.Statistics.EntryCount;
-            Assert.AreEqual(3, entryCountAfter3Adds, "Should have 3 entries");
+            Assert.That(entryCountAfter3Adds, Is.EqualTo(3), "Should have 3 entries");
 
             // Remove one
             cache.Remove("key2");
@@ -149,16 +149,16 @@ namespace BlitzCacheCore.Tests.Statistics
 
             var entryCountAfterRemoval = cache.Statistics.EntryCount;
             var evictionCountAfterRemoval = cache.Statistics.EvictionCount;
-            Assert.AreEqual(2, entryCountAfterRemoval, "Should have 2 entries after removal");
-            Assert.AreEqual(1, evictionCountAfterRemoval, "Should have 1 eviction");
+            Assert.That(entryCountAfterRemoval, Is.EqualTo(2), "Should have 2 entries after removal");
+            Assert.That(evictionCountAfterRemoval, Is.EqualTo(1), "Should have 1 eviction");
 
             // Add another
             cache.BlitzGet("key4", () => "value4", TestConstants.StandardTimeoutMs);
 
             var finalEntryCount = cache.Statistics.EntryCount;
             var finalEvictionCount = cache.Statistics.EvictionCount;
-            Assert.AreEqual(3, finalEntryCount, "Should have 3 entries again");
-            Assert.AreEqual(1, finalEvictionCount, "Eviction count should remain 1");
+            Assert.That(finalEntryCount, Is.EqualTo(3), "Should have 3 entries again");
+            Assert.That(finalEvictionCount, Is.EqualTo(1), "Eviction count should remain 1");
 
             cache.Dispose();
         }

@@ -23,10 +23,10 @@ namespace BlitzCacheCore.Tests.Statistics
 
             var results = top.Get().ToList();
 
-            Assert.AreEqual(topN, results.Count);
-            Assert.AreEqual("B", results.ElementAt(0).CacheKey);
-            Assert.AreEqual("C", results.ElementAt(1).CacheKey);
-            Assert.AreEqual("A", results.ElementAt(2).CacheKey);
+            Assert.That(results.Count, Is.EqualTo(topN));
+            Assert.That(results.ElementAt(0).CacheKey, Is.EqualTo("B"));
+            Assert.That(results.ElementAt(1).CacheKey, Is.EqualTo("C"));
+            Assert.That(results.ElementAt(2).CacheKey, Is.EqualTo("A"));
         }
 
         [Test]
@@ -39,14 +39,14 @@ namespace BlitzCacheCore.Tests.Statistics
 
             var results = top.Get().ToList();
 
-            Assert.AreEqual(2, results.Count);
+            Assert.That(results.Count, Is.EqualTo(2));
             var aStats = results.First();
-            Assert.IsNotNull(aStats);
-            Assert.AreEqual("A", aStats.CacheKey);
-            Assert.AreEqual(200, aStats.WorstCaseMs);
-            Assert.AreEqual(100, aStats.BestCaseMs);
-            Assert.AreEqual(150, aStats.AverageMs);
-            Assert.AreEqual(2, aStats.Occurrences);
+            Assert.That(aStats, Is.Not.Null);
+            Assert.That(aStats.CacheKey, Is.EqualTo("A"));
+            Assert.That(aStats.WorstCaseMs, Is.EqualTo(200));
+            Assert.That(aStats.BestCaseMs, Is.EqualTo(100));
+            Assert.That(aStats.AverageMs, Is.EqualTo(150));
+            Assert.That(aStats.Occurrences, Is.EqualTo(2));
         }
 
         [Test]
@@ -59,7 +59,7 @@ namespace BlitzCacheCore.Tests.Statistics
             top.Clear();
             var results = top.Get().ToList();
 
-            Assert.AreEqual(0, results.Count);
+            Assert.That(results.Count, Is.EqualTo(0));
         }
 
         [Test]
@@ -72,10 +72,10 @@ namespace BlitzCacheCore.Tests.Statistics
 
             var results = top.Get().ToList();
 
-            Assert.AreEqual(2, results.Count);
+            Assert.That(results.Count, Is.EqualTo(2));
             // Should contain the two slowest
-            Assert.IsTrue(results.First().CacheKey == "C");
-            Assert.IsTrue(results.Last().CacheKey == "B");
+            Assert.That(results.First().CacheKey == "C", Is.True);
+            Assert.That(results.Last().CacheKey == "B", Is.True);
         }
 
         [Test]
@@ -104,11 +104,11 @@ namespace BlitzCacheCore.Tests.Statistics
             Task.WaitAll(tasks.ToArray());
 
             var results = top.Get().ToList();
-            Assert.AreEqual(topN, results.Count);
+            Assert.That(results.Count, Is.EqualTo(topN));
             // Should not throw and should contain only valid keys
             foreach (var entry in results)
             {
-                Assert.IsTrue(keys.Any(k => entry.CacheKey.Contains(k)) || string.IsNullOrWhiteSpace(entry.CacheKey));
+                Assert.That(keys.Any(k => entry.CacheKey.Contains(k)) || string.IsNullOrWhiteSpace(entry.CacheKey), Is.True);
             }
         }
     }
