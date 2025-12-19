@@ -22,7 +22,7 @@
 
 NEW IN v2.2.0:
 • Updated all dependencies to latest stable versions (Microsoft.Extensions.* 10.0.1).
-• Ensures compatibility with .NET 9 and latest framework improvements.
+• Ensures compatibility with .NET 10 and latest framework improvements.
 • Continued active maintenance and community support.
 
 Notes:

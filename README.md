@@ -4,7 +4,7 @@
 [![Tests](https://img.shields.io/badge/tests-360%20passing-brightgreen)](./BlitzCache.Tests)
 [![codecov](https://codecov.io/gh/chanido/blitzcache/branch/develop/graph/badge.svg)](https://codecov.io/gh/chanido/blitzcache)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![.NET Standard](https://img.shields.io/badge/.NET%20Standard-2.1-blue.svg)](https://docs.microsoft.com/en-us/dotnet/standard/net-standard)
+[![.NET Standard](https://img.shields.io/badge/.NET-Standard%202.1%20%7C%208.0%20%7C%2010.0-blue)](https://docs.microsoft.com/en-us/dotnet/standard/net-standard)
 
 > **🚀 Enterprise-grade caching that's ridiculously simple to use**
 

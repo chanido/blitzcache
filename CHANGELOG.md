@@ -2,7 +2,7 @@
 
 ### Changed
 - Updated all dependencies to latest stable versions (Microsoft.Extensions.* 10.0.1).
-- Ensures compatibility with .NET 9 and latest framework improvements.
+- Ensures compatibility with .NET 10 and latest framework improvements.
 
 ### Notes
 - No breaking changes.
